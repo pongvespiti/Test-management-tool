@@ -12,6 +12,9 @@ export const qk = {
   project: (projectId: number) => ['projects', projectId] as const,
   members: (projectId: number) => ['members', projectId] as const,
   releases: (projectId: number) => ['releases', projectId] as const,
+  builds: (projectId: number) => ['builds', projectId] as const,
+  buildList: (projectId: number, releaseId: number | null) =>
+    ['builds', projectId, 'list', releaseId] as const,
 
   suites: (projectId: number) => ['suites', projectId] as const,
   suiteList: (projectId: number, includeArchived: boolean) =>

@@ -103,6 +103,20 @@ export const updateReleaseSchema = z.object({
 });
 export type UpdateReleaseInput = z.infer<typeof updateReleaseSchema>;
 
+/** A build of a release, named as the team names it, e.g. `1.1.7(2.0.0)`. */
+export const buildSchema = z.object({
+  name: requiredLine(100),
+  notes: optionalText(2000),
+  builtDate: optionalDate,
+});
+export type BuildInput = z.infer<typeof buildSchema>;
+/** No defaults here: a PATCH must never reset fields it does not mention. */
+export const updateBuildSchema = buildSchema.partial();
+export type UpdateBuildInput = z.infer<typeof updateBuildSchema>;
+
+export const listBuildsQuerySchema = z.object({ releaseId: idSchema.optional() });
+export type ListBuildsQuery = z.infer<typeof listBuildsQuerySchema>;
+
 // ---------------------------------------------------------------- API tokens
 
 export const createTokenSchema = z.object({

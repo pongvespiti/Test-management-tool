@@ -6,6 +6,7 @@ import { Prisma, type TestPlan, type TestRun, type RunCase } from '@tmt/database
 import {
   countsFromRows,
   type CaseRunHistoryItem,
+  type NamedRef,
   type PlanDTO,
   type RunCaseDTO,
   type RunDTO,
@@ -80,6 +81,43 @@ export async function assertReleaseInProject(
   if (releaseId === null || releaseId === undefined) return;
   const found = await db.release.count({ where: { id: releaseId, projectId } });
   if (!found) throw unprocessable('BAD_RELEASE', 'The release does not belong to this project');
+}
+
+/**
+ * A run's build must belong to the plan's release (422 BAD_BUILD); a plan without a release takes
+ * any build of the project.
+ */
+export async function assertBuildForPlan(
+  db: Db,
+  projectId: number,
+  plan: Pick<TestPlan, 'releaseId'>,
+  buildId: number | null | undefined,
+): Promise<void> {
+  if (buildId === null || buildId === undefined) return;
+  const found = await db.build.count({
+    where: {
+      id: buildId,
+      release: { projectId },
+      ...(plan.releaseId !== null && { releaseId: plan.releaseId }),
+    },
+  });
+  if (!found) {
+    throw unprocessable('BAD_BUILD', "The build does not belong to the test plan's release");
+  }
+}
+
+/** `{ id, name }` of the given builds. */
+export async function buildRefs(
+  db: Db,
+  ids: (number | null | undefined)[],
+): Promise<Map<number, NamedRef>> {
+  const unique = [...new Set(ids.filter((v): v is number => typeof v === 'number'))];
+  if (unique.length === 0) return new Map();
+  const rows = await db.build.findMany({
+    where: { id: { in: unique } },
+    select: { id: true, name: true },
+  });
+  return new Map(rows.map((r) => [r.id, r]));
 }
 
 /** Completed plans are read-only until a lead reopens them (409 PLAN_LOCKED). */
@@ -193,6 +231,10 @@ export async function buildRunDTOs(
     db,
     rows.map((r) => r.run.testerId),
   );
+  const builds = await buildRefs(
+    db,
+    rows.map((r) => r.run.buildId),
+  );
   return rows.map(({ run, plan }) =>
     toRunDTO(
       run,
@@ -202,6 +244,7 @@ export async function buildRunDTOs(
       users,
       run.sourceRunId !== null ? (sources.get(run.sourceRunId) ?? null) : null,
       estimates.get(run.id),
+      run.buildId !== null ? (builds.get(run.buildId) ?? null) : null,
     ),
   );
 }

@@ -67,6 +67,7 @@ describe('dashboard', () => {
     db.release.findMany.mockResolvedValue(releases);
     db.testPlan.findMany.mockResolvedValue([planRow({ status: 'in_progress', releaseId: 2 })]);
     db.testRun.findMany.mockResolvedValue([]);
+    db.build.findMany.mockResolvedValue([]);
     db.attachment.findMany.mockResolvedValue([]);
     db.user.findMany.mockResolvedValue([]);
     groupByMock(db.defect.groupBy).mockResolvedValue([
@@ -85,6 +86,7 @@ describe('dashboard', () => {
     const d = await new DashboardService(prisma).get(10);
     expect(d.release?.name).toBe('Current');
     expect(d.releases).toHaveLength(3);
+    expect(d.builds).toEqual([]);
     expect(d.kpis).toMatchObject({
       planCount: 1,
       plansByStatus: { draft: 0, in_progress: 1, completed: 0 },
@@ -105,5 +107,41 @@ describe('dashboard', () => {
       status: { in: ['ng', 'ok_cond'] },
     });
     expect(attention.take).toBe(10);
+  });
+
+  it('lists the builds of the release with results and open defects found in them', async () => {
+    const { prisma, db } = createPrismaMock();
+    db.release.findMany.mockResolvedValue(releases);
+    db.testPlan.findMany.mockResolvedValue([]);
+    db.testRun.findMany.mockResolvedValue([
+      { id: 31, buildId: 8 },
+      { id: 32, buildId: 8 },
+      { id: 33, buildId: 7 },
+    ] as never);
+    db.build.findMany.mockResolvedValue([
+      { id: 8, name: '1.1.7(2.0.0)' },
+      { id: 7, name: '1.1.7(1.0.0)' },
+      { id: 6, name: '1.1.7(0.9.0)' },
+    ] as never);
+    groupByMock(db.runCase.groupBy).mockResolvedValue([
+      { runId: 31, status: 'ok', _count: { _all: 4 } },
+      { runId: 32, status: 'ng', _count: { _all: 1 } },
+      { runId: 33, status: 'ok', _count: { _all: 2 } },
+    ]);
+    groupByMock(db.defect.groupBy).mockImplementation((async (args: { by: string[] }) =>
+      args.by[0] === 'foundInBuildId'
+        ? [{ foundInBuildId: 8, _count: { _all: 2 } }]
+        : []) as never);
+    db.defect.findMany.mockResolvedValue([]);
+    db.user.findMany.mockResolvedValue([]);
+    const d = await new DashboardService(prisma).get(10, 2);
+    expect(db.build.findMany.mock.calls[0]![0]!.where).toEqual({ releaseId: 2 });
+    expect(d.builds.map((b) => [b.build.name, b.runCount, b.openDefects])).toEqual([
+      ['1.1.7(2.0.0)', 2, 2],
+      ['1.1.7(1.0.0)', 1, 0],
+      ['1.1.7(0.9.0)', 0, 0],
+    ]);
+    expect(d.builds[0]!.counts).toMatchObject({ ok: 4, ng: 1 });
+    expect(d.builds[2]!.counts.ok).toBe(0);
   });
 });

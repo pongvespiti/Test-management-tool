@@ -51,6 +51,7 @@ const WORKBOOK_FIELDS = [
 const RUN_FIELDS = [
   'code',
   'scenario',
+  'build',
   'tester',
   'testedDate',
   'judgement',

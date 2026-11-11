@@ -3,6 +3,7 @@
 import { TriangleAlert } from 'lucide-react';
 import type { ComponentProps, ReactNode } from 'react';
 import type { Control, FieldPath, FieldValues } from 'react-hook-form';
+import { BuildSelect } from '@/components/common/build-select';
 import { DateInput } from '@/components/common/date-input';
 import { UserSelect } from '@/components/common/user-select';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -111,6 +112,36 @@ export function TesterField<V extends FieldValues>({
           <FormControl>
             <UserSelect
               projectId={projectId}
+              value={(field.value as number | null) ?? null}
+              onChange={field.onChange}
+            />
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
+}
+
+/** Application build under test, chosen among the builds of the plan's release. */
+export function BuildField<V extends FieldValues>({
+  control,
+  name,
+  projectId,
+  releaseId,
+  label = 'Build',
+}: Omit<FieldProps<V>, 'label'> & { projectId: number; releaseId: number | null; label?: string }) {
+  return (
+    <FormField
+      control={control}
+      name={name}
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel>{label}</FormLabel>
+          <FormControl>
+            <BuildSelect
+              projectId={projectId}
+              releaseId={releaseId}
               value={(field.value as number | null) ?? null}
               onChange={field.onChange}
             />

@@ -101,6 +101,19 @@ export interface ReleaseDTO {
   updatedAt: string;
 }
 
+export interface BuildDTO {
+  id: number;
+  releaseId: number;
+  name: string;
+  notes: string | null;
+  builtDate: string | null;
+  /** Test runs and defects (found in or fixed in) that point at the build. */
+  runCount: number;
+  defectCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface NamedRef {
   id: number;
   name: string;
@@ -360,6 +373,8 @@ export interface RunDTO {
   planDocNo: string;
   planTitle: string;
   planStatus: PlanStatus;
+  /** Release of the plan: the run's build is chosen among its builds. */
+  planReleaseId: number | null;
   suite: { id: number; name: string; prefix: string; fieldDefs: FieldDef[] };
   code: string;
   scenario: string | null;
@@ -373,6 +388,7 @@ export interface RunDTO {
   counts: StatusCounts;
   suggestedJudgement: Judgement | null;
   sourceRun: RunRef | null;
+  build: NamedRef | null;
   /** Sum of case estimates; remaining = untested run cases only. */
   estimate: { totalMinutes: number; remainingMinutes: number };
   createdAt: string;
@@ -493,6 +509,8 @@ export interface DefectListItem {
   status: DefectStatus;
   assignee: UserRef | null;
   release: NamedRef | null;
+  foundInBuild: NamedRef | null;
+  fixedInBuild: NamedRef | null;
   linkSummary: string | null;
   /** Linked Jira issue key and its last synced status. */
   externalKey: string | null;
@@ -559,9 +577,20 @@ export interface AttentionItemDTO {
   defect: DefectRef | null;
 }
 
+/** Results of the runs tested on one build of the dashboard's release. */
+export interface BuildSummaryDTO {
+  build: NamedRef;
+  runCount: number;
+  counts: StatusCounts;
+  /** Open defects found in the build. */
+  openDefects: number;
+}
+
 export interface DashboardDTO {
   release: ReleaseDTO | null;
   releases: ReleaseDTO[];
+  /** Builds of the release with their results, newest first (empty without a release). */
+  builds: BuildSummaryDTO[];
   kpis: {
     planCount: number;
     plansByStatus: Record<PlanStatus, number>;
@@ -745,6 +774,7 @@ export interface RunReportDTO {
     id: number;
     code: string;
     scenario: string | null;
+    build: NamedRef | null;
     suite: { id: number; name: string; prefix: string };
     environment: EnvEntryDTO[];
     tester: UserRef | null;

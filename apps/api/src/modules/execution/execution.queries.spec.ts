@@ -11,6 +11,7 @@ import {
 import { createPrismaMock } from '../../../test/unit/prisma-mock.js';
 import {
   assertPlanEditable,
+  assertBuildForPlan,
   assertReleaseInProject,
   buildPlanDTOs,
   buildRunDTOs,
@@ -74,6 +75,24 @@ describe('execution queries', () => {
     await expect(assertReleaseInProject(db, 10, null)).resolves.toBeUndefined();
     db.release.count.mockResolvedValue(1);
     await expect(assertReleaseInProject(db, 10, 5)).resolves.toBeUndefined();
+  });
+
+  it('accepts a run build of the plan release only (any project build without a release)', async () => {
+    const { db } = createPrismaMock();
+    db.build.count.mockResolvedValue(0);
+    await expect(assertBuildForPlan(db, 10, { releaseId: 4 }, 8)).rejects.toMatchObject({
+      code: 'BAD_BUILD',
+    });
+    expect(db.build.count.mock.calls[0]![0]!.where).toEqual({
+      id: 8,
+      release: { projectId: 10 },
+      releaseId: 4,
+    });
+    await expect(assertBuildForPlan(db, 10, { releaseId: 4 }, null)).resolves.toBeUndefined();
+    await expect(assertBuildForPlan(db, 10, { releaseId: 4 }, undefined)).resolves.toBeUndefined();
+    db.build.count.mockResolvedValue(1);
+    await assertBuildForPlan(db, 10, { releaseId: null }, 8);
+    expect(db.build.count.mock.calls[1]![0]!.where).toEqual({ id: 8, release: { projectId: 10 } });
   });
 
   it('locks completed plans', async () => {

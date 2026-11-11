@@ -1,5 +1,5 @@
-import type { Project, Release } from '@tmt/database';
-import type { ProjectDTO, ProjectRole, ReleaseDTO } from '@tmt/shared';
+import type { Build, Project, Release } from '@tmt/database';
+import type { BuildDTO, ProjectDTO, ProjectRole, ReleaseDTO } from '@tmt/shared';
 import { dateOnly } from '../../common/users/user-refs.js';
 
 export function toProjectDTO(p: Project, role: ProjectRole): ProjectDTO {
@@ -28,6 +28,24 @@ export function toReleaseDTO(r: Release): ReleaseDTO {
     status: r.status,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
+  };
+}
+
+export type BuildWithCounts = Build & {
+  _count: { runs: number; foundDefects: number; fixedDefects: number };
+};
+
+export function toBuildDTO(b: BuildWithCounts): BuildDTO {
+  return {
+    id: b.id,
+    releaseId: b.releaseId,
+    name: b.name,
+    notes: b.notes,
+    builtDate: dateOnly(b.builtDate),
+    runCount: b._count.runs,
+    defectCount: b._count.foundDefects + b._count.fixedDefects,
+    createdAt: b.createdAt.toISOString(),
+    updatedAt: b.updatedAt.toISOString(),
   };
 }
 

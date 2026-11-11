@@ -182,6 +182,7 @@ export function PlanRunsCard({ plan, editable, canDelete, canWrite }: Props) {
           key={creator.key}
           projectId={projectId}
           planId={plan.id}
+          releaseId={plan.release?.id ?? null}
           existingRuns={list}
           onDone={creator.close}
         />
@@ -300,6 +301,11 @@ function RunRow({
         </Link>
         {run.scenario && (
           <p className="text-xs [overflow-wrap:anywhere] text-muted-foreground">{run.scenario}</p>
+        )}
+        {run.build && (
+          <p className="text-xs [overflow-wrap:anywhere] text-muted-foreground">
+            Build <span className="font-mono font-semibold text-foreground">{run.build.name}</span>
+          </p>
         )}
         {run.sourceRun && (
           <Link

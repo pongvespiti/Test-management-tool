@@ -22,6 +22,7 @@ export interface DefectPrefill {
   assigneeId?: number | null;
   releaseId?: number | null;
   foundIn?: string;
+  foundInBuildId?: number | null;
   environment?: string;
 }
 
@@ -51,6 +52,8 @@ export function defectFormValues(
         releaseId: defect.release?.id ?? null,
         foundIn: defect.foundIn ?? '',
         fixedIn: defect.fixedIn ?? '',
+        foundInBuildId: defect.foundInBuild?.id ?? null,
+        fixedInBuildId: defect.fixedInBuild?.id ?? null,
         environment: defect.environment ?? '',
       }
     : {
@@ -65,6 +68,8 @@ export function defectFormValues(
         releaseId: prefill?.releaseId ?? null,
         foundIn: prefill?.foundIn ?? '',
         fixedIn: '',
+        foundInBuildId: prefill?.foundInBuildId ?? null,
+        fixedInBuildId: null,
         environment: prefill?.environment ?? '',
       };
   if (withExternalKey) values.externalKey = defect?.externalKey ?? '';

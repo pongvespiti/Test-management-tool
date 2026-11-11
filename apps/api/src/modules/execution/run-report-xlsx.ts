@@ -387,6 +387,7 @@ function fillSummary(ws: Worksheet, r: RunReportDTO): void {
   w.keyValue('Release', r.plan.release?.name ?? '');
   w.keyValue('Test run', r.run.code);
   w.keyValue('Scenario', r.run.scenario ?? '');
+  w.keyValue('Build', r.run.build?.name ?? '');
   w.keyValue('Suite', `${r.run.suite.name} (${r.run.suite.prefix})`);
   w.keyValue('Re-run of', r.run.sourceRun?.code ?? '');
   w.keyValue('Tester', r.run.tester?.displayName ?? '');

@@ -150,6 +150,10 @@ describe('permissions', () => {
     expect(roleAtLeast(null, 'viewer')).toBe(false);
     expect(can('tester', 'execute')).toBe(true);
     expect(can('tester', 'reopenPlan')).toBe(false);
+    // Testers add the builds they test; releases stay with leads.
+    expect(can('tester', 'manageBuilds')).toBe(true);
+    expect(can('viewer', 'manageBuilds')).toBe(false);
+    expect(can('tester', 'manageReleases')).toBe(false);
     expect(can('viewer', 'export')).toBe(true);
   });
 });

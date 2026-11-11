@@ -129,6 +129,22 @@ export class PlansService {
     const plan = await getPlanInProject(db, ctx.id, planId);
     assertPlanEditable(plan);
     await assertReleaseInProject(db, ctx.id, input.releaseId);
+    if (input.releaseId !== undefined && input.releaseId !== plan.releaseId) {
+      // Runs keep a build of the plan's release; moving the plan would leave them on a foreign build.
+      const foreign = await db.testRun.count({
+        where: {
+          planId: plan.id,
+          buildId: { not: null },
+          ...(input.releaseId !== null && { build: { releaseId: { not: input.releaseId } } }),
+        },
+      });
+      if (foreign) {
+        throw conflict(
+          'PLAN_RUNS_HAVE_BUILDS',
+          `${foreign} run(s) of this plan use a build of the current release — change their build first`,
+        );
+      }
+    }
     const templateId = await this.normalizeTemplateId(ctx.id, input.templateId);
     try {
       await db.$transaction(async (tx) => {

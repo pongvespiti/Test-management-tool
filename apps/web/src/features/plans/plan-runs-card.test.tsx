@@ -4,7 +4,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { apiError, makeSuite, makeTree, member, mockApi } from '@/features/cases/test-utils';
 import { makeProject, renderWithProviders } from '@/test/render';
 import { PlanRunsCard } from './plan-runs-card';
-import { counts, makePlan, makeRun } from './test-fixtures';
+import { counts, makeBuild, makePlan, makeRun } from './test-fixtures';
 
 function stubRuns(extra: Record<string, unknown> = {}) {
   return mockApi({
@@ -39,6 +39,58 @@ async function openRunAction(user: ReturnType<typeof renderCard>['user'], item: 
 }
 
 describe('PlanRunsCard', () => {
+  it('shows the build of each run', async () => {
+    stubRuns({
+      'GET /projects/3/plans/7/runs': [makeRun({ build: { id: 8, name: '1.1.7(2.0.0)' } })],
+    });
+    renderCard();
+    expect(await screen.findByText('1.1.7(2.0.0)')).toBeInTheDocument();
+  });
+
+  it('chooses a build of the plan release when creating and editing a run', async () => {
+    const api = stubRuns({
+      'GET /projects/3/builds': [
+        makeBuild(),
+        makeBuild({ id: 7, name: '1.1.7(1.0.0)', builtDate: '2026-11-01' }),
+      ],
+      'POST /projects/3/plans/7/runs': makeRun({ id: 30, code: 'UOT_01' }),
+      'PATCH /projects/3/runs/21': makeRun({ build: { id: 7, name: '1.1.7(1.0.0)' } }),
+    });
+    const { user } = renderCard();
+    await user.click(await screen.findByRole('button', { name: 'New run' }));
+    const dialog = await screen.findByRole('dialog', { name: 'New run · 26TR-TEAM-10-001' });
+    await waitFor(() =>
+      expect(within(dialog).getByRole('textbox', { name: 'Run code (Test ID)' })).toHaveValue(
+        'UOT_01',
+      ),
+    );
+    await user.click(within(dialog).getByRole('combobox', { name: 'Build' }));
+    await user.click(await screen.findByRole('option', { name: '1.1.7(2.0.0)' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Create run' }));
+    await waitFor(() => expect(api.find('POST', '/projects/3/plans/7/runs')).toHaveLength(1));
+    expect(api.find('POST', '/projects/3/plans/7/runs')[0]!.body).toMatchObject({ buildId: 8 });
+    // The builds offered are those of the plan's release.
+    expect(api.find('GET', '/projects/3/builds')[0]!.query.get('releaseId')).toBe('5');
+  });
+
+  it('changes the build of a run', async () => {
+    const api = stubRuns({
+      'GET /projects/3/builds': [
+        makeBuild(),
+        makeBuild({ id: 7, name: '1.1.7(1.0.0)', builtDate: '2026-11-01' }),
+      ],
+      'PATCH /projects/3/runs/21': makeRun({ build: { id: 7, name: '1.1.7(1.0.0)' } }),
+    });
+    const { user } = renderCard();
+    await openRunAction(user, 'Edit run…');
+    const edit = await screen.findByRole('dialog', { name: 'Edit run KR_01' });
+    await user.click(within(edit).getByRole('combobox', { name: 'Build' }));
+    await user.click(await screen.findByRole('option', { name: '1.1.7(1.0.0)' }));
+    await user.click(within(edit).getByRole('button', { name: 'Save run' }));
+    await waitFor(() => expect(api.find('PATCH', '/projects/3/runs/21')).toHaveLength(1));
+    expect(api.find('PATCH', '/projects/3/runs/21')[0]!.body).toMatchObject({ buildId: 7 });
+  });
+
   it('creates a run from the only suite with the chosen filters', async () => {
     let attempts = 0;
     const api = stubRuns({
@@ -81,6 +133,7 @@ describe('PlanRunsCard', () => {
       code: 'UOT_01',
       scenario: '',
       testerId: 1,
+      buildId: null,
       testedDate: '',
       // Template items keep their label even without a value (as in the old app).
       environment: [
@@ -140,6 +193,7 @@ describe('PlanRunsCard', () => {
       code: 'KR_01',
       scenario: 'AP mode · iOS',
       testerId: 1,
+      buildId: null,
       testedDate: '2026-10-02',
       environment: makeRun().environment,
       judgement: 'pass',
@@ -168,6 +222,7 @@ describe('PlanRunsCard', () => {
       code: 'KR_02',
       scenario: 'AP mode · iOS',
       testerId: 1,
+      buildId: null,
       environment: [
         { label: 'Unit model', value: 'ACU18' },
         { label: 'Adapter FW', value: '3.12.119' },
@@ -200,6 +255,7 @@ describe('PlanRunsCard', () => {
       statuses: ['blocked', 'untested'],
       copyEnvironment: true,
       testerId: 1,
+      buildId: null,
       keepAssignees: false,
       refreshFromLibrary: false,
     });

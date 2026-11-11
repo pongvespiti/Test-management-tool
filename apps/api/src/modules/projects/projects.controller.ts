@@ -1,17 +1,35 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Put,
+  Query,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import {
+  buildSchema,
+  listBuildsQuerySchema,
   createProjectSchema,
   releaseSchema,
   setMembersSchema,
+  updateBuildSchema,
   updateProjectSchema,
   updateReleaseSchema,
+  type BuildDTO,
+  type BuildInput,
   type CreateProjectInput,
   type MemberDTO,
   type ProjectDTO,
+  type ListBuildsQuery,
   type ReleaseDTO,
   type ReleaseInput,
   type SetMembersInput,
+  type UpdateBuildInput,
   type UpdateProjectInput,
   type UpdateReleaseInput,
 } from '@tmt/shared';
@@ -23,6 +41,7 @@ import {
 import { CurrentProject, CurrentUser } from '../../common/decorators/request.decorators.js';
 import { ID } from '../../common/http/params.js';
 import type { AuthUser, ProjectContext } from '../../common/types/auth.js';
+import { BuildsService } from './builds.service.js';
 import { ProjectsService } from './projects.service.js';
 import { ReleasesService } from './releases.service.js';
 
@@ -32,6 +51,7 @@ export class ProjectsController {
   constructor(
     private readonly projects: ProjectsService,
     private readonly releases: ReleasesService,
+    private readonly builds: BuildsService,
   ) {}
 
   @Get()
@@ -124,5 +144,54 @@ export class ProjectsController {
     @Param('releaseId', ID) releaseId: number,
   ): Promise<void> {
     return this.releases.remove(ctx, me, releaseId);
+  }
+
+  // ------------------------------------------------------------------------ builds
+
+  /** Builds of the project, newest first; `?releaseId=` limits them to one release. */
+  @Get(':projectId/builds')
+  @ProjectPermission('read')
+  @ApiErrorCodes('RELEASE_NOT_FOUND')
+  listBuilds(
+    @CurrentProject() ctx: ProjectContext,
+    @Query({ schema: listBuildsQuerySchema }) q: ListBuildsQuery,
+  ): Promise<BuildDTO[]> {
+    return this.builds.list(ctx.id, q.releaseId);
+  }
+
+  @Post(':projectId/releases/:releaseId/builds')
+  @ProjectPermission('manageBuilds')
+  @ApiErrorCodes('RELEASE_NOT_FOUND', 'BUILD_NAME_TAKEN')
+  createBuild(
+    @CurrentProject() ctx: ProjectContext,
+    @CurrentUser() me: AuthUser,
+    @Param('releaseId', ID) releaseId: number,
+    @Body({ schema: buildSchema }) body: BuildInput,
+  ): Promise<BuildDTO> {
+    return this.builds.create(ctx, me, releaseId, body);
+  }
+
+  @Patch(':projectId/builds/:buildId')
+  @ProjectPermission('manageBuilds')
+  @ApiErrorCodes('BUILD_NOT_FOUND', 'BUILD_NAME_TAKEN')
+  updateBuild(
+    @CurrentProject() ctx: ProjectContext,
+    @CurrentUser() me: AuthUser,
+    @Param('buildId', ID) buildId: number,
+    @Body({ schema: updateBuildSchema }) body: UpdateBuildInput,
+  ): Promise<BuildDTO> {
+    return this.builds.update(ctx, me, buildId, body);
+  }
+
+  @Delete(':projectId/builds/:buildId')
+  @HttpCode(204)
+  @ProjectPermission('manageBuilds')
+  @ApiErrorCodes('BUILD_NOT_FOUND', 'BUILD_IN_USE')
+  removeBuild(
+    @CurrentProject() ctx: ProjectContext,
+    @CurrentUser() me: AuthUser,
+    @Param('buildId', ID) buildId: number,
+  ): Promise<void> {
+    return this.builds.remove(ctx, me, buildId);
   }
 }

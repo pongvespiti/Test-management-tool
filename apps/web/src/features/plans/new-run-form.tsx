@@ -37,7 +37,14 @@ import { notifyError, notifySuccess } from '@/lib/notify';
 import { useAuth } from '@/providers/auth-provider';
 import { EnvEditor } from './env-editor';
 import { mergeEnvTemplate } from './env-rows';
-import { DateField, FormAlert, FormButtons, TesterField, TextField } from './form-fields';
+import {
+  BuildField,
+  DateField,
+  FormAlert,
+  FormButtons,
+  TesterField,
+  TextField,
+} from './form-fields';
 import { MultiSelect } from '@/components/common/multi-select';
 import { nextFreeCode, sectionOptions, usedCodes } from './plan-utils';
 import { handleRunError } from './run-forms';
@@ -55,13 +62,15 @@ const resolver = flatResolver<NewRunValues>(validateNewRun);
 interface Props {
   projectId: number;
   planId: number;
+  /** Release of the plan: the build is chosen among its builds. */
+  releaseId: number | null;
   /** Runs already in the plan (for a free run code). */
   existingRuns: RunDTO[];
   onDone: (run?: RunDTO) => void;
 }
 
 /** New run: suite, which cases (sections, priority, tags, review status), environment, tester. */
-export function NewRunForm({ projectId, planId, existingRuns, onDone }: Props) {
+export function NewRunForm({ projectId, planId, releaseId, existingRuns, onDone }: Props) {
   const { user } = useAuth();
   const suites = useSuites(projectId);
   const members = useMembers(projectId);
@@ -187,6 +196,12 @@ export function NewRunForm({ projectId, planId, existingRuns, onDone }: Props) {
             placeholder="e.g. AP mode · iOS"
           />
           <TesterField control={form.control} name="testerId" projectId={projectId} />
+          <BuildField
+            control={form.control}
+            name="buildId"
+            projectId={projectId}
+            releaseId={releaseId}
+          />
           <DateField control={form.control} name="testedDate" label="Tested date" />
         </div>
 

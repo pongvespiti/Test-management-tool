@@ -15,6 +15,7 @@ export interface DefectsUrlState {
   status: DefectStatus[];
   severity: DefectSeverity[];
   releaseId: number | null;
+  buildId: number | null;
   /** A user id, `'me'` (resolved by the page) or null = anyone. */
   assignee: number | 'me' | null;
   page: number;
@@ -28,7 +29,7 @@ function listOf<T extends string>(all: readonly T[], value: string | null): T[] 
   return all.filter((v) => wanted.has(v));
 }
 
-/** Filters of `?status=new,open&severity=major&release=3&assignee=me&q=&page=`. */
+/** Filters of `?status=new,open&severity=major&release=3&build=8&assignee=me&q=&page=`. */
 export function parseDefectsUrl(params: URLSearchParams): DefectsUrlState {
   const assignee = params.get('assignee');
   return {
@@ -36,6 +37,7 @@ export function parseDefectsUrl(params: URLSearchParams): DefectsUrlState {
     status: listOf(DEFECT_STATUSES, params.get('status')),
     severity: listOf(DEFECT_SEVERITIES, params.get('severity')),
     releaseId: toId(params.get('release')),
+    buildId: toId(params.get('build')),
     assignee: assignee === 'me' ? 'me' : toId(assignee),
     page: Math.max(1, toId(params.get('page')) ?? 1),
   };
@@ -52,6 +54,7 @@ export function applyDefectsPatch(prev: URLSearchParams, patch: DefectsUrlPatch)
   if ('status' in patch) set('status', patch.status?.join(','));
   if ('severity' in patch) set('severity', patch.severity?.join(','));
   if ('releaseId' in patch) set('release', patch.releaseId ? String(patch.releaseId) : null);
+  if ('buildId' in patch) set('build', patch.buildId ? String(patch.buildId) : null);
   if ('assignee' in patch) set('assignee', patch.assignee === null ? null : String(patch.assignee));
   if ('page' in patch) set('page', patch.page && patch.page > 1 ? String(patch.page) : null);
   else next.delete('page');

@@ -3,6 +3,7 @@ export * from './keys';
 export * from './auth';
 export * from './users';
 export * from './projects';
+export * from './builds';
 export * from './library';
 export * from './imports';
 export * from './plans';

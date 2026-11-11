@@ -23,6 +23,7 @@ export const PERMISSIONS = {
   writeDefects: 'tester',
   deleteDefects: 'lead',
   manageReleases: 'lead',
+  manageBuilds: 'tester',
   manageMembers: 'lead',
   manageTemplates: 'lead',
   reviewCases: 'lead',

@@ -35,6 +35,26 @@ export const DEMO_RELEASES = [
   { name: 'v1.1', status: 'planned' },
 ] as const;
 
+/** Application builds per release (index into DEMO_RELEASES); runs and defects refer to them by name. */
+export const DEMO_BUILDS = [
+  {
+    release: 0,
+    name: '1.0.0(1.0.0)',
+    notes: 'First build handed to test',
+    builtDate: '2026-11-02',
+  },
+  {
+    release: 0,
+    name: '1.0.0(2.0.0)',
+    notes: 'Bug fixes found in 1.0.0(1.0.0)',
+    builtDate: '2026-11-09',
+  },
+  { release: 1, name: '1.1.0(1.0.0)', notes: 'First build of the next step', builtDate: null },
+] as const;
+
+/** Build each demo run was tested on (by run index). */
+export const DEMO_RUN_BUILDS: readonly string[] = ['1.0.0(1.0.0)', '1.0.0(2.0.0)'];
+
 export const DEMO_SHARED_STEP = {
   name: 'Sign in to the app',
   description: 'Used by every case that starts from the home screen',
@@ -144,6 +164,9 @@ export interface DemoDefect {
   steps?: string;
   expected?: string;
   actual?: string;
+  /** Names of builds in DEMO_BUILDS. */
+  foundInBuild?: string;
+  fixedInBuild?: string;
   /** Linked to the first NG result of the demo runs. */
   linkToFirstNg?: boolean;
   comment?: string;
@@ -157,6 +180,8 @@ export const DEMO_DEFECTS: readonly DemoDefect[] = [
     steps: '1. Run Heat until defrost starts\n2. Press MODE to select Dry',
     expected: 'The unit changes to Dry after defrost',
     actual: 'The mode stays Heat while the display shows Dry',
+    foundInBuild: '1.0.0(1.0.0)',
+    fixedInBuild: '1.0.0(2.0.0)',
     linkToFirstNg: true,
     comment: 'Reproduced on bench unit A with firmware 1.0.0-rc1.',
   },
@@ -164,5 +189,6 @@ export const DEMO_DEFECTS: readonly DemoDefect[] = [
     title: 'App shows offline for 10 s after a router reboot',
     severity: 'minor',
     priority: 'medium',
+    foundInBuild: '1.0.0(2.0.0)',
   },
 ];

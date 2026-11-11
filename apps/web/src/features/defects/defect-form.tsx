@@ -8,7 +8,8 @@ import {
   type DefectDTO,
 } from '@tmt/shared';
 import { Link2 } from 'lucide-react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
+import { BuildSelect } from '@/components/common/build-select';
 import { ReleaseSelect } from '@/components/common/release-select';
 import { UserSelect } from '@/components/common/user-select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -73,6 +74,8 @@ export function DefectForm({
     resolver: formResolver(defectFormSchema),
     defaultValues: defectFormValues(defect, prefill, showExternalKey),
   });
+
+  const releaseId = useWatch({ control: form.control, name: 'releaseId' });
 
   const onSubmit = form.handleSubmit(async (values) => {
     try {
@@ -212,6 +215,36 @@ export function DefectForm({
               </FormItem>
             )}
           />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {(['foundInBuildId', 'fixedInBuildId'] as const).map((name) => (
+            <FormField
+              key={name}
+              control={form.control}
+              name={name}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    {name === 'foundInBuildId' ? 'Found in build' : 'Fixed in build'}
+                  </FormLabel>
+                  <FormControl>
+                    <BuildSelect
+                      projectId={projectId}
+                      releaseId={idValue(releaseId)}
+                      value={idValue(field.value)}
+                      onChange={field.onChange}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    {name === 'foundInBuildId'
+                      ? 'Application build the defect was seen on'
+                      : 'Build that contains the fix'}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          ))}
         </div>
         {text('description', 'Description', 2)}
         {text('steps', 'Steps to reproduce', 3)}

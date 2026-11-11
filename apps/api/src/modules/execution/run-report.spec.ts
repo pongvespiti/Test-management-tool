@@ -95,7 +95,12 @@ describe('run report helpers', () => {
   it('assembles the run report from the database', async () => {
     const { db } = createPrismaMock();
     db.testRun.findFirst.mockResolvedValue({
-      ...runRow({ testerId: 5, sourceRunId: 2, testedDate: new Date('2026-10-20T00:00:00Z') }),
+      ...runRow({
+        testerId: 5,
+        sourceRunId: 2,
+        buildId: 8,
+        testedDate: new Date('2026-10-20T00:00:00Z'),
+      }),
       plan: planRow({ releaseId: 5, status: 'in_progress' }),
     } as never);
     db.suite.findUniqueOrThrow.mockResolvedValue({ id: 2, name: 'Modbus', prefix: 'MBS' } as never);
@@ -110,6 +115,7 @@ describe('run report helpers', () => {
     groupByMock(db.attachment.groupBy).mockResolvedValue([]);
     db.user.findMany.mockResolvedValue([tom] as never);
     db.testRun.findMany.mockResolvedValue([{ id: 2, code: 'SRC' }] as never);
+    db.build.findMany.mockResolvedValue([{ id: 8, name: '1.1.7(2.0.0)' }] as never);
     db.defectLink.findMany.mockResolvedValue([{ runCaseId: 50, defect: defect(9, 4) }] as never);
     db.runCaseResult.aggregate.mockResolvedValue({
       _min: { executedAt: new Date('2026-10-27T01:00:00Z') },
@@ -132,6 +138,7 @@ describe('run report helpers', () => {
         tester: tom,
         testedDate: '2026-10-20',
         sourceRun: { id: 2, code: 'SRC' },
+        build: { id: 8, name: '1.1.7(2.0.0)' },
         createdAt: '2026-01-15T15:00:00.000+07:00',
       },
       firstExecutedAt: '2026-10-27T08:00:00.000+07:00',

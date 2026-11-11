@@ -36,6 +36,7 @@ import { useTrendReport, useWorkloadReport } from '@/lib/api/reports';
 import { toId } from '@/lib/forms';
 import { routes, toQueryString } from '@/lib/routes';
 import { useProject } from '@/providers/project-provider';
+import { BuildsCard } from './builds-card';
 import { AttentionList, OpenDefectsList } from './dashboard-lists';
 import { periodOf, releaseLabel } from './dashboard-format';
 import { KpiTiles } from './kpi-tiles';
@@ -178,6 +179,10 @@ function Dashboard() {
               <PlanTable plans={data.plans} runs="chips" />
             )}
           </SectionCard>
+
+          {release && (
+            <BuildsCard projectId={projectId} releaseName={release.name} builds={data.builds} />
+          )}
 
           <div className="grid items-stretch gap-6 lg:grid-cols-12">
             <div className="min-w-0 lg:col-span-7">

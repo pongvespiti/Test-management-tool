@@ -35,6 +35,7 @@ export function useDefects(projectId: number, params: DefectListParams = {}) {
         status: params.status,
         severity: params.severity,
         releaseId: params.releaseId,
+        buildId: params.buildId,
         planId: params.planId,
         runId: params.runId,
         assigneeId: params.assigneeId,

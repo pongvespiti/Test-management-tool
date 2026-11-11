@@ -1,5 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 import {
+  buildSchema,
   bulkCasesSchema,
   createCaseSchema,
   createProjectSchema,
@@ -9,10 +10,31 @@ import {
   importRunSchema,
   listDefectsQuerySchema,
   setResultSchema,
+  updateBuildSchema,
   updateCaseSchema,
 } from '../src';
 
 describe('schemas', () => {
+  it('validates builds and lets a patch leave fields out', () => {
+    expect(
+      buildSchema.parse({ name: ' 1.1.7(2.0.0) ', notes: '', builtDate: '2026-11-08' }),
+    ).toEqual({
+      name: '1.1.7(2.0.0)',
+      notes: null,
+      builtDate: '2026-11-08',
+    });
+    expect(buildSchema.safeParse({ name: '  ' }).success).toBe(false);
+    expect(buildSchema.safeParse({ name: 'x', builtDate: '08/11/2026' }).success).toBe(false);
+    expect(updateBuildSchema.parse({ notes: null })).toEqual({ notes: null });
+    expect(updateBuildSchema.parse({})).toEqual({});
+  });
+
+  it('accepts a build on runs and as a defect filter', () => {
+    expect(createRunSchema.parse({ suiteId: 1, code: 'R1', buildId: 8 }).buildId).toBe(8);
+    expect(createRunSchema.parse({ suiteId: 1, code: 'R1', buildId: null }).buildId).toBeNull();
+    expect(listDefectsQuerySchema.parse({ buildId: '8' }).buildId).toBe(8);
+  });
+
   it('normalises project keys and rejects bad ones', () => {
     expect(createProjectSchema.parse({ key: 'acs', name: 'ACS Smart control system' }).key).toBe(
       'ACS',

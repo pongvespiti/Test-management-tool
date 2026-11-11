@@ -16,6 +16,7 @@ function report(overrides: Partial<RunReportDTO> = {}): RunReportDTO {
       id: 3,
       code: 'KR_01',
       scenario: null,
+      build: { id: 8, name: '1.1.7(2.0.0)' },
       suite: { id: 2, name: 'Modbus', prefix: 'MBS' },
       environment: [{ label: 'Phone', value: 'Pixel 9' }],
       tester: tom,
@@ -136,6 +137,7 @@ describe('run report workbook', () => {
       if (typeof key === 'string') rows[key] = row.getCell(2).value;
     });
     expect(rows['Test run']).toBe('KR_01');
+    expect(rows.Build).toBe('1.1.7(2.0.0)');
     expect(rows.Phone).toBe('Pixel 9');
     expect(rows['Suggested judgement']).toBe('NOT PASS');
     expect(rows['Actual duration']).toBe('2:00');

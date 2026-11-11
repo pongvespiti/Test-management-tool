@@ -26,6 +26,7 @@ import { loadSectionTree } from '../library/section-tree.js';
 import { StorageService } from '../storage/storage.service.js';
 import { envInput, envOf } from './execution.mapper.js';
 import {
+  assertBuildForPlan,
   assertPlanEditable,
   BULK_TX,
   buildRunDTOs,
@@ -187,6 +188,7 @@ export class RunChangesService {
     const { run: source, plan } = await getRunInProject(db, ctx.id, runId);
     assertPlanEditable(plan);
     await assertActiveUser(db, input.testerId);
+    await assertBuildForPlan(db, ctx.id, plan, input.buildId);
     const picked = await db.runCase.findMany({
       where: { runId: source.id, status: { in: input.statuses } },
       orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
@@ -233,6 +235,7 @@ export class RunChangesService {
             scenario: input.scenario !== undefined ? input.scenario : source.scenario,
             environment: envInput(environment),
             testerId: input.testerId !== undefined ? input.testerId : source.testerId,
+            buildId: input.buildId !== undefined ? input.buildId : source.buildId,
             sortOrder: await nextRunSortOrder(tx, plan.id),
             sourceRunId: source.id,
             createdById: me.id,

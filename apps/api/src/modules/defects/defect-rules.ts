@@ -16,6 +16,9 @@ export function defectListWhere(projectId: number, q: ListDefectsQuery): Prisma.
   if (q.status?.length) where.status = { in: q.status };
   if (q.severity?.length) where.severity = { in: q.severity };
   if (q.releaseId !== undefined) where.releaseId = q.releaseId;
+  if (q.buildId !== undefined) {
+    where.OR = [{ foundInBuildId: q.buildId }, { fixedInBuildId: q.buildId }];
+  }
   if (q.assigneeId !== undefined) where.assigneeId = q.assigneeId;
   const and: Prisma.DefectWhereInput[] = [];
   if (q.runId !== undefined) and.push({ links: { some: { runCase: { runId: q.runId } } } });
@@ -106,6 +109,9 @@ export function newDefectData(
     releaseId: pick(body.releaseId, source?.plan.releaseId ?? null),
     foundIn: body.foundIn ?? null,
     fixedIn: body.fixedIn ?? null,
+    // A defect reported from a result is found in the build that run was tested on.
+    foundInBuildId: pick(body.foundInBuildId, source?.run.buildId ?? null),
+    fixedInBuildId: body.fixedInBuildId ?? null,
     environment: pick(body.environment, source ? runEnvironmentText(source.run) : null),
     externalKey: body.externalKey ?? null,
   };

@@ -19,7 +19,7 @@ import {
 import { dateOnly, loadUserRefs, refOf } from '../../common/users/user-refs.js';
 import type { Db } from '../../prisma/prisma.service.js';
 import { envOf, runStepsOf } from '../execution/execution.mapper.js';
-import { countsByRun } from '../execution/execution.queries.js';
+import { buildRefs, countsByRun } from '../execution/execution.queries.js';
 import { buildPlanMatrix } from '../execution/matrix.js';
 import { dateInZone, safeTimeZone } from '../execution/report-time.js';
 import { envTemplateOf, fieldDefsOf } from '../library/library.mapper.js';
@@ -90,6 +90,10 @@ export async function buildPlanReportData(
     ? await db.suite.findMany({ where: { id: { in: [...new Set(runs.map((r) => r.suiteId))] } } })
     : [];
   const suiteById = new Map(suiteRows.map((s) => [s.id, s]));
+  const builds = await buildRefs(
+    db,
+    runs.map((r) => r.buildId),
+  );
   const users = await loadUserRefs(
     db,
     runs.map((r) => r.testerId),
@@ -118,6 +122,7 @@ export async function buildPlanReportData(
     return {
       code: run.code,
       scenario: run.scenario,
+      build: (run.buildId !== null ? builds.get(run.buildId)?.name : null) ?? null,
       tester: refOf(users, run.testerId)?.displayName ?? null,
       testedDate: dateOnly(run.testedDate),
       judgement: run.judgement ? JUDGEMENT_LABELS[run.judgement] : null,

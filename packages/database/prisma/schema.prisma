@@ -336,9 +336,30 @@ model Release {
   project Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
   plans   TestPlan[]
   defects Defect[]
+  builds  Build[]
 
   @@index([projectId])
   @@map("releases")
+}
+
+/// An application build under test, e.g. `1.1.7(2.0.0)`. Belongs to one release (a step of the product).
+model Build {
+  id        Int      @id @default(autoincrement())
+  releaseId Int      @map("release_id")
+  name      String
+  notes     String?
+  /// Day the build was made available for testing.
+  builtDate DateTime? @map("built_date") @db.Date
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  release      Release   @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  runs         TestRun[]
+  foundDefects Defect[]  @relation("DefectFoundInBuild")
+  fixedDefects Defect[]  @relation("DefectFixedInBuild")
+
+  @@unique([releaseId, name])
+  @@map("builds")
 }
 
 // ------------------------------------------------------------------------------------ library
@@ -602,6 +623,8 @@ model TestRun {
   sortOrder     Int        @default(0) @map("sort_order")
   /// The run this one re-runs (NG/Blocked carry-over).
   sourceRunId   Int?       @map("source_run_id")
+  /// Build under test (optional; must belong to the plan's release).
+  buildId       Int?       @map("build_id")
   createdById   Int?       @map("created_by_id")
   createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -609,6 +632,7 @@ model TestRun {
   plan      TestPlan  @relation(fields: [planId], references: [id], onDelete: Cascade)
   suite     Suite     @relation(fields: [suiteId], references: [id], onDelete: Restrict)
   tester    User?     @relation("RunTester", fields: [testerId], references: [id], onDelete: SetNull)
+  build     Build?    @relation(fields: [buildId], references: [id], onDelete: Restrict)
   sourceRun TestRun?  @relation("RunRerun", fields: [sourceRunId], references: [id], onDelete: SetNull)
   reruns    TestRun[] @relation("RunRerun")
   createdBy User?     @relation("RunCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
@@ -617,6 +641,7 @@ model TestRun {
 
   @@unique([planId, code])
   @@index([suiteId])
+  @@index([buildId])
   @@map("test_runs")
 }
 
@@ -713,6 +738,8 @@ model Defect {
   releaseId        Int?           @map("release_id")
   foundIn          String?        @map("found_in")
   fixedIn          String?        @map("fixed_in")
+  foundInBuildId   Int?           @map("found_in_build_id")
+  fixedInBuildId   Int?           @map("fixed_in_build_id")
   environment      String?
   /// Linked Jira issue: key, browse URL, last synced status name and time.
   externalKey      String?        @map("external_key")
@@ -728,6 +755,8 @@ model Defect {
   assignee User?        @relation("DefectAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   reporter User?        @relation("DefectReporter", fields: [reporterId], references: [id], onDelete: SetNull)
   release  Release?     @relation(fields: [releaseId], references: [id], onDelete: SetNull)
+  foundInBuild Build?   @relation("DefectFoundInBuild", fields: [foundInBuildId], references: [id], onDelete: Restrict)
+  fixedInBuild Build?   @relation("DefectFixedInBuild", fields: [fixedInBuildId], references: [id], onDelete: Restrict)
   links    DefectLink[]
 
   @@unique([projectId, seq])

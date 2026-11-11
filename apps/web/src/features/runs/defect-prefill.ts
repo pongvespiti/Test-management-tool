@@ -8,7 +8,7 @@ const FOUND_IN_LABEL = /(\bfw\b|firmware|version|build)/i;
 /** Defect fields from a run case result (steps, expectation, actual incl. failed steps, env). */
 export function defectPrefill(
   rc: RunCaseDTO,
-  run: Pick<RunDTO, 'environment'>,
+  run: Pick<RunDTO, 'environment'> & Partial<Pick<RunDTO, 'build'>>,
   draft: ResultDraft | null,
 ): DefectPrefill {
   const text =
@@ -32,6 +32,7 @@ export function defectPrefill(
     steps: steps.slice(0, 20000),
     expected: text.expected.slice(0, 20000),
     actual: actual.join('\n').slice(0, 20000),
+    foundInBuildId: run.build?.id ?? null,
     environment: filled
       .map((e) => `${e.label}: ${e.value}`)
       .join('\n')

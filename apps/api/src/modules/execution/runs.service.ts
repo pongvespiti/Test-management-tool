@@ -12,6 +12,7 @@ import { envTemplateOf } from '../library/library.mapper.js';
 import { StorageService } from '../storage/storage.service.js';
 import { envInput, envOf } from './execution.mapper.js';
 import {
+  assertBuildForPlan,
   assertPlanEditable,
   BULK_TX,
   buildRunDTOs,
@@ -74,6 +75,7 @@ export class RunsService {
     const suite = await db.suite.findFirst({ where: { id: input.suiteId, projectId: ctx.id } });
     if (!suite) throw unprocessable('BAD_SUITE', 'The suite does not belong to this project');
     await assertActiveUser(db, input.testerId);
+    await assertBuildForPlan(db, ctx.id, plan, input.buildId);
     const snapshot = await snapshotCases(db, suite, input);
     if (snapshot.length === 0) {
       throw unprocessable('NO_CASES', 'No test cases match the selected filters');
@@ -93,6 +95,7 @@ export class RunsService {
             scenario: input.scenario ?? null,
             environment,
             testerId: input.testerId ?? null,
+            buildId: input.buildId ?? null,
             testedDate: parseDateOnly(input.testedDate) ?? null,
             sortOrder: await nextRunSortOrder(tx, plan.id),
             createdById: me.id,
@@ -127,6 +130,7 @@ export class RunsService {
     const { run, plan } = await getRunInProject(db, ctx.id, runId);
     assertPlanEditable(plan);
     await assertActiveUser(db, input.testerId);
+    await assertBuildForPlan(db, ctx.id, plan, input.buildId);
     try {
       const updated = await db.$transaction(async (tx) => {
         await lockEditablePlan(tx, plan.id);
@@ -137,6 +141,7 @@ export class RunsService {
             ...(input.scenario !== undefined && { scenario: input.scenario }),
             ...(input.environment !== undefined && { environment: input.environment }),
             ...(input.testerId !== undefined && { testerId: input.testerId }),
+            ...(input.buildId !== undefined && { buildId: input.buildId }),
             ...(input.testedDate !== undefined && {
               testedDate: parseDateOnly(input.testedDate),
             }),
@@ -206,6 +211,7 @@ export class RunsService {
     const { run, plan } = await getRunInProject(db, ctx.id, runId);
     assertPlanEditable(plan);
     await assertActiveUser(db, input.testerId);
+    await assertBuildForPlan(db, ctx.id, plan, input.buildId);
     try {
       const created = await db.$transaction(async (tx) => {
         await lockEditablePlan(tx, plan.id);
@@ -217,6 +223,7 @@ export class RunsService {
             scenario: input.scenario !== undefined ? input.scenario : run.scenario,
             environment: envInput(input.environment ?? envOf(run)),
             testerId: input.testerId !== undefined ? input.testerId : run.testerId,
+            buildId: input.buildId !== undefined ? input.buildId : run.buildId,
             sortOrder: await nextRunSortOrder(tx, plan.id),
             createdById: me.id,
           },

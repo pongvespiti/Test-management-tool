@@ -192,6 +192,7 @@ export function makeDashboard(overrides: Partial<DashboardDTO> = {}): DashboardD
   return {
     release: makeRelease(),
     releases: [makeRelease(), makeRelease({ id: 6, name: 'FW 3.0', status: 'planned' })],
+    builds: [],
     kpis: {
       planCount: 2,
       plansByStatus: { draft: 0, in_progress: 1, completed: 1 },
@@ -260,6 +261,8 @@ export function makeDashboard(overrides: Partial<DashboardDTO> = {}): DashboardD
         status: 'open',
         assignee: null,
         release: { id: 5, name: 'FW 2.4.0' },
+        foundInBuild: null,
+        fixedInBuild: null,
         linkSummary: null,
         externalKey: 'ACS-77',
         externalStatus: null,

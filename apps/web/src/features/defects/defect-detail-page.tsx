@@ -218,6 +218,8 @@ function DefectDetail({ defect: d }: { defect: DefectDTO }) {
               </Property>
               <Property label="Reporter">{d.reporter?.displayName ?? '—'}</Property>
               <Property label="Release">{d.release?.name ?? '—'}</Property>
+              <Property label="Found in build">{d.foundInBuild?.name ?? '—'}</Property>
+              <Property label="Fixed in build">{d.fixedInBuild?.name ?? '—'}</Property>
               <Property label="Found in">{d.foundIn || '—'}</Property>
               <Property label="Fixed in">{d.fixedIn || '—'}</Property>
               <Property label="Resolved">{formatDateTime(d.resolvedAt)}</Property>

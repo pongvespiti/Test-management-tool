@@ -112,6 +112,7 @@ export function RunHeader({ run, actions }: { run: RunDTO; actions: RunActions }
         subtitle={
           <span title={`${run.planDocNo} — ${run.planTitle}`}>
             Suite {run.suite.name} · Tester {run.tester?.displayName ?? 'not set'}
+            {run.build ? ` · Build ${run.build.name}` : ''}
             {run.testedDate ? ` · Tested ${formatDate(run.testedDate)}` : ''}
           </span>
         }

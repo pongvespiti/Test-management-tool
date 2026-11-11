@@ -24,6 +24,7 @@ const report: RunReportDTO = {
     id: 7,
     code: 'KR_01',
     scenario: 'Korea model',
+    build: { id: 8, name: '1.1.7(2.0.0)' },
     suite: { id: 1, name: 'Unit operation test', prefix: 'UOT' },
     environment: [
       { label: 'FW version', value: '2.4.0' },

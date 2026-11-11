@@ -35,6 +35,7 @@ export interface NewRunValues {
   code: string;
   scenario: string;
   testerId: number | null;
+  buildId: number | null;
   testedDate: string | null;
   sectionIds: string[];
   priorities: CasePriority[];
@@ -49,6 +50,7 @@ export function newRunDefaults(): NewRunValues {
     code: '',
     scenario: '',
     testerId: null,
+    buildId: null,
     testedDate: null,
     sectionIds: [],
     priorities: [],
@@ -64,6 +66,7 @@ export function newRunBody(v: NewRunValues) {
     code: v.code,
     scenario: v.scenario,
     testerId: v.testerId,
+    buildId: v.buildId,
     testedDate: v.testedDate ?? '',
     environment: envEntriesOf(v.environment),
     // Empty filters are left out: "no restriction".
@@ -90,6 +93,7 @@ export interface EditRunValues {
   code: string;
   scenario: string;
   testerId: number | null;
+  buildId: number | null;
   testedDate: string | null;
   environment: EnvRow[];
   judgement: Judgement | null;
@@ -102,6 +106,7 @@ export function editRunDefaults(run: RunDTO): EditRunValues {
     code: run.code,
     scenario: run.scenario ?? '',
     testerId: run.tester?.id ?? null,
+    buildId: run.build?.id ?? null,
     testedDate: run.testedDate,
     environment: envRowsFromEntries(run.environment),
     judgement: run.judgement,
@@ -115,6 +120,7 @@ export function editRunBody(v: EditRunValues) {
     code: v.code,
     scenario: v.scenario,
     testerId: v.testerId,
+    buildId: v.buildId,
     testedDate: v.testedDate ?? '',
     environment: envEntriesOf(v.environment),
     judgement: v.judgement,
@@ -136,6 +142,7 @@ export interface DuplicateRunValues {
   code: string;
   scenario: string;
   testerId: number | null;
+  buildId: number | null;
   environment: EnvRow[];
 }
 
@@ -144,6 +151,7 @@ export function duplicateRunDefaults(run: RunDTO, planRuns: RunDTO[]): Duplicate
     code: suggestDuplicateCode(run.code, usedCodes(planRuns)),
     scenario: run.scenario ?? '',
     testerId: run.tester?.id ?? null,
+    buildId: run.build?.id ?? null,
     environment: envRowsFromEntries(run.environment),
   };
 }
@@ -153,6 +161,7 @@ export function duplicateRunBody(v: DuplicateRunValues) {
     code: v.code,
     scenario: v.scenario,
     testerId: v.testerId,
+    buildId: v.buildId,
     environment: envEntriesOf(v.environment),
   };
 }
@@ -173,6 +182,7 @@ export interface RerunValues {
   copyEnvironment: boolean;
   environment: EnvRow[];
   testerId: number | null;
+  buildId: number | null;
   keepAssignees: boolean;
   refreshFromLibrary: boolean;
 }
@@ -185,6 +195,7 @@ export function rerunDefaults(run: RunDTO, planRuns: RunDTO[]): RerunValues {
     copyEnvironment: true,
     environment: envRowsFromEntries(run.environment),
     testerId: run.tester?.id ?? null,
+    buildId: run.build?.id ?? null,
     keepAssignees: true,
     refreshFromLibrary: false,
   };
@@ -198,6 +209,7 @@ export function rerunBody(v: RerunValues) {
     copyEnvironment: v.copyEnvironment,
     environment: v.copyEnvironment ? undefined : envEntriesOf(v.environment),
     testerId: v.testerId,
+    buildId: v.buildId,
     keepAssignees: v.keepAssignees,
     refreshFromLibrary: v.refreshFromLibrary,
   };

@@ -21,7 +21,12 @@ import { purgeCollab } from '../collab/attachments.queries.js';
 import { assertReleaseInProject, getRunCaseInProject } from '../execution/execution.queries.js';
 import { StorageService } from '../storage/storage.service.js';
 import { defectListWhere, newDefectData, transitionPatch } from './defect-rules.js';
-import { buildDefectDTO, buildDefectListItems, getDefectInProject } from './defects.queries.js';
+import {
+  assertBuildsInProject,
+  buildDefectDTO,
+  buildDefectListItems,
+  getDefectInProject,
+} from './defects.queries.js';
 
 /**
  * Reserves the next defect number of the project (atomic increment of `next_defect_seq`).
@@ -69,6 +74,7 @@ export class DefectsService {
     const db = this.prisma.db;
     await assertActiveUser(db, body.assigneeId);
     await assertReleaseInProject(db, ctx.id, body.releaseId);
+    await assertBuildsInProject(db, ctx.id, [body.foundInBuildId, body.fixedInBuildId]);
     const source = body.runCaseId ? await getRunCaseInProject(db, ctx.id, body.runCaseId) : null;
     const created = await db.$transaction(async (tx) => {
       const seq = await allocateDefectSeq(tx, ctx.id);
@@ -103,6 +109,7 @@ export class DefectsService {
     const d = await getDefectInProject(db, ctx.id, defectId);
     await assertActiveUser(db, body.assigneeId);
     await assertReleaseInProject(db, ctx.id, body.releaseId);
+    await assertBuildsInProject(db, ctx.id, [body.foundInBuildId, body.fixedInBuildId]);
     const updated = await db.$transaction(async (tx) => {
       const u = await tx.defect.update({
         where: { id: d.id },

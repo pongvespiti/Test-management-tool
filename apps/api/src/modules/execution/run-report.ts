@@ -18,7 +18,13 @@ import {
 import { dateOnly, loadUserRefs, refOf } from '../../common/users/user-refs.js';
 import type { Db } from '../../prisma/prisma.service.js';
 import { envOf } from './execution.mapper.js';
-import { estimatesByRun, getRunInProject, loadRunCaseDTOs, runRefs } from './execution.queries.js';
+import {
+  buildRefs,
+  estimatesByRun,
+  getRunInProject,
+  loadRunCaseDTOs,
+  runRefs,
+} from './execution.queries.js';
 import { isoInZone, safeTimeZone } from './report-time.js';
 
 type ReportDefect = RunReportDTO['defects'][number];
@@ -149,6 +155,8 @@ export async function buildRunReport(db: Db, opts: RunReportOptions): Promise<Ru
     run.sourceRunId !== null
       ? ((await runRefs(db, [run.sourceRunId])).get(run.sourceRunId) ?? null)
       : null;
+  const build =
+    run.buildId !== null ? ((await buildRefs(db, [run.buildId])).get(run.buildId) ?? null) : null;
   const links = await db.defectLink.findMany({
     where: { runCase: { runId: run.id } },
     select: {
@@ -194,6 +202,7 @@ export async function buildRunReport(db: Db, opts: RunReportOptions): Promise<Ru
       id: run.id,
       code: run.code,
       scenario: run.scenario,
+      build,
       suite,
       environment: envOf(run),
       tester,

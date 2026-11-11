@@ -31,6 +31,8 @@ export interface ReportRun {
   /** Test ID, e.g. "UT_02" — also the name of the run's sheet. */
   code: string;
   scenario: string | null;
+  /** Name of the application build under test, e.g. "1.1.7(2.0.0)". */
+  build: string | null;
   tester: string | null;
   /** ISO date (YYYY-MM-DD). */
   testedDate: string | null;
@@ -86,6 +88,7 @@ export function runTableItem(run: ReportRun): TableItem {
   const item: TableItem = {
     code: run.code,
     scenario: run.scenario,
+    build: run.build,
     tester: run.tester,
     testedDate: run.testedDate,
     judgement: run.judgement,

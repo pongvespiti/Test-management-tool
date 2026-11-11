@@ -63,6 +63,8 @@ describe('defect form values', () => {
       releaseId: null,
       foundIn: '',
       fixedIn: '',
+      foundInBuildId: null,
+      fixedInBuildId: null,
       environment: '',
       externalKey: '',
     });
@@ -80,6 +82,7 @@ describe('defect form values', () => {
           assigneeId: 2,
           releaseId: 4,
           foundIn: 'FW 1',
+          foundInBuildId: 8,
           environment: 'Env',
         },
         false,
@@ -96,6 +99,8 @@ describe('defect form values', () => {
       releaseId: 4,
       foundIn: 'FW 1',
       fixedIn: '',
+      foundInBuildId: 8,
+      fixedInBuildId: null,
       environment: 'Env',
     });
   });
@@ -168,6 +173,7 @@ describe('defect prefill from a run case', () => {
       actual: 'Off',
       environment: 'FW version: 2.4.0\nRouter: ASUS',
       foundIn: 'FW version 2.4.0',
+      foundInBuildId: null,
     });
   });
 
@@ -216,6 +222,7 @@ describe('defects URL state', () => {
       status: [],
       severity: [],
       releaseId: null,
+      buildId: null,
       assignee: null,
       page: 1,
     });
@@ -224,6 +231,7 @@ describe('defects URL state', () => {
       status: ['new', 'open'],
       severity: ['minor'],
       releaseId: 4,
+      buildId: null,
       assignee: 'me',
       page: 3,
     });

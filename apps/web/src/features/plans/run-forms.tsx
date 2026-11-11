@@ -26,6 +26,7 @@ import { notifyError, notifySuccess } from '@/lib/notify';
 import { cn } from '@/lib/utils';
 import { EnvEditor } from './env-editor';
 import {
+  BuildField,
   DateField,
   FormAlert,
   FormButtons,
@@ -128,6 +129,12 @@ export function EditRunForm({ projectId, run, onDone }: Omit<RunFormProps, 'plan
           />
           <TextField control={form.control} name="scenario" label="Scenario / configuration" />
           <TesterField control={form.control} name="testerId" projectId={projectId} />
+          <BuildField
+            control={form.control}
+            name="buildId"
+            projectId={projectId}
+            releaseId={run.planReleaseId}
+          />
           <DateField control={form.control} name="testedDate" label="Tested date" />
         </div>
 
@@ -247,6 +254,12 @@ export function DuplicateRunForm({ projectId, run, planRuns, onDone }: RunFormPr
           />
           <TextField control={form.control} name="scenario" label="Scenario / configuration" />
           <TesterField control={form.control} name="testerId" projectId={projectId} />
+          <BuildField
+            control={form.control}
+            name="buildId"
+            projectId={projectId}
+            releaseId={run.planReleaseId}
+          />
         </div>
         <LabeledDivider label="Test environment" />
         <EnvEditor
@@ -366,6 +379,13 @@ export function RerunForm({ projectId, run, planRuns, onDone }: RunFormProps) {
           />
           <TextField control={form.control} name="scenario" label="Scenario / configuration" />
           <TesterField control={form.control} name="testerId" projectId={projectId} />
+          <BuildField
+            control={form.control}
+            name="buildId"
+            projectId={projectId}
+            releaseId={run.planReleaseId}
+            label="Build to re-test"
+          />
         </div>
         <div className="flex flex-col gap-3">
           <SwitchField

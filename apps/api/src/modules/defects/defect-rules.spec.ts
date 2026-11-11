@@ -124,9 +124,24 @@ describe('defect prefill from a run case', () => {
       releaseId: 4,
       foundIn: null,
       fixedIn: null,
+      foundInBuildId: null,
+      fixedInBuildId: null,
       environment: 'FW: 1.1.6\nApp: 2.0',
       externalKey: null,
     });
+  });
+
+  it('finds the defect in the build the run was tested on unless another is sent', () => {
+    const onBuild = { ...source, run: runRow({ ...source.run, buildId: 8 }) };
+    const plain = createDefectSchema.parse({ title: 'x' });
+    expect(newDefectData(10, 7, 1, plain, onBuild).foundInBuildId).toBe(8);
+    const own = createDefectSchema.parse({ title: 'x', foundInBuildId: 9, fixedInBuildId: 10 });
+    expect(newDefectData(10, 7, 1, own, onBuild)).toMatchObject({
+      foundInBuildId: 9,
+      fixedInBuildId: 10,
+    });
+    const cleared = createDefectSchema.parse({ title: 'x', foundInBuildId: null });
+    expect(newDefectData(10, 7, 1, cleared, onBuild).foundInBuildId).toBeNull();
   });
 
   it('keeps explicit values, also cleared ones, over the prefill', () => {

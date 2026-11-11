@@ -54,6 +54,7 @@ export function sampleRun(code: string, platform: string): ReportRun {
   return {
     code,
     scenario: `Unit operation (${platform})`,
+    build: '1.1.7(2.0.0)',
     tester: 'Tester One',
     testedDate: '2026-10-21',
     judgement: 'NOT PASS',

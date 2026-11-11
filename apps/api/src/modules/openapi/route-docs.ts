@@ -13,6 +13,7 @@ export const API_TAGS = [
   { name: 'Users', description: 'User administration.' },
   { name: 'Projects', description: 'Projects, settings and members.' },
   { name: 'Releases', description: 'Releases of a project.' },
+  { name: 'Builds', description: 'Application builds of a release, selected on test runs.' },
   { name: 'Library', description: 'Suites, sections and test cases.' },
   { name: 'Reviews', description: 'Case review workflow and tags.' },
   { name: 'Shared steps', description: 'Reusable step sets.' },
@@ -195,6 +196,32 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
   'DELETE /api/v1/projects/{projectId}/releases/{releaseId}': {
     tag: 'Releases',
     summary: 'Delete an unused release',
+    success: 204,
+    response: 'void',
+  },
+
+  // ---- Builds
+  'GET /api/v1/projects/{projectId}/builds': {
+    tag: 'Builds',
+    summary: 'Builds (newest first), optionally of one release',
+    success: 200,
+    response: 'BuildDTO[]',
+  },
+  'POST /api/v1/projects/{projectId}/releases/{releaseId}/builds': {
+    tag: 'Builds',
+    summary: 'Create a build of a release',
+    success: 201,
+    response: 'BuildDTO',
+  },
+  'PATCH /api/v1/projects/{projectId}/builds/{buildId}': {
+    tag: 'Builds',
+    summary: 'Update a build',
+    success: 200,
+    response: 'BuildDTO',
+  },
+  'DELETE /api/v1/projects/{projectId}/builds/{buildId}': {
+    tag: 'Builds',
+    summary: 'Delete a build that no run or defect uses',
     success: 204,
     response: 'void',
   },

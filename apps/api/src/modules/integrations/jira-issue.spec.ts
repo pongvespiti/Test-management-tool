@@ -12,6 +12,8 @@ const defect = (over: Partial<DefectDTO> = {}): DefectDTO => ({
   status: 'new',
   assignee: null,
   release: null,
+  foundInBuild: null,
+  fixedInBuild: null,
   linkSummary: null,
   externalKey: null,
   externalStatus: null,

@@ -31,11 +31,13 @@ import { SessionService } from '../modules/auth/session.service.js';
 import { ProjectsService } from '../modules/projects/projects.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
+  DEMO_BUILDS,
   DEMO_DEFECTS,
   DEMO_PLAN,
   DEMO_PROJECT,
   DEMO_RELEASES,
   DEMO_RESULT_PATTERN,
+  DEMO_RUN_BUILDS,
   DEMO_RUN_ENVIRONMENTS,
   DEMO_SHARED_STEP,
   DEMO_STEPS_CASE,
@@ -132,6 +134,16 @@ async function seedProjectContent(call: Call, projectId: number, testerId: numbe
     releases.push(await call('POST', `${projectPath}/releases`, release));
   }
   const activeRelease = releases[0]!;
+  const buildIds = new Map<string, number>();
+  for (const { release, ...build } of DEMO_BUILDS) {
+    const created = await call(
+      'POST',
+      `${projectPath}/releases/${releases[release]!.id}/builds`,
+      build,
+    );
+    buildIds.set(build.name, created.id);
+  }
+  const buildId = (name: string | undefined) => (name ? buildIds.get(name) : undefined);
 
   const sharedStep = await call('POST', `${projectPath}/shared-steps`, DEMO_SHARED_STEP);
   const suites: Id[] = [];
@@ -163,6 +175,7 @@ async function seedProjectContent(call: Call, projectId: number, testerId: numbe
       scenario: DEMO_SUITES[index]!.name,
       environment,
       testerId,
+      buildId: buildId(DEMO_RUN_BUILDS[index]),
     });
     const runCases = await call<Id[]>('GET', `${projectPath}/runs/${run.id}/cases`);
     for (const [position, runCase] of runCases.entries()) {
@@ -176,10 +189,12 @@ async function seedProjectContent(call: Call, projectId: number, testerId: numbe
     }
   }
 
-  for (const { linkToFirstNg, comment, ...fields } of DEMO_DEFECTS) {
+  for (const { linkToFirstNg, comment, foundInBuild, fixedInBuild, ...fields } of DEMO_DEFECTS) {
     const defect = await call('POST', `${projectPath}/defects`, {
       ...fields,
       releaseId: activeRelease.id,
+      foundInBuildId: buildId(foundInBuild),
+      fixedInBuildId: buildId(fixedInBuild),
       ...(linkToFirstNg && firstNg !== null ? { runCaseId: firstNg } : {}),
     });
     if (comment) {

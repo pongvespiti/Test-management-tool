@@ -42,6 +42,45 @@ describe('DashboardPage', () => {
     stubChartSize();
   });
 
+  it('summarises the results and open defects of every build of the release', async () => {
+    const base = makeDashboard();
+    stubDashboard({
+      'GET /projects/3/dashboard': makeDashboard({
+        builds: [
+          {
+            build: { id: 8, name: '1.1.7(2.0.0)' },
+            runCount: 3,
+            counts: { ...base.kpis.counts, ok: 9, ng: 1 },
+            openDefects: 2,
+          },
+          {
+            build: { id: 7, name: '1.1.7(1.0.0)' },
+            runCount: 0,
+            counts: { ...base.kpis.counts, ok: 0, ng: 0, untested: 0 },
+            openDefects: 0,
+          },
+        ],
+      }),
+    });
+    renderWithProviders(<DashboardPage />, tester);
+    const card = await screen.findByRole('region', { name: 'Results by build' });
+    const newest = within(card).getByRole('row', { name: /1\.1\.7\(2\.0\.0\)/ });
+    expect(newest).toHaveTextContent('3');
+    expect(
+      within(newest).getByRole('link', { name: '2 defects found in 1.1.7(2.0.0)' }),
+    ).toHaveAttribute('href', '/projects/3/defects?build=8');
+    expect(within(card).getByRole('row', { name: /1\.1\.7\(1\.0\.0\)/ })).toHaveTextContent(
+      'Not tested yet',
+    );
+  });
+
+  it('explains how to get builds when the release has none', async () => {
+    stubDashboard();
+    renderWithProviders(<DashboardPage />, tester);
+    const card = await screen.findByRole('region', { name: 'Results by build' });
+    expect(card).toHaveTextContent('No builds yet');
+  });
+
   it('shows the key figures, plans, results to look at and open defects', async () => {
     stubDashboard();
     renderWithProviders(<DashboardPage />, tester);

@@ -10,6 +10,7 @@ export const ALL_TABLES = [
   'run_case_results',
   'run_cases',
   'test_runs',
+  'builds',
   'test_plans',
   'report_templates',
   'attachments',

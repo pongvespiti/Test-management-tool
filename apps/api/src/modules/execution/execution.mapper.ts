@@ -65,12 +65,13 @@ export function stepResultsInput(
 
 export function toRunDTO(
   run: TestRun,
-  plan: Pick<TestPlan, 'docNo' | 'title' | 'status'>,
+  plan: Pick<TestPlan, 'docNo' | 'title' | 'status' | 'releaseId'>,
   suite: RunSuite,
   counts: StatusCounts,
   users: Map<number, UserRef>,
   sourceRun: RunRef | null = null,
   estimate: RunEstimate = { totalMinutes: 0, remainingMinutes: 0 },
+  build: NamedRef | null = null,
 ): RunDTO {
   return {
     id: run.id,
@@ -78,6 +79,7 @@ export function toRunDTO(
     planDocNo: plan.docNo,
     planTitle: plan.title,
     planStatus: plan.status,
+    planReleaseId: plan.releaseId,
     suite: {
       id: suite.id,
       name: suite.name,
@@ -96,6 +98,7 @@ export function toRunDTO(
     counts,
     suggestedJudgement: suggestJudgement(counts),
     sourceRun,
+    build,
     estimate,
     createdAt: run.createdAt.toISOString(),
     updatedAt: run.updatedAt.toISOString(),

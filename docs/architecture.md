@@ -48,14 +48,14 @@ from the others.
 | `config/`                                          | `env.schema.ts` (Zod) and the typed `AppConfig`                                                           |
 | `prisma/`                                          | `PrismaService` (single client)                                                                           |
 | `modules/auth`, `users`                            | sign-in, sessions, password change, API tokens, user administration                                       |
-| `modules/projects`                                 | projects, members, roles, project settings                                                                |
+| `modules/projects`                                 | projects, members, roles, project settings, releases and their builds                                     |
 | `modules/library`                                  | suites, sections, test cases, versions, review workflow, shared steps                                     |
 | `modules/imports`                                  | Excel import wizard (preview, dry run, commit), JUnit import                                              |
 | `modules/execution`                                | plans, runs, run cases, results, history, bulk actions                                                    |
 | `modules/defects`                                  | defects, links to run cases, workflow transitions                                                         |
 | `modules/templates`                                | report templates (upload, check, default)                                                                 |
 | `modules/reports`                                  | run report, plan/run Excel export, project report                                                         |
-| `modules/dashboard`                                | release overview numbers                                                                                  |
+| `modules/dashboard`                                | release overview numbers, results per build                                                               |
 | `modules/collab`                                   | comments, attachments                                                                                     |
 | `modules/integrations`                             | Jira settings and client                                                                                  |
 | `modules/automation`                               | JUnit XML upload for CI                                                                                   |
@@ -124,6 +124,9 @@ erDiagram
   Section |o--o{ TestCase : groups
   TestCase ||--o{ TestCaseVersion : "history"
   Release |o--o{ TestPlan : "tested in"
+  Release ||--o{ Build : "has builds"
+  Build |o--o{ TestRun : "tested on"
+  Build |o--o{ Defect : "found in / fixed in"
   TestPlan ||--o{ TestRun : has
   Suite ||--o{ TestRun : "executed from"
   TestRun ||--o{ RunCase : "snapshots"
@@ -136,6 +139,21 @@ erDiagram
   ReportTemplate }o--|| Attachment : "stored as"
   TestPlan }o--o| ReportTemplate : "uses"
 ```
+
+How the team's words map to the model:
+
+| Team wording                             | In the tool                                                         |
+| ---------------------------------------- | ------------------------------------------------------------------- |
+| Product / project (e.g. "Smart control") | Project                                                             |
+| Step (e.g. 1.1.7, 1.1.8)                 | Release                                                             |
+| Application build (e.g. `1.1.7(2.0.0)`)  | Build, listed under its release; chosen on each run                 |
+| Test topic (system test, modbus test, …) | Suite                                                               |
+| Test report document                     | Test plan (belongs to one release)                                  |
+| One device / configuration               | Run (Test ID) with its environment entries (model, firmware, phone) |
+
+A run may name a build of its plan's release (422 `BAD_BUILD` otherwise). Defects take a
+"found in" and a "fixed in" build; a defect reported from a result starts with the build of that
+run. A build that runs or defects use cannot be deleted (409 `BUILD_IN_USE`).
 
 Design rules behind the model (details in the ADRs):
 

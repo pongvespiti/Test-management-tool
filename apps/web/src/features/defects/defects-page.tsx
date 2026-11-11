@@ -17,6 +17,7 @@ import { DefectStatusBadge, PriorityLabel, SeverityLabel } from '@/components/co
 import { EmptyState } from '@/components/common/empty-state';
 import { ErrorAlert, Spinner } from '@/components/common/error-alert';
 import { PageHeader } from '@/components/common/page-header';
+import { BuildSelect } from '@/components/common/build-select';
 import { ReleaseSelect } from '@/components/common/release-select';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -94,6 +95,7 @@ function DefectsList() {
     status: url.status.length ? url.status : undefined,
     severity: url.severity.length ? url.severity : undefined,
     releaseId: url.releaseId ?? undefined,
+    buildId: url.buildId ?? undefined,
     assigneeId,
     page: url.page,
     pageSize: PAGE_SIZE,
@@ -124,7 +126,12 @@ function DefectsList() {
   const total = page?.total ?? 0;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const filtered = Boolean(
-    url.q || url.status.length || url.severity.length || url.releaseId || url.assignee,
+    url.q ||
+    url.status.length ||
+    url.severity.length ||
+    url.releaseId ||
+    url.buildId ||
+    url.assignee,
   );
   const openOnly = sameSet(url.status, OPEN_SET);
 
@@ -199,6 +206,19 @@ function DefectsList() {
                 placeholder="All releases"
                 value={url.releaseId}
                 onChange={(releaseId) => url.update({ releaseId })}
+              />
+            </div>
+            <div className="w-[190px]">
+              <label htmlFor={`${id}-build`} className="sr-only">
+                Filter by build
+              </label>
+              <BuildSelect
+                id={`${id}-build`}
+                projectId={projectId}
+                releaseId={url.releaseId}
+                placeholder="All builds"
+                value={url.buildId}
+                onChange={(buildId) => url.update({ buildId })}
               />
             </div>
             <ComboboxSelect

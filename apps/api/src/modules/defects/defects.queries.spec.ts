@@ -2,6 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 import { attachmentRow, defectRow } from '../../../test/unit/fixtures.js';
 import { createPrismaMock } from '../../../test/unit/prisma-mock.js';
 import {
+  assertBuildsInProject,
   buildDefectDTO,
   buildDefectListItems,
   defectRefsByRunCase,
@@ -113,5 +114,21 @@ describe('defect queries', () => {
     });
     expect(dto.allowedTransitions).toEqual(expect.arrayContaining(['in_progress']));
     expect(dto.links).toHaveLength(1);
+  });
+
+  it('requires every referenced build to belong to the project', async () => {
+    const { db } = createPrismaMock();
+    db.build.count.mockResolvedValue(1);
+    await expect(assertBuildsInProject(db, 10, [4, 4, null, undefined])).resolves.toBeUndefined();
+    expect(db.build.count.mock.calls[0]![0]!.where).toEqual({
+      id: { in: [4] },
+      release: { projectId: 10 },
+    });
+    await expect(assertBuildsInProject(db, 10, [4, 5])).rejects.toMatchObject({
+      code: 'BAD_BUILD',
+    });
+    db.build.count.mockClear();
+    await assertBuildsInProject(db, 10, [null, undefined]);
+    expect(db.build.count).not.toHaveBeenCalled();
   });
 });

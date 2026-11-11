@@ -5,15 +5,16 @@ import {
   DEFECT_SEVERITIES,
   emptyCounts,
   OPEN_DEFECT_STATUSES,
+  type BuildSummaryDTO,
   type DashboardDTO,
   type DefectSeverity,
   type PlanStatus,
 } from '@tmt/shared';
 import { unprocessable } from '../../common/errors/app.exception.js';
 import { loadUserRefs } from '../../common/users/user-refs.js';
-import { PrismaService } from '../../prisma/prisma.service.js';
+import { PrismaService, type Db } from '../../prisma/prisma.service.js';
 import { buildDefectListItems, defectRefsByRunCase } from '../defects/defects.queries.js';
-import { buildPlanDTOs } from '../execution/execution.queries.js';
+import { buildPlanDTOs, countsByRun } from '../execution/execution.queries.js';
 import { toReleaseDTO } from '../projects/projects.mapper.js';
 import { toAttentionItem } from './dashboard.mapper.js';
 
@@ -45,6 +46,44 @@ export function openDefectsWhere(
       ],
     }),
   };
+}
+
+/** Results and open defects of every build of the release (newest build first). */
+async function buildSummaries(db: Db, release: Release | null): Promise<BuildSummaryDTO[]> {
+  if (!release) return [];
+  const builds = await db.build.findMany({
+    where: { releaseId: release.id },
+    orderBy: [{ builtDate: { sort: 'desc', nulls: 'last' } }, { id: 'desc' }],
+    select: { id: true, name: true },
+  });
+  if (builds.length === 0) return [];
+  const buildIds = builds.map((b) => b.id);
+  const runs = await db.testRun.findMany({
+    where: { buildId: { in: buildIds } },
+    select: { id: true, buildId: true },
+  });
+  const counts = await countsByRun(
+    db,
+    runs.map((r) => r.id),
+  );
+  const open = await db.defect.groupBy({
+    by: ['foundInBuildId'],
+    where: { foundInBuildId: { in: buildIds }, status: { in: [...OPEN_DEFECT_STATUSES] } },
+    _count: { _all: true },
+  });
+  const openByBuild = new Map(open.map((o) => [o.foundInBuildId, o._count._all]));
+  return builds.map((build) => {
+    const own = runs.filter((r) => r.buildId === build.id);
+    return {
+      build,
+      runCount: own.length,
+      counts: own.reduce(
+        (sum, r) => addCounts(sum, counts.get(r.id) ?? emptyCounts()),
+        emptyCounts(),
+      ),
+      openDefects: openByBuild.get(build.id) ?? 0,
+    };
+  });
 }
 
 /** Project dashboard of one release (all plans when the project has no releases). */
@@ -119,6 +158,7 @@ export class DashboardService {
     return {
       release: release ? toReleaseDTO(release) : null,
       releases: releases.map(toReleaseDTO),
+      builds: await buildSummaries(db, release),
       kpis: {
         planCount: plans.length,
         plansByStatus,

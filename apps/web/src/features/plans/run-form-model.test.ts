@@ -89,6 +89,7 @@ describe('new run form model', () => {
       code: 'KR_01',
       scenario: '',
       testerId: null,
+      buildId: null,
       testedDate: '',
       environment: [],
       sectionIds: undefined,
@@ -160,6 +161,7 @@ describe('edit, duplicate and re-run models', () => {
       code: 'KR_03',
       scenario: 'AP mode · iOS',
       testerId: 1,
+      buildId: null,
       environment: run.environment,
     });
     expect(validateDuplicateRun({ ...values, code: '' })).toEqual({ code: 'Required' });

@@ -13,10 +13,11 @@ import {
   type NamedRef,
   type UserRef,
 } from '@tmt/shared';
-import { notFound } from '../../common/errors/app.exception.js';
+import { notFound, unprocessable } from '../../common/errors/app.exception.js';
 import { iso, loadUserRefs, refOf } from '../../common/users/user-refs.js';
 import type { Db } from '../../prisma/prisma.service.js';
 import { toAttachmentDTO } from '../collab/attachments.mapper.js';
+import { buildRefs } from '../execution/execution.queries.js';
 
 export function toDefectRef(
   d: Pick<Defect, 'id' | 'seq' | 'title' | 'status' | 'severity'>,
@@ -131,10 +132,25 @@ async function releaseRefs(db: Db, ids: (number | null)[]): Promise<Map<number, 
   return new Map(rows.map((r) => [r.id, r]));
 }
 
+/** Every build id must belong to a release of the project (422 BAD_BUILD). */
+export async function assertBuildsInProject(
+  db: Db,
+  projectId: number,
+  ids: (number | null | undefined)[],
+): Promise<void> {
+  const unique = [...new Set(ids.filter((v): v is number => typeof v === 'number'))];
+  if (unique.length === 0) return;
+  const found = await db.build.count({ where: { id: { in: unique }, release: { projectId } } });
+  if (found !== unique.length) {
+    throw unprocessable('BAD_BUILD', 'The build does not belong to this project');
+  }
+}
+
 function toListItem(
   d: Defect,
   users: Map<number, UserRef>,
   releases: Map<number, NamedRef>,
+  builds: Map<number, NamedRef>,
   links: DefectLinkDTO[],
 ): DefectListItem {
   return {
@@ -146,6 +162,8 @@ function toListItem(
     status: d.status,
     assignee: refOf(users, d.assigneeId),
     release: d.releaseId !== null ? (releases.get(d.releaseId) ?? null) : null,
+    foundInBuild: d.foundInBuildId !== null ? (builds.get(d.foundInBuildId) ?? null) : null,
+    fixedInBuild: d.fixedInBuildId !== null ? (builds.get(d.fixedInBuildId) ?? null) : null,
     linkSummary: linkSummaryOf(links),
     externalKey: d.externalKey,
     externalStatus: d.externalStatus,
@@ -165,11 +183,15 @@ export async function buildDefectListItems(db: Db, rows: Defect[]): Promise<Defe
     db,
     rows.map((r) => r.releaseId),
   );
+  const builds = await buildRefs(
+    db,
+    rows.flatMap((r) => [r.foundInBuildId, r.fixedInBuildId]),
+  );
   const links = await loadDefectLinks(
     db,
     rows.map((r) => r.id),
   );
-  return rows.map((r) => toListItem(r, users, releases, links.get(r.id) ?? []));
+  return rows.map((r) => toListItem(r, users, releases, builds, links.get(r.id) ?? []));
 }
 
 /** Full defect with links, attachments and the workflow transitions allowed from its status. */
@@ -185,8 +207,9 @@ export async function buildDefectDTO(db: Db, d: Defect): Promise<DefectDTO> {
     ...attachments.map((a) => a.createdById),
   ]);
   const releases = await releaseRefs(db, [d.releaseId]);
+  const builds = await buildRefs(db, [d.foundInBuildId, d.fixedInBuildId]);
   return {
-    ...toListItem(d, users, releases, links),
+    ...toListItem(d, users, releases, builds, links),
     projectId: d.projectId,
     description: d.description,
     steps: d.steps,

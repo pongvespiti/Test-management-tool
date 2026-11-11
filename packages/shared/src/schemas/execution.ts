@@ -81,6 +81,8 @@ export const createRunSchema = z.object({
   scenario: optionalLine(300),
   environment: z.array(envEntrySchema).max(80).default([]),
   testerId: idSchema.nullable().optional(),
+  /** Build under test; must belong to the plan's release (422 BAD_BUILD). */
+  buildId: idSchema.nullable().optional(),
   testedDate: optionalDate,
   ...runCaseFilterFields,
 });
@@ -105,6 +107,8 @@ export const rerunSchema = z.object({
   copyEnvironment: z.boolean().default(true),
   environment: z.array(envEntrySchema).max(80).optional(),
   testerId: idSchema.nullable().optional(),
+  /** Build of the new run; omitted = the source run's build. */
+  buildId: idSchema.nullable().optional(),
   /** Keep each run case's assignee from the source run. */
   keepAssignees: z.boolean().default(true),
   /**
@@ -128,6 +132,7 @@ export const updateRunSchema = z.object({
   scenario: optionalLine(300),
   environment: z.array(envEntrySchema).max(80).optional(),
   testerId: idSchema.nullable().optional(),
+  buildId: idSchema.nullable().optional(),
   testedDate: optionalDate,
   judgement: z.enum(JUDGEMENTS).nullable().optional(),
   judgementNote: optionalText(8000),
@@ -141,6 +146,8 @@ export const duplicateRunSchema = z.object({
   scenario: optionalLine(300),
   environment: z.array(envEntrySchema).max(80).optional(),
   testerId: idSchema.nullable().optional(),
+  /** Omitted = the source run's build. */
+  buildId: idSchema.nullable().optional(),
 });
 export type DuplicateRunInput = z.infer<typeof duplicateRunSchema>;
 
@@ -187,6 +194,8 @@ const defectFields = {
   releaseId: idSchema.nullable().optional(),
   foundIn: optionalLine(300),
   fixedIn: optionalLine(300),
+  foundInBuildId: idSchema.nullable().optional(),
+  fixedInBuildId: idSchema.nullable().optional(),
   environment: optionalText(2000),
   externalKey: optionalLine(100),
 };
@@ -214,6 +223,8 @@ export const listDefectsQuerySchema = paginationSchema.extend({
   status: csvList(z.enum(DEFECT_STATUSES)).optional(),
   severity: csvList(z.enum(DEFECT_SEVERITIES)).optional(),
   releaseId: idSchema.optional(),
+  /** Defects found in or fixed in this build. */
+  buildId: idSchema.optional(),
   planId: idSchema.optional(),
   runId: idSchema.optional(),
   assigneeId: idSchema.optional(),

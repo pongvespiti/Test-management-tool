@@ -4,6 +4,7 @@
  */
 import {
   emptyCounts,
+  type BuildDTO,
   type MatrixDTO,
   type PlanDTO,
   type ReleaseDTO,
@@ -63,6 +64,21 @@ export function makePlan(overrides: Partial<PlanDTO> = {}): PlanDTO {
   };
 }
 
+export function makeBuild(overrides: Partial<BuildDTO> = {}): BuildDTO {
+  return {
+    id: 8,
+    releaseId: 5,
+    name: '1.1.7(2.0.0)',
+    notes: null,
+    builtDate: '2026-11-08',
+    runCount: 1,
+    defectCount: 0,
+    createdAt: T0,
+    updatedAt: T0,
+    ...overrides,
+  };
+}
+
 export function makeRun(overrides: Partial<RunDTO> = {}): RunDTO {
   return {
     id: 21,
@@ -70,6 +86,7 @@ export function makeRun(overrides: Partial<RunDTO> = {}): RunDTO {
     planDocNo: '26TR-TEAM-10-001',
     planTitle: 'Unit operation test — ACU18',
     planStatus: 'in_progress',
+    planReleaseId: 4,
     suite: { id: 1, name: 'Unit operation test', prefix: 'UOT', fieldDefs: [] },
     code: 'KR_01',
     scenario: 'AP mode · iOS',
@@ -87,6 +104,7 @@ export function makeRun(overrides: Partial<RunDTO> = {}): RunDTO {
     counts: counts({ ok: 8, ng: 1, untested: 1 }),
     suggestedJudgement: 'not_pass',
     sourceRun: null,
+    build: null,
     estimate: { totalMinutes: 60, remainingMinutes: 10 },
     createdAt: T0,
     updatedAt: T0,

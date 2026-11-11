@@ -228,6 +228,7 @@ function Report({ report: r }: { report: RunReportDTO }) {
                   'Suite',
                   `${r.run.suite.name} (${r.run.suite.prefix})`,
                 ],
+                ['Build', r.run.build?.name ?? '—', 'Scenario', r.run.scenario ?? '—'],
                 [
                   'Tester',
                   r.run.tester?.displayName ?? '—',

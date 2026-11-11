@@ -27,6 +27,19 @@ function handlers(overrides: Record<string, unknown> = {}) {
     },
     'GET /projects/3/members': [member(1, 'Alice Tester', 'tester'), member(2, 'Bob Lead', 'lead')],
     'GET /projects/3/releases': [],
+    'GET /projects/3/builds': [
+      {
+        id: 8,
+        releaseId: 5,
+        name: '1.1.7(2.0.0)',
+        notes: null,
+        builtDate: null,
+        runCount: 0,
+        defectCount: 0,
+        createdAt: '',
+        updatedAt: '',
+      },
+    ],
     ...overrides,
   };
 }
@@ -46,6 +59,25 @@ const listCalls = (api: ReturnType<typeof mockApi>) =>
 
 describe('DefectsPage', () => {
   beforeEach(() => openUrl('/projects/3/defects'));
+
+  it('filters the defects by build', async () => {
+    const { user } = renderPage();
+    await screen.findByRole('row', { name: /BUG-12/ });
+    await user.click(screen.getByRole('combobox', { name: 'Filter by build' }));
+    await user.click(await screen.findByRole('option', { name: '1.1.7(2.0.0)' }));
+    expect(urlParams().build).toBe('8');
+  });
+
+  it('sends the build of the URL with the list request and offers to clear the filters', async () => {
+    openUrl('/projects/3/defects?build=8');
+    const { api } = renderPage();
+    await screen.findByRole('row', { name: /BUG-12/ });
+    expect(listCalls(api)[0]!.query.get('buildId')).toBe('8');
+    expect(screen.getByRole('combobox', { name: 'Filter by build' })).toHaveTextContent(
+      '1.1.7(2.0.0)',
+    );
+    expect(screen.getByRole('button', { name: 'Clear filters' })).toBeInTheDocument();
+  });
 
   it('lists the defects with Jira keys, the open count and links to the detail', async () => {
     const { user, api } = renderPage();
@@ -157,6 +189,8 @@ describe('DefectsPage', () => {
       releaseId: null,
       foundIn: null,
       fixedIn: null,
+      foundInBuildId: null,
+      fixedInBuildId: null,
       environment: null,
       externalKey: 'TEAM-9',
     });
