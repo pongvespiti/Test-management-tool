@@ -1,0 +1,244 @@
+/*
+ * Printable run report (run-report-page.tsx). The page adds `printReport` to <body> while it is
+ * open, so the print rules that strip the app shell never affect other pages.
+ */
+
+@page {
+  size: A4;
+  margin: 12mm 10mm 14mm;
+}
+
+.toolbar {
+  max-width: 210mm;
+  margin: 0 auto 12px;
+}
+
+.sheet {
+  box-sizing: border-box;
+  max-width: 210mm;
+  margin: 0 auto;
+  padding: 12mm 12mm 14mm;
+  background: #ffffff;
+  border: 1px solid #e3e6ea;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06);
+  color: #212529;
+  font-size: 12px;
+  line-height: 1.45;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.sheet h1 {
+  margin: 4px 0 2px;
+  font-size: 19px;
+  line-height: 1.3;
+  font-weight: 700;
+}
+
+.sheet h2 {
+  margin: 18px 0 8px;
+  padding-bottom: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #343a40;
+  border-bottom: 2px solid #1971c2;
+}
+
+.sheet h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.titleblock {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.muted {
+  color: #5c6670;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.small {
+  font-size: 10px;
+}
+
+.kv {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.kv th,
+.kv td {
+  padding: 3px 6px;
+  border: 1px solid #dee2e6;
+  vertical-align: top;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.kv th {
+  width: 17%;
+  font-weight: 600;
+  color: #495057;
+  background: #f8f9fa;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.autoWidth {
+  width: auto;
+  min-width: 60%;
+}
+
+.table th,
+.table td {
+  padding: 3px 6px;
+  border: 1px solid #dee2e6;
+  vertical-align: top;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.table thead th {
+  font-size: 11px;
+  font-weight: 700;
+  color: #343a40;
+  background: #f1f3f5;
+}
+
+.table .num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.table tfoot td {
+  font-weight: 700;
+  background: #f8f9fa;
+}
+
+.case {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+}
+
+.text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.generated {
+  text-align: right;
+}
+
+/* Wide tables scroll sideways on small screens (never in print). */
+.scroll {
+  overflow-x: auto;
+}
+
+@media screen and (max-width: 640px) {
+  .sheet {
+    padding: 14px 12px;
+    border-radius: 6px;
+  }
+
+  .titleblock {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .generated {
+    text-align: left;
+  }
+
+  .kv {
+    table-layout: auto;
+  }
+
+  .kv th {
+    width: auto;
+    overflow-wrap: normal;
+  }
+
+  .scroll > .table {
+    min-width: 560px;
+  }
+}
+
+@media print {
+  .printReport,
+  .printReport main,
+  .printReport :global(.bg-background) {
+    background: #ffffff !important;
+  }
+
+  .printReport main {
+    padding: 0 !important;
+    min-height: 0 !important;
+  }
+
+  .printReport main > div {
+    padding: 0 !important;
+    max-width: none !important;
+  }
+
+  .printReport :global([data-sonner-toaster]),
+  .toolbar {
+    display: none !important;
+  }
+
+  .sheet {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    font-size: 10.5px;
+  }
+
+  .table thead {
+    display: table-header-group;
+  }
+
+  .scroll {
+    overflow: visible;
+  }
+
+  .table tr,
+  .kv tr,
+  .keep,
+  .case {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .sheet h2,
+  .sheet h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .sheet a {
+    color: inherit;
+    text-decoration: none;
+  }
+}

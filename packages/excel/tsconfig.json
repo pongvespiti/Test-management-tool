@@ -1,0 +1,4 @@
+{
+  "extends": "@tmt/tsconfig/library.json",
+  "include": ["src", "test", "scripts", "tsup.config.ts"]
+}

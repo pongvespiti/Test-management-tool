@@ -1,0 +1,33 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# builds
+dist/
+.next/
+out/
+*.tsbuildinfo
+.turbo/
+coverage/
+
+# generated
+packages/database/src/generated/
+
+# runtime data (uploads, secrets, temp files) — DATA_DIR defaults to ./data
+/data/
+apps/*/data/
+
+# env & secrets (keep the *.example files)
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# editors / OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.DS_Store
+Thumbs.db
+*.log

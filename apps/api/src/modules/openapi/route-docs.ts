@@ -1,0 +1,850 @@
+/**
+ * Human-written documentation of every REST route: its section, title, notes and success response.
+ * Roles, parameters, request bodies and error codes are generated from the controllers; this table
+ * adds what decorators cannot say compactly. `test/openapi.e2e-spec.ts` fails when a route has no
+ * entry here, an entry has no route, or `success` differs from the status the route really sends.
+ */
+
+/** Sections of the API reference, in display order. */
+export const API_TAGS = [
+  { name: 'Health', description: 'Service status.' },
+  { name: 'Auth', description: 'Sign-in with a session cookie.' },
+  { name: 'API access', description: 'Personal API tokens.' },
+  { name: 'Users', description: 'User administration.' },
+  { name: 'Projects', description: 'Projects, settings and members.' },
+  { name: 'Releases', description: 'Releases of a project.' },
+  { name: 'Library', description: 'Suites, sections and test cases.' },
+  { name: 'Reviews', description: 'Case review workflow and tags.' },
+  { name: 'Shared steps', description: 'Reusable step sets.' },
+  { name: 'Import', description: 'Excel/CSV import of test cases.' },
+  { name: 'Plans', description: 'Test plans, judgement and Excel reports.' },
+  { name: 'Runs', description: 'Runs and their cases.' },
+  { name: 'Results', description: 'Recording results.' },
+  { name: 'Automation', description: 'JUnit XML results from CI.' },
+  { name: 'Defects', description: 'Defects and their links to results.' },
+  { name: 'Collaboration', description: 'Comments, attachments and activity.' },
+  { name: 'Reports', description: 'Dashboard and reports.' },
+  { name: 'Report templates', description: 'Controlled Excel report templates.' },
+  { name: 'Jira', description: 'Jira settings and defect ↔ Jira issue actions.' },
+] as const;
+
+export type ApiTagName = (typeof API_TAGS)[number]['name'];
+
+export interface RouteDoc {
+  tag: ApiTagName;
+  /** Title of the endpoint (imperative, one line). */
+  summary: string;
+  /** Extra notes shown under the title. */
+  notes?: string;
+  /** Status code of the success response. */
+  success: 200 | 201 | 204;
+  /** Response DTO name from `@tmt/shared`, or a short description. */
+  response: string;
+  /** Content type of the success response (default: JSON). */
+  produces?: 'xlsx' | 'file';
+}
+
+/** Key: `<METHOD> <OpenAPI path>`, e.g. `GET /api/v1/projects/{projectId}/suites`. */
+export const ROUTE_DOCS: Record<string, RouteDoc> = {
+  // ---- Health
+  'GET /api/health': {
+    tag: 'Health',
+    summary: 'Service and database health',
+    notes: '`{ status, db, version }`; 503 when the database is down.',
+    success: 200,
+    response: '{ status: "ok"; db: "ok" | "down"; version: string }',
+  },
+
+  // ---- Auth
+  'POST /api/v1/auth/login': {
+    tag: 'Auth',
+    summary: 'Sign in (sets the session cookie)',
+    success: 200,
+    response: 'MeDTO',
+  },
+  'POST /api/v1/auth/logout': {
+    tag: 'Auth',
+    summary: 'Sign out (ends the session)',
+    success: 204,
+    response: 'void',
+  },
+  'GET /api/v1/auth/me': {
+    tag: 'Auth',
+    summary: 'Current user and project memberships',
+    success: 200,
+    response: 'MeDTO',
+  },
+  'POST /api/v1/auth/change-password': {
+    tag: 'Auth',
+    summary: 'Change my password (other sessions are revoked)',
+    success: 204,
+    response: 'void',
+  },
+
+  // ---- API access
+  'GET /api/v1/auth/tokens': {
+    tag: 'API access',
+    summary: 'My API tokens (not revoked, newest first)',
+    success: 200,
+    response: 'ApiTokenDTO[]',
+  },
+  'POST /api/v1/auth/tokens': {
+    tag: 'API access',
+    summary: 'Create an API token (the token is shown once)',
+    notes: 'Use it as `Authorization: Bearer tmt_…`; at most 20 active tokens per user.',
+    success: 201,
+    response: 'CreatedTokenDTO',
+  },
+  'DELETE /api/v1/auth/tokens/{tokenId}': {
+    tag: 'API access',
+    summary: 'Revoke one of my API tokens',
+    success: 204,
+    response: 'void',
+  },
+  'DELETE /api/v1/users/{userId}/tokens': {
+    tag: 'API access',
+    summary: 'Revoke all API tokens of a user',
+    success: 204,
+    response: 'void',
+  },
+
+  // ---- Users
+  'GET /api/v1/users': { tag: 'Users', summary: 'All users', success: 200, response: 'UserDTO[]' },
+  'POST /api/v1/users': {
+    tag: 'Users',
+    summary: 'Create a user (must change the password on first sign-in)',
+    success: 201,
+    response: 'UserDTO',
+  },
+  'PATCH /api/v1/users/{userId}': {
+    tag: 'Users',
+    summary: 'Update a user (name, e-mail, admin, active)',
+    success: 200,
+    response: 'UserDTO',
+  },
+  'POST /api/v1/users/{userId}/reset-password': {
+    tag: 'Users',
+    summary: 'Set a new password (sessions revoked, must change on sign-in)',
+    success: 204,
+    response: 'void',
+  },
+  'GET /api/v1/users/lookup': {
+    tag: 'Users',
+    summary: 'Find active users by name (max 50)',
+    success: 200,
+    response: 'UserRef[]',
+  },
+
+  // ---- Projects
+  'GET /api/v1/projects': {
+    tag: 'Projects',
+    summary: 'My projects (administrators: all)',
+    success: 200,
+    response: 'ProjectDTO[]',
+  },
+  'POST /api/v1/projects': {
+    tag: 'Projects',
+    summary: 'Create a project (the creator becomes lead)',
+    success: 201,
+    response: 'ProjectDTO',
+  },
+  'GET /api/v1/projects/{projectId}': {
+    tag: 'Projects',
+    summary: 'Project details',
+    success: 200,
+    response: 'ProjectDTO',
+  },
+  'PATCH /api/v1/projects/{projectId}': {
+    tag: 'Projects',
+    summary: 'Update project settings (incl. requireCaseReview)',
+    success: 200,
+    response: 'ProjectDTO',
+  },
+  'GET /api/v1/projects/{projectId}/members': {
+    tag: 'Projects',
+    summary: 'Project members',
+    success: 200,
+    response: 'MemberDTO[]',
+  },
+  'PUT /api/v1/projects/{projectId}/members': {
+    tag: 'Projects',
+    summary: 'Replace the project members (at least one lead)',
+    success: 200,
+    response: 'MemberDTO[]',
+  },
+
+  // ---- Releases
+  'GET /api/v1/projects/{projectId}/releases': {
+    tag: 'Releases',
+    summary: 'Releases (newest first)',
+    success: 200,
+    response: 'ReleaseDTO[]',
+  },
+  'POST /api/v1/projects/{projectId}/releases': {
+    tag: 'Releases',
+    summary: 'Create a release',
+    success: 201,
+    response: 'ReleaseDTO',
+  },
+  'PATCH /api/v1/projects/{projectId}/releases/{releaseId}': {
+    tag: 'Releases',
+    summary: 'Update a release',
+    success: 200,
+    response: 'ReleaseDTO',
+  },
+  'DELETE /api/v1/projects/{projectId}/releases/{releaseId}': {
+    tag: 'Releases',
+    summary: 'Delete an unused release',
+    success: 204,
+    response: 'void',
+  },
+
+  // ---- Library
+  'GET /api/v1/projects/{projectId}/suites': {
+    tag: 'Library',
+    summary: 'Test suites',
+    success: 200,
+    response: 'SuiteDTO[]',
+  },
+  'POST /api/v1/projects/{projectId}/suites': {
+    tag: 'Library',
+    summary: 'Create a suite (prefix for display ids, custom fields, environment labels)',
+    success: 201,
+    response: 'SuiteDTO',
+  },
+  'GET /api/v1/projects/{projectId}/suites/{suiteId}': {
+    tag: 'Library',
+    summary: 'Suite details',
+    success: 200,
+    response: 'SuiteDTO',
+  },
+  'PATCH /api/v1/projects/{projectId}/suites/{suiteId}': {
+    tag: 'Library',
+    summary: 'Update a suite (removed field keys are stripped from case values)',
+    success: 200,
+    response: 'SuiteDTO',
+  },
+  'DELETE /api/v1/projects/{projectId}/suites/{suiteId}': {
+    tag: 'Library',
+    summary: 'Delete a suite without runs (archive it otherwise)',
+    success: 204,
+    response: 'void',
+  },
+  'GET /api/v1/projects/{projectId}/suites/{suiteId}/sections': {
+    tag: 'Library',
+    summary: 'Section tree with case counts',
+    success: 200,
+    response: 'SectionTreeDTO',
+  },
+  'POST /api/v1/projects/{projectId}/suites/{suiteId}/sections': {
+    tag: 'Library',
+    summary: 'Create a section',
+    success: 201,
+    response: 'SectionNode',
+  },
+  'PATCH /api/v1/projects/{projectId}/sections/{sectionId}': {
+    tag: 'Library',
+    summary: 'Rename or move a section',
+    success: 200,
+    response: 'SectionNode',
+  },
+  'DELETE /api/v1/projects/{projectId}/sections/{sectionId}': {
+    tag: 'Library',
+    summary: 'Delete a section (optionally moving its content to the parent)',
+    success: 204,
+    response: 'void',
+  },
+  'GET /api/v1/projects/{projectId}/suites/{suiteId}/cases': {
+    tag: 'Library',
+    summary: 'Test cases of a suite (tree order, paged)',
+    success: 200,
+    response: 'Paged<TestCaseDTO>',
+  },
+  'GET /api/v1/projects/{projectId}/cases/search': {
+    tag: 'Library',
+    summary: 'Search test cases in every suite of the project',
+    notes:
+      'Free text over titles, codes, texts, steps, tags and custom fields of all active suites; title and code matches come first. `total` counts every match, `items` holds at most `limit`.',
+    success: 200,
+    response: 'CaseSearchResultDTO',
+  },
+  'POST /api/v1/projects/{projectId}/suites/{suiteId}/cases': {
+    tag: 'Library',
+    summary: 'Create a test case (text or step-by-step)',
+    notes: 'With `requireCaseReview`, `ready` is stored as `draft` for callers below lead.',
+    success: 201,
+    response: 'TestCaseDTO',
+  },
+  'POST /api/v1/projects/{projectId}/suites/{suiteId}/cases/bulk': {
+    tag: 'Library',
+    summary: 'Bulk action on cases (move, status, type, priority, tags, review, delete)',
+    notes: '`delete` and `approve` need the lead role.',
+    success: 200,
+    response: '{ affected: number }',
+  },
+  'GET /api/v1/projects/{projectId}/suites/{suiteId}/export.xlsx': {
+    tag: 'Library',
+    summary: 'Export the suite to Excel (round-trips through import)',
+    success: 200,
+    response: 'xlsx workbook',
+    produces: 'xlsx',
+  },
+  'GET /api/v1/projects/{projectId}/cases/{caseId}': {
+    tag: 'Library',
+    summary: 'Test case details (shared steps expanded)',
+    success: 200,
+    response: 'TestCaseDTO',
+  },
+  'PATCH /api/v1/projects/{projectId}/cases/{caseId}': {
+    tag: 'Library',
+    summary: 'Update a test case (optimistic concurrency with `version`)',
+    notes:
+      'A change of reviewable content moves a `ready` case back to `draft` under review rules.',
+    success: 200,
+    response: 'TestCaseDTO',
+  },
+  'DELETE /api/v1/projects/{projectId}/cases/{caseId}': {
+    tag: 'Library',
+    summary: 'Delete a test case (soft delete)',
+    success: 204,
+    response: 'void',
+  },
+  'POST /api/v1/projects/{projectId}/cases/{caseId}/clone': {
+    tag: 'Library',
+    summary: 'Clone a test case (code cleared, title " (copy)")',
+    success: 201,
+    response: 'TestCaseDTO',
+  },
+  'GET /api/v1/projects/{projectId}/cases/{caseId}/versions': {
+    tag: 'Library',
+    summary: 'Version history of a case (newest first)',
+    success: 200,
+    response: 'CaseVersionDTO[]',
+  },
+  'GET /api/v1/projects/{projectId}/cases/{caseId}/runs': {
+    tag: 'Library',
+    summary: 'Results of a case across runs (newest first)',
+    success: 200,
+    response: 'CaseRunHistoryItem[]',
+  },
+
+  // ---- Reviews
+  'POST /api/v1/projects/{projectId}/cases/{caseId}/submit-review': {
+    tag: 'Reviews',
+    summary: 'Send a case to review (draft/ready → in review)',
+    success: 200,
+    response: 'TestCaseDTO',
+  },
+  'POST /api/v1/projects/{projectId}/cases/{caseId}/review': {
+    tag: 'Reviews',
+    summary: 'Approve a case or request changes',
+    success: 200,
+    response: 'TestCaseDTO',
+  },
+  'GET /api/v1/projects/{projectId}/reviews': {
+    tag: 'Reviews',
+    summary: 'Cases waiting for review (oldest request first, max 500)',
+    success: 200,
+    response: 'TestCaseDTO[]',
+  },
+  'GET /api/v1/projects/{projectId}/tags': {
+    tag: 'Reviews',
+    summary: 'Tags of live cases with counts (max 500)',
+    success: 200,
+    response: 'TagCountDTO[]',
+  },
+
+  // ---- Shared steps
+  'GET /api/v1/projects/{projectId}/shared-steps': {
+    tag: 'Shared steps',
+    summary: 'Shared steps (by name)',
+    success: 200,
+    response: 'SharedStepDTO[]',
+  },
+  'POST /api/v1/projects/{projectId}/shared-steps': {
+    tag: 'Shared steps',
+    summary: 'Create a shared step set',
+    success: 201,
+    response: 'SharedStepDTO',
+  },
+  'GET /api/v1/projects/{projectId}/shared-steps/{sharedStepId}': {
+    tag: 'Shared steps',
+    summary: 'Shared step with the cases using it (max 200)',
+    success: 200,
+    response: 'SharedStepDetailDTO',
+  },
+  'PATCH /api/v1/projects/{projectId}/shared-steps/{sharedStepId}': {
+    tag: 'Shared steps',
+    summary: 'Update a shared step (version +1)',
+    success: 200,
+    response: 'SharedStepDTO',
+  },
+  'DELETE /api/v1/projects/{projectId}/shared-steps/{sharedStepId}': {
+    tag: 'Shared steps',
+    summary: 'Delete a shared step (`inline=true` copies its steps into the using cases)',
+    success: 204,
+    response: 'void',
+  },
+
+  // ---- Import
+  'POST /api/v1/projects/{projectId}/imports/upload': {
+    tag: 'Import',
+    summary: 'Upload an Excel/CSV file for import',
+    success: 200,
+    response: '{ uploadId: string; fileName: string; sheets: ImportSheetInfo[] }',
+  },
+  'POST /api/v1/projects/{projectId}/imports/analyze': {
+    tag: 'Import',
+    summary: 'Detect header row, layout and column mapping',
+    success: 200,
+    response: 'ImportAnalysisDTO',
+  },
+  'POST /api/v1/projects/{projectId}/imports/preview': {
+    tag: 'Import',
+    summary: 'Preview an import with a mapping',
+    success: 200,
+    response: 'ImportPreviewDTO',
+  },
+  'POST /api/v1/projects/{projectId}/imports/commit': {
+    tag: 'Import',
+    summary: 'Run the import',
+    success: 200,
+    response: 'ImportResultDTO',
+  },
+  'GET /api/v1/projects/{projectId}/imports': {
+    tag: 'Import',
+    summary: 'Latest 50 imports (Excel and JUnit)',
+    success: 200,
+    response: 'ImportRecordDTO[]',
+  },
+
+  // ---- Plans
+  'GET /api/v1/projects/{projectId}/plans': {
+    tag: 'Plans',
+    summary: 'Test plans (newest first)',
+    success: 200,
+    response: 'PlanDTO[]',
+  },
+  'POST /api/v1/projects/{projectId}/plans': {
+    tag: 'Plans',
+    summary: 'Create a test plan',
+    success: 201,
+    response: 'PlanDTO',
+  },
+  'GET /api/v1/projects/{projectId}/plans/doc-no-suggestion': {
+    tag: 'Plans',
+    summary: 'Next document number for the project pattern',
+    success: 200,
+    response: '{ docNo: string }',
+  },
+  'GET /api/v1/projects/{projectId}/plans/{planId}': {
+    tag: 'Plans',
+    summary: 'Test plan with runs and counts',
+    success: 200,
+    response: 'PlanDTO',
+  },
+  'PATCH /api/v1/projects/{projectId}/plans/{planId}': {
+    tag: 'Plans',
+    summary: 'Update a test plan (judgement, texts, release, template)',
+    success: 200,
+    response: 'PlanDTO',
+  },
+  'DELETE /api/v1/projects/{projectId}/plans/{planId}': {
+    tag: 'Plans',
+    summary: 'Delete a test plan',
+    success: 204,
+    response: 'void',
+  },
+  'POST /api/v1/projects/{projectId}/plans/{planId}/complete': {
+    tag: 'Plans',
+    summary: 'Complete a plan (locks its runs and results)',
+    success: 200,
+    response: 'PlanDTO',
+  },
+  'POST /api/v1/projects/{projectId}/plans/{planId}/reopen': {
+    tag: 'Plans',
+    summary: 'Reopen a completed plan',
+    success: 200,
+    response: 'PlanDTO',
+  },
+  'GET /api/v1/projects/{projectId}/plans/{planId}/matrix': {
+    tag: 'Plans',
+    summary: 'Summary matrix (runs × groups)',
+    success: 200,
+    response: 'MatrixDTO',
+  },
+  'GET /api/v1/projects/{projectId}/plans/{planId}/export.xlsx': {
+    tag: 'Plans',
+    summary: 'Test report from the Excel template (ADR-002)',
+    notes: '`templateId` 0/omitted = the plan template, else the project default, else built-in.',
+    success: 200,
+    response: 'xlsx test report',
+    produces: 'xlsx',
+  },
+  'PUT /api/v1/projects/{projectId}/plans/{planId}/signed-copy': {
+    tag: 'Plans',
+    summary: 'Attach the signed report (allowed on completed plans)',
+    success: 200,
+    response: 'AttachmentDTO',
+  },
+  'DELETE /api/v1/projects/{projectId}/plans/{planId}/signed-copy': {
+    tag: 'Plans',
+    summary: 'Remove the signed report',
+    success: 204,
+    response: 'void',
+  },
+
+  // ---- Runs
+  'GET /api/v1/projects/{projectId}/plans/{planId}/runs': {
+    tag: 'Runs',
+    summary: 'Runs of a plan',
+    success: 200,
+    response: 'RunDTO[]',
+  },
+  'POST /api/v1/projects/{projectId}/plans/{planId}/runs': {
+    tag: 'Runs',
+    summary: 'Create a run from suite cases (sections, cases, priorities, tags, statuses)',
+    success: 201,
+    response: 'RunDTO',
+  },
+  'GET /api/v1/projects/{projectId}/runs/{runId}': {
+    tag: 'Runs',
+    summary: 'Run details with counts and estimate',
+    success: 200,
+    response: 'RunDTO',
+  },
+  'PATCH /api/v1/projects/{projectId}/runs/{runId}': {
+    tag: 'Runs',
+    summary: 'Update a run (code, environment, tester, judgement…)',
+    success: 200,
+    response: 'RunDTO',
+  },
+  'DELETE /api/v1/projects/{projectId}/runs/{runId}': {
+    tag: 'Runs',
+    summary: 'Delete a run',
+    success: 204,
+    response: 'void',
+  },
+  'POST /api/v1/projects/{projectId}/runs/{runId}/duplicate': {
+    tag: 'Runs',
+    summary: 'Duplicate a run (same cases, fresh results)',
+    success: 201,
+    response: 'RunDTO',
+  },
+  'GET /api/v1/projects/{projectId}/runs/{runId}/cases': {
+    tag: 'Runs',
+    summary: 'Run cases in execution order',
+    success: 200,
+    response: 'RunCaseDTO[]',
+  },
+  'POST /api/v1/projects/{projectId}/runs/{runId}/cases': {
+    tag: 'Runs',
+    summary: 'Add library cases to a run (existing ones skipped)',
+    success: 200,
+    response: '{ added: number }',
+  },
+  'POST /api/v1/projects/{projectId}/runs/{runId}/cases/remove': {
+    tag: 'Runs',
+    summary: 'Remove run cases (executed ones need a lead)',
+    success: 200,
+    response: '{ removed: number }',
+  },
+  'POST /api/v1/projects/{projectId}/runs/{runId}/rerun': {
+    tag: 'Runs',
+    summary: 'Re-run the cases of a run whose result is in `statuses`',
+    success: 201,
+    response: 'RunDTO',
+  },
+  'POST /api/v1/projects/{projectId}/runs/{runId}/assign': {
+    tag: 'Runs',
+    summary: 'Assign run cases (null = back to the run tester)',
+    success: 200,
+    response: '{ affected: number }',
+  },
+  'GET /api/v1/projects/{projectId}/runs/{runId}/report': {
+    tag: 'Runs',
+    summary: 'Run report (times in REPORT_TIMEZONE)',
+    success: 200,
+    response: 'RunReportDTO',
+  },
+  'GET /api/v1/projects/{projectId}/runs/{runId}/report.xlsx': {
+    tag: 'Runs',
+    summary: 'Run report workbook (Summary, Results, Steps)',
+    success: 200,
+    response: 'xlsx run report',
+    produces: 'xlsx',
+  },
+
+  // ---- Results
+  'POST /api/v1/projects/{projectId}/runs/{runId}/results/bulk': {
+    tag: 'Results',
+    summary: 'Set one result on many run cases',
+    success: 200,
+    response: '{ affected: number }',
+  },
+  'GET /api/v1/projects/{projectId}/run-cases/{runCaseId}': {
+    tag: 'Results',
+    summary: 'Run case with history, attachments, defects and other runs',
+    success: 200,
+    response: 'RunCaseDetailDTO',
+  },
+  'PUT /api/v1/projects/{projectId}/run-cases/{runCaseId}/result': {
+    tag: 'Results',
+    summary: 'Record a result (source `api` with a token)',
+    success: 200,
+    response: 'RunCaseDTO',
+  },
+
+  // ---- Automation
+  'POST /api/v1/projects/{projectId}/runs/{runId}/junit': {
+    tag: 'Automation',
+    summary: 'Import JUnit XML results into a run',
+    notes:
+      'Matching `auto`: tmt_id/tmt_case/case_id/test_id property → code → display id → title. `dryRun=true` previews without writing; `createMissing=true` adds library cases.',
+    success: 200,
+    response: 'JunitImportResultDTO',
+  },
+
+  // ---- Defects
+  'GET /api/v1/projects/{projectId}/defects': {
+    tag: 'Defects',
+    summary: 'Defects (newest first, paged)',
+    success: 200,
+    response: 'Paged<DefectListItem>',
+  },
+  'POST /api/v1/projects/{projectId}/defects': {
+    tag: 'Defects',
+    summary: 'Report a defect (optionally from an NG run case)',
+    success: 201,
+    response: 'DefectDTO',
+  },
+  'GET /api/v1/projects/{projectId}/defects/{defectId}': {
+    tag: 'Defects',
+    summary: 'Defect details',
+    success: 200,
+    response: 'DefectDTO',
+  },
+  'PATCH /api/v1/projects/{projectId}/defects/{defectId}': {
+    tag: 'Defects',
+    summary: 'Update a defect',
+    success: 200,
+    response: 'DefectDTO',
+  },
+  'POST /api/v1/projects/{projectId}/defects/{defectId}/transition': {
+    tag: 'Defects',
+    summary: 'Move a defect through its workflow',
+    success: 200,
+    response: 'DefectDTO',
+  },
+  'POST /api/v1/projects/{projectId}/defects/{defectId}/links': {
+    tag: 'Defects',
+    summary: 'Link a defect to a run case',
+    success: 200,
+    response: 'DefectDTO',
+  },
+  'DELETE /api/v1/projects/{projectId}/defects/{defectId}/links/{linkId}': {
+    tag: 'Defects',
+    summary: 'Remove a defect link',
+    success: 204,
+    response: 'void',
+  },
+  'DELETE /api/v1/projects/{projectId}/defects/{defectId}': {
+    tag: 'Defects',
+    summary: 'Delete a defect',
+    success: 204,
+    response: 'void',
+  },
+
+  // ---- Collaboration
+  'GET /api/v1/projects/{projectId}/comments': {
+    tag: 'Collaboration',
+    summary: 'Comments of an entity (oldest first)',
+    success: 200,
+    response: 'CommentDTO[]',
+  },
+  'POST /api/v1/projects/{projectId}/comments': {
+    tag: 'Collaboration',
+    summary: 'Comment on a defect, run case, test case or plan',
+    success: 201,
+    response: 'CommentDTO',
+  },
+  'DELETE /api/v1/projects/{projectId}/comments/{commentId}': {
+    tag: 'Collaboration',
+    summary: 'Delete a comment (author or lead)',
+    success: 204,
+    response: 'void',
+  },
+  'GET /api/v1/projects/{projectId}/attachments': {
+    tag: 'Collaboration',
+    summary: 'Attachments of an entity',
+    success: 200,
+    response: 'AttachmentDTO[]',
+  },
+  'POST /api/v1/projects/{projectId}/attachments': {
+    tag: 'Collaboration',
+    summary: 'Upload an attachment (evidence, logs, screenshots)',
+    success: 201,
+    response: 'AttachmentDTO',
+  },
+  'GET /api/v1/projects/{projectId}/attachments/{attachmentId}/download': {
+    tag: 'Collaboration',
+    summary: 'Download an attachment (inline for images, PDF, video, text)',
+    success: 200,
+    response: 'file',
+    produces: 'file',
+  },
+  'DELETE /api/v1/projects/{projectId}/attachments/{attachmentId}': {
+    tag: 'Collaboration',
+    summary: 'Delete an attachment (uploader or lead)',
+    success: 204,
+    response: 'void',
+  },
+  'GET /api/v1/projects/{projectId}/activity': {
+    tag: 'Collaboration',
+    summary: 'Activity log (newest first)',
+    success: 200,
+    response: 'ActivityDTO[]',
+  },
+
+  // ---- Reports
+  'GET /api/v1/projects/{projectId}/dashboard': {
+    tag: 'Reports',
+    summary: 'Dashboard of a release (default: newest active, else newest)',
+    success: 200,
+    response: 'DashboardDTO',
+  },
+  'GET /api/v1/projects/{projectId}/reports/trend': {
+    tag: 'Reports',
+    summary: 'Daily results, burndown and pass rate (REPORT_TIMEZONE days)',
+    notes: 'Scope: `planId` (wins) or `releaseId` or the whole project.',
+    success: 200,
+    response: 'ReportTrendDTO',
+  },
+  'GET /api/v1/projects/{projectId}/reports/workload': {
+    tag: 'Reports',
+    summary: 'Run cases per effective assignee over open plans',
+    success: 200,
+    response: 'WorkloadRowDTO[]',
+  },
+  'GET /api/v1/projects/{projectId}/reports/defects': {
+    tag: 'Reports',
+    summary: 'Defects by status/severity, open trend, assignees, top cases',
+    success: 200,
+    response: 'DefectReportDTO',
+  },
+  'GET /api/v1/projects/{projectId}/reports/releases': {
+    tag: 'Reports',
+    summary: 'Release comparison (newest release first)',
+    success: 200,
+    response: 'ReleaseComparisonRowDTO[]',
+  },
+  'GET /api/v1/projects/{projectId}/reports/coverage': {
+    tag: 'Reports',
+    summary: 'Coverage per suite (latest run case of every library case)',
+    success: 200,
+    response: 'CoverageRowDTO[]',
+  },
+
+  // ---- Report templates
+  'GET /api/v1/projects/{projectId}/templates': {
+    tag: 'Report templates',
+    summary: 'Report templates (first item: built-in default, id 0)',
+    success: 200,
+    response: 'TemplateDTO[]',
+  },
+  'POST /api/v1/projects/{projectId}/templates': {
+    tag: 'Report templates',
+    summary: 'Upload a report template',
+    success: 201,
+    response: 'TemplateDTO',
+  },
+  'PATCH /api/v1/projects/{projectId}/templates/{templateId}': {
+    tag: 'Report templates',
+    summary: 'Update template settings',
+    success: 200,
+    response: 'TemplateDTO',
+  },
+  'DELETE /api/v1/projects/{projectId}/templates/{templateId}': {
+    tag: 'Report templates',
+    summary: 'Delete a template',
+    success: 204,
+    response: 'void',
+  },
+  'GET /api/v1/projects/{projectId}/templates/{templateId}/check': {
+    tag: 'Report templates',
+    summary: 'Placeholders and sheets found in a template',
+    success: 200,
+    response: 'TemplateCheckDTO',
+  },
+  'GET /api/v1/projects/{projectId}/templates/{templateId}/download': {
+    tag: 'Report templates',
+    summary: 'Download a template workbook',
+    success: 200,
+    response: 'xlsx template',
+    produces: 'xlsx',
+  },
+  'GET /api/v1/projects/{projectId}/templates/placeholders': {
+    tag: 'Report templates',
+    summary: 'Placeholders available in templates',
+    success: 200,
+    response: '{ workbook: string[]; runs: string[]; run: string[]; cases: string[] }',
+  },
+
+  // ---- Jira
+  'GET /api/v1/projects/{projectId}/integrations': {
+    tag: 'Jira',
+    summary: 'Integration status for members (no auth details)',
+    success: 200,
+    response: 'IntegrationsStatusDTO',
+  },
+  'GET /api/v1/projects/{projectId}/integrations/jira': {
+    tag: 'Jira',
+    summary: 'Jira settings (null when not configured; the secret is never returned)',
+    success: 200,
+    response: 'JiraConfigDTO | null',
+  },
+  'PUT /api/v1/projects/{projectId}/integrations/jira': {
+    tag: 'Jira',
+    summary: 'Save Jira settings (secret omitted or empty = keep the stored one)',
+    notes: 'The stored secret is only reused for the same Jira server (scheme, host and port).',
+    success: 200,
+    response: 'JiraConfigDTO',
+  },
+  'DELETE /api/v1/projects/{projectId}/integrations/jira': {
+    tag: 'Jira',
+    summary: 'Remove the Jira settings',
+    success: 204,
+    response: 'void',
+  },
+  'POST /api/v1/projects/{projectId}/integrations/jira/test': {
+    tag: 'Jira',
+    summary: 'Test Jira settings (unsaved settings, or `{}` for the stored ones)',
+    notes: 'Always 200: `ok: false` with a message when Jira cannot be used.',
+    success: 200,
+    response: 'JiraTestResultDTO',
+  },
+  'POST /api/v1/projects/{projectId}/defects/{defectId}/jira': {
+    tag: 'Jira',
+    summary: 'Create a Jira issue from the defect and link it',
+    success: 200,
+    response: 'DefectDTO',
+  },
+  'POST /api/v1/projects/{projectId}/defects/{defectId}/jira/link': {
+    tag: 'Jira',
+    summary: 'Link the defect to an existing Jira issue (verified in Jira)',
+    success: 200,
+    response: 'DefectDTO',
+  },
+  'POST /api/v1/projects/{projectId}/defects/{defectId}/jira/sync': {
+    tag: 'Jira',
+    summary: 'Refresh the Jira status of the linked issue',
+    success: 200,
+    response: 'DefectDTO',
+  },
+  'DELETE /api/v1/projects/{projectId}/defects/{defectId}/jira': {
+    tag: 'Jira',
+    summary: 'Unlink the Jira issue (the issue itself is kept)',
+    success: 200,
+    response: 'DefectDTO',
+  },
+};

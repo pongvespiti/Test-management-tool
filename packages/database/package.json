@@ -1,0 +1,52 @@
+{
+  "name": "@tmt/database",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Prisma schema, migrations and typed client of the TMT PostgreSQL database.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "prisma"
+  ],
+  "scripts": {
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:reset": "prisma migrate reset",
+    "db:studio": "prisma studio",
+    "db:format": "prisma format",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist src/generated .turbo",
+    "test": "node --experimental-vm-modules --disable-warning=ExperimentalWarning node_modules/jest/bin/jest.js",
+    "test:cov": "node --experimental-vm-modules --disable-warning=ExperimentalWarning node_modules/jest/bin/jest.js --coverage",
+    "lint": "oxlint -c ../../.oxlintrc.json src test"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "7.10.1",
+    "@prisma/client": "7.10.1",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@jest/globals": "30.5.2",
+    "@swc/core": "1.16.13",
+    "@swc/jest": "0.2.39",
+    "@tmt/jest-config": "workspace:*",
+    "@tmt/shared": "workspace:*",
+    "@tmt/tsconfig": "workspace:*",
+    "@types/node": "^22.18.0",
+    "@types/pg": "^8.15.5",
+    "dotenv": "^17.2.0",
+    "jest": "30.5.2",
+    "prisma": "7.10.1",
+    "typescript": "~6.0.2"
+  }
+}

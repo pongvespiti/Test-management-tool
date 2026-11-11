@@ -1,0 +1,836 @@
+// =============================================================================================
+// TMT — Test Management Tool · database schema (PostgreSQL 16+, Prisma ORM 7)
+//
+// Conventions
+// - Models are PascalCase singular, tables are snake_case plural (@@map); columns are snake_case.
+// - Enum values mirror `packages/shared/src/enums.ts` exactly (the API contract) — change both.
+// - Audit columns `created_by_id` / `updated_by_id` reference users with ON DELETE SET NULL.
+// - Timestamps are `timestamptz`; calendar dates (`start_date`, `tested_date`) are `date`.
+// - Soft delete only where history must survive (test cases: run snapshots keep their copy).
+// See docs/database.md for the ER diagram and the reasoning behind each table.
+// =============================================================================================
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+  previewFeatures     = ["partialIndexes"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ------------------------------------------------------------------------------------ enums
+
+enum AuthProvider {
+  local
+  ldap
+
+  @@map("auth_provider")
+}
+
+/// Project role, lowest to highest privilege. System administrators act as `lead` everywhere.
+enum ProjectRole {
+  viewer
+  tester
+  lead
+
+  @@map("project_role")
+}
+
+enum ReleaseStatus {
+  planned
+  active
+  completed
+
+  @@map("release_status")
+}
+
+enum CaseType {
+  Normal
+  Abnormal
+
+  @@map("case_type")
+}
+
+/// Review workflow: draft → in_review → ready (approved); "request changes" sends it back to draft.
+enum CaseStatus {
+  draft
+  in_review
+  ready
+  deprecated
+
+  @@map("case_status")
+}
+
+enum CasePriority {
+  critical
+  high
+  medium
+  low
+
+  @@map("case_priority")
+}
+
+/// `text` = procedure/expected as free text (the team's Excel style); `steps` = step by step.
+enum CaseTemplate {
+  text
+  steps
+
+  @@map("case_template")
+}
+
+enum PlanStatus {
+  draft
+  in_progress
+  completed
+
+  @@map("plan_status")
+}
+
+enum Judgement {
+  pass
+  pass_with_condition
+  not_pass
+
+  @@map("judgement")
+}
+
+/// Result of one run case — vocabulary of the team's Excel: OK / NG / OK with condition / N/T / N/A.
+enum ResultStatus {
+  untested
+  ok
+  ng
+  ok_cond
+  blocked
+  nt
+  na
+
+  @@map("result_status")
+}
+
+/// Where a recorded result came from.
+enum ResultSource {
+  ui
+  bulk
+  junit
+  api
+
+  @@map("result_source")
+}
+
+enum DefectStatus {
+  new
+  open
+  in_progress
+  resolved
+  closed
+  reopened
+  rejected
+
+  @@map("defect_status")
+}
+
+enum DefectSeverity {
+  critical
+  major
+  minor
+  trivial
+
+  @@map("defect_severity")
+}
+
+enum DefectPriority {
+  high
+  medium
+  low
+
+  @@map("defect_priority")
+}
+
+enum AttachmentEntityType {
+  run_case
+  defect
+  test_case
+  plan
+  comment
+  template
+
+  @@map("attachment_entity_type")
+}
+
+enum CommentEntityType {
+  defect
+  run_case
+  test_case
+  plan
+
+  @@map("comment_entity_type")
+}
+
+enum ImportKind {
+  cases
+  junit
+
+  @@map("import_kind")
+}
+
+enum IntegrationKind {
+  jira
+
+  @@map("integration_kind")
+}
+
+// ------------------------------------------------------------------------- users & access
+
+/// A person who signs in. Users are deactivated, never deleted (history keeps their name).
+model User {
+  id                 Int          @id @default(autoincrement())
+  /// Stored lower-case; unique case-insensitively by construction.
+  username           String       @unique
+  displayName        String       @map("display_name")
+  email              String?
+  /// scrypt hash (`scrypt$N$r$p$salt$hash`); empty for external auth providers.
+  passwordHash       String       @map("password_hash")
+  authProvider       AuthProvider @default(local) @map("auth_provider")
+  isAdmin            Boolean      @default(false) @map("is_admin")
+  isActive           Boolean      @default(true) @map("is_active")
+  mustChangePassword Boolean      @default(true) @map("must_change_password")
+  failedLogins       Int          @default(0) @map("failed_logins")
+  lockedUntil        DateTime?    @map("locked_until") @db.Timestamptz(6)
+  lastLoginAt        DateTime?    @map("last_login_at") @db.Timestamptz(6)
+  createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  sessions    Session[]
+  apiTokens   ApiToken[]
+  memberships ProjectMember[]
+
+  projectsCreated     Project[]            @relation("ProjectCreatedBy")
+  testCasesCreated    TestCase[]           @relation("TestCaseCreatedBy")
+  testCasesUpdated    TestCase[]           @relation("TestCaseUpdatedBy")
+  testCasesToReview   TestCase[]           @relation("TestCaseReviewer")
+  reviewsRequested    TestCase[]           @relation("TestCaseReviewRequestedBy")
+  reviewsDone         TestCase[]           @relation("TestCaseReviewedBy")
+  caseVersions        TestCaseVersion[]
+  sharedStepsCreated  SharedStep[]         @relation("SharedStepCreatedBy")
+  sharedStepsUpdated  SharedStep[]         @relation("SharedStepUpdatedBy")
+  attachments         Attachment[]
+  reportTemplates     ReportTemplate[]
+  plansCreated        TestPlan[]           @relation("PlanCreatedBy")
+  plansCompleted      TestPlan[]           @relation("PlanCompletedBy")
+  runsCreated         TestRun[]            @relation("RunCreatedBy")
+  runsTested          TestRun[]            @relation("RunTester")
+  runCasesAssigned    RunCase[]            @relation("RunCaseAssignee")
+  runCasesExecuted    RunCase[]            @relation("RunCaseExecutedBy")
+  resultsRecorded     RunCaseResult[]
+  defectsAssigned     Defect[]             @relation("DefectAssignee")
+  defectsReported     Defect[]             @relation("DefectReporter")
+  comments            Comment[]
+  imports             Import[]
+  activities          ActivityLog[]
+  integrationsUpdated ProjectIntegration[]
+
+  @@map("users")
+}
+
+/// Server-side session. The cookie holds a random token; only its SHA-256 is stored here.
+model Session {
+  /// SHA-256 (hex) of the session token.
+  id         String   @id
+  userId     Int      @map("user_id")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastSeenAt DateTime @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+  expiresAt  DateTime @map("expires_at") @db.Timestamptz(6)
+  ip         String?
+  userAgent  String?  @map("user_agent")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+/// Personal API token (`Authorization: Bearer tmt_…`). Only the SHA-256 and a short prefix are kept.
+model ApiToken {
+  id         Int       @id @default(autoincrement())
+  userId     Int       @map("user_id")
+  name       String
+  tokenHash  String    @unique @map("token_hash")
+  prefix     String
+  lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz(6)
+  expiresAt  DateTime? @map("expires_at") @db.Timestamptz(6)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("api_tokens")
+}
+
+// ----------------------------------------------------------------------------------- projects
+
+model Project {
+  id                Int      @id @default(autoincrement())
+  /// Short upper-case key used in ids (e.g. `ACS`).
+  key               String   @unique
+  name              String
+  description       String?
+  /// Document-number pattern for test plans, tokens {YY} {YYYY} {MM} {SEQ}.
+  docNoPattern      String   @map("doc_no_pattern")
+  isArchived        Boolean  @default(false) @map("is_archived")
+  /// When true only leads can make cases `ready` (review workflow).
+  requireCaseReview Boolean  @default(false) @map("require_case_review")
+  /// Next defect number (`BUG-<n>`), incremented atomically.
+  nextDefectSeq     Int      @default(1) @map("next_defect_seq")
+  createdById       Int?     @map("created_by_id")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  createdBy       User?                @relation("ProjectCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  members         ProjectMember[]
+  releases        Release[]
+  suites          Suite[]
+  sharedSteps     SharedStep[]
+  attachments     Attachment[]
+  reportTemplates ReportTemplate[]
+  plans           TestPlan[]
+  defects         Defect[]
+  comments        Comment[]
+  imports         Import[]
+  activities      ActivityLog[]
+  integrations    ProjectIntegration[]
+
+  @@map("projects")
+}
+
+model ProjectMember {
+  projectId Int         @map("project_id")
+  userId    Int         @map("user_id")
+  role      ProjectRole
+  createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, userId])
+  @@index([userId])
+  @@map("project_members")
+}
+
+model Release {
+  id          Int           @id @default(autoincrement())
+  projectId   Int           @map("project_id")
+  name        String
+  description String?
+  startDate   DateTime?     @map("start_date") @db.Date
+  endDate     DateTime?     @map("end_date") @db.Date
+  status      ReleaseStatus @default(planned)
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  project Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  plans   TestPlan[]
+  defects Defect[]
+
+  @@index([projectId])
+  @@map("releases")
+}
+
+// ------------------------------------------------------------------------------------ library
+
+/// A test suite (one Excel workbook type): custom field definitions and run environment template.
+model Suite {
+  id          Int      @id @default(autoincrement())
+  projectId   Int      @map("project_id")
+  name        String
+  /// Prefix of case display ids (`MBS` → `MBS-036`).
+  prefix      String
+  description String?
+  /// `FieldDef[]` — custom columns of the suite.
+  fieldDefs   Json     @default("[]") @map("field_defs")
+  /// `string[]` — environment labels a run fills in (device, firmware, …).
+  envTemplate Json     @default("[]") @map("env_template")
+  /// Next case sequence number, incremented atomically.
+  nextSeq     Int      @default(1) @map("next_seq")
+  sortOrder   Int      @default(0) @map("sort_order")
+  isArchived  Boolean  @default(false) @map("is_archived")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  project         Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sections        Section[]
+  testCases       TestCase[]
+  reportTemplates ReportTemplate[]
+  runs            TestRun[]
+  imports         Import[]
+
+  @@unique([projectId, prefix])
+  @@map("suites")
+}
+
+/// Section tree inside a suite (category → sub-category …).
+model Section {
+  id        Int      @id @default(autoincrement())
+  suiteId   Int      @map("suite_id")
+  parentId  Int?     @map("parent_id")
+  name      String
+  code      String?
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  suite     Suite      @relation(fields: [suiteId], references: [id], onDelete: Cascade)
+  parent    Section?   @relation("SectionTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children  Section[]  @relation("SectionTree")
+  testCases TestCase[]
+
+  @@index([suiteId, parentId])
+  @@map("sections")
+}
+
+model TestCase {
+  id                  Int          @id @default(autoincrement())
+  suiteId             Int          @map("suite_id")
+  sectionId           Int?         @map("section_id")
+  /// Sequence inside the suite → display id `<prefix>-<seq>`.
+  seq                 Int
+  /// The team's own case code (Excel "No." / "Case ID"), unique per suite among live cases.
+  code                String?
+  title               String
+  caseType            CaseType     @default(Normal) @map("case_type")
+  status              CaseStatus   @default(ready)
+  priority            CasePriority @default(medium)
+  tags                String[]     @default([])
+  estimateMinutes     Int?         @map("estimate_minutes")
+  /// Requirement ids / Jira keys / spec references (free text).
+  references          String?      @map("refs")
+  template            CaseTemplate @default(text)
+  /// `CaseStepInput[]`: `{kind:'step',action,expected}` or `{kind:'shared',sharedStepId}`.
+  steps               Json         @default("[]")
+  precondition        String?
+  procedure           String?
+  expected            String?
+  remark              String?
+  summaryGroup        String?      @map("summary_group")
+  /// Values of the suite's custom fields, keyed by field key.
+  custom              Json         @default("{}")
+  sortOrder           Int          @default(0) @map("sort_order")
+  /// Optimistic-concurrency version, +1 on every change (history in test_case_versions).
+  version             Int          @default(1)
+  isDeleted           Boolean      @default(false) @map("is_deleted")
+  /// Where an imported case came from: `{ fileName, sheet, row }`.
+  source              Json?
+  reviewerId          Int?         @map("reviewer_id")
+  reviewRequestedById Int?         @map("review_requested_by_id")
+  reviewRequestedAt   DateTime?    @map("review_requested_at") @db.Timestamptz(6)
+  reviewedById        Int?         @map("reviewed_by_id")
+  reviewedAt          DateTime?    @map("reviewed_at") @db.Timestamptz(6)
+  reviewNote          String?      @map("review_note")
+  createdById         Int?         @map("created_by_id")
+  updatedById         Int?         @map("updated_by_id")
+  createdAt           DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  suite             Suite             @relation(fields: [suiteId], references: [id], onDelete: Cascade)
+  section           Section?          @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  reviewer          User?             @relation("TestCaseReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  reviewRequestedBy User?             @relation("TestCaseReviewRequestedBy", fields: [reviewRequestedById], references: [id], onDelete: SetNull)
+  reviewedBy        User?             @relation("TestCaseReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  createdBy         User?             @relation("TestCaseCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy         User?             @relation("TestCaseUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  versions          TestCaseVersion[]
+  runCases          RunCase[]
+  defectLinks       DefectLink[]
+
+  @@unique([suiteId, seq])
+  @@unique([suiteId, code], map: "test_cases_suite_code_live_key", where: raw("code IS NOT NULL AND NOT is_deleted"))
+  @@index([suiteId, sectionId])
+  @@index([tags], type: Gin)
+  @@index([steps(ops: JsonbPathOps)], type: Gin)
+  @@index([status, reviewerId], map: "test_cases_review_queue_idx", where: raw("status = 'in_review'"))
+  @@map("test_cases")
+}
+
+/// Full snapshot of a test case after each change (history tab, audit).
+model TestCaseVersion {
+  id          Int      @id @default(autoincrement())
+  testCaseId  Int      @map("test_case_id")
+  version     Int
+  data        Json
+  changedById Int?     @map("changed_by_id")
+  changedAt   DateTime @default(now()) @map("changed_at") @db.Timestamptz(6)
+
+  testCase  TestCase @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+  changedBy User?    @relation(fields: [changedById], references: [id], onDelete: SetNull)
+
+  @@index([testCaseId, version])
+  @@map("test_case_versions")
+}
+
+/// Reusable step set referenced from case steps (`{kind:'shared', sharedStepId}`), per project.
+model SharedStep {
+  id          Int      @id @default(autoincrement())
+  projectId   Int      @map("project_id")
+  /// Unique per project (case-insensitive check in the service).
+  name        String
+  description String?
+  /// `PlainStep[]` — `{ action, expected }`.
+  steps       Json     @default("[]")
+  version     Int      @default(1)
+  createdById Int?     @map("created_by_id")
+  updatedById Int?     @map("updated_by_id")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy User?   @relation("SharedStepCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy User?   @relation("SharedStepUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@unique([projectId, name])
+  @@map("shared_steps")
+}
+
+// ---------------------------------------------------------------------- files & report templates
+
+/// Uploaded file (evidence, signed report, template). Content lives in the file storage.
+model Attachment {
+  id          String               @id @default(uuid()) @db.Uuid
+  projectId   Int                  @map("project_id")
+  entityType  AttachmentEntityType @map("entity_type")
+  entityId    Int?                 @map("entity_id")
+  fileName    String               @map("file_name")
+  mimeType    String               @map("mime_type")
+  sizeBytes   BigInt               @map("size_bytes")
+  sha256      String
+  /// Relative path inside the storage root.
+  storageKey  String               @map("storage_key")
+  createdById Int?                 @map("created_by_id")
+  createdAt   DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  project         Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy       User?            @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  reportTemplates ReportTemplate[]
+  signedPlans     TestPlan[]       @relation("PlanSignedCopy")
+
+  @@index([entityType, entityId])
+  @@index([projectId])
+  @@map("attachments")
+}
+
+/// The team's controlled Excel form with placeholders (ADR-002).
+model ReportTemplate {
+  id           Int      @id @default(autoincrement())
+  projectId    Int      @map("project_id")
+  suiteId      Int?     @map("suite_id")
+  name         String
+  description  String?
+  attachmentId String   @map("attachment_id") @db.Uuid
+  /// `{ runSheet?: string }`
+  config       Json     @default("{}")
+  isDefault    Boolean  @default(false) @map("is_default")
+  createdById  Int?     @map("created_by_id")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  project    Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  suite      Suite?     @relation(fields: [suiteId], references: [id], onDelete: SetNull)
+  attachment Attachment @relation(fields: [attachmentId], references: [id], onDelete: Restrict)
+  createdBy  User?      @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  plans      TestPlan[]
+
+  @@index([projectId])
+  @@map("report_templates")
+}
+
+// ------------------------------------------------------------------------ plans, runs, results
+
+/// A test report (document number, purpose, judgement) grouping one or more runs.
+model TestPlan {
+  id                Int        @id @default(autoincrement())
+  projectId         Int        @map("project_id")
+  releaseId         Int?       @map("release_id")
+  docNo             String     @map("doc_no")
+  title             String
+  purpose           String?
+  testMethod        String?    @map("test_method")
+  judgementCriteria String?    @map("judgement_criteria")
+  rawDataPath       String?    @map("raw_data_path")
+  overallJudgement  Judgement? @map("overall_judgement")
+  judgementNote     String?    @map("judgement_note")
+  status            PlanStatus @default(draft)
+  completedAt       DateTime?  @map("completed_at") @db.Timestamptz(6)
+  completedById     Int?       @map("completed_by_id")
+  templateId        Int?       @map("template_id")
+  /// Scanned, hand-signed report uploaded after completion.
+  signedCopyId      String?    @map("signed_copy_id") @db.Uuid
+  createdById       Int?       @map("created_by_id")
+  createdAt         DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  release     Release?        @relation(fields: [releaseId], references: [id], onDelete: SetNull)
+  completedBy User?           @relation("PlanCompletedBy", fields: [completedById], references: [id], onDelete: SetNull)
+  template    ReportTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  signedCopy  Attachment?     @relation("PlanSignedCopy", fields: [signedCopyId], references: [id], onDelete: SetNull)
+  createdBy   User?           @relation("PlanCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  runs        TestRun[]
+
+  @@unique([projectId, docNo])
+  @@index([projectId, releaseId])
+  @@map("test_plans")
+}
+
+/// One execution of a suite in a plan (one device / configuration / "Test ID").
+model TestRun {
+  id            Int        @id @default(autoincrement())
+  planId        Int        @map("plan_id")
+  suiteId       Int        @map("suite_id")
+  code          String
+  scenario      String?
+  /// `{ label, value }[]` filled from the suite's environment template.
+  environment   Json       @default("[]")
+  testerId      Int?       @map("tester_id")
+  testedDate    DateTime?  @map("tested_date") @db.Date
+  judgement     Judgement?
+  judgementNote String?    @map("judgement_note")
+  remark        String?
+  sortOrder     Int        @default(0) @map("sort_order")
+  /// The run this one re-runs (NG/Blocked carry-over).
+  sourceRunId   Int?       @map("source_run_id")
+  createdById   Int?       @map("created_by_id")
+  createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  plan      TestPlan  @relation(fields: [planId], references: [id], onDelete: Cascade)
+  suite     Suite     @relation(fields: [suiteId], references: [id], onDelete: Restrict)
+  tester    User?     @relation("RunTester", fields: [testerId], references: [id], onDelete: SetNull)
+  sourceRun TestRun?  @relation("RunRerun", fields: [sourceRunId], references: [id], onDelete: SetNull)
+  reruns    TestRun[] @relation("RunRerun")
+  createdBy User?     @relation("RunCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  runCases  RunCase[]
+  imports   Import[]
+
+  @@unique([planId, code])
+  @@index([suiteId])
+  @@map("test_runs")
+}
+
+/// Frozen copy of a library case inside a run (ADR-003) plus its current result.
+model RunCase {
+  id              Int          @id @default(autoincrement())
+  runId           Int          @map("run_id")
+  testCaseId      Int?         @map("test_case_id")
+  caseVersion     Int          @default(1) @map("case_version")
+  displayId       String       @map("display_id")
+  code            String?
+  title           String
+  caseType        CaseType     @default(Normal) @map("case_type")
+  sectionPath     String[]     @default([]) @map("section_path")
+  priority        CasePriority @default(medium)
+  tags            String[]     @default([])
+  estimateMinutes Int?         @map("estimate_minutes")
+  references      String?      @map("refs")
+  template        CaseTemplate @default(text)
+  precondition    String?
+  procedure       String?
+  expected        String?
+  /// Snapshot `RunStepDTO[]` (shared steps flattened).
+  steps           Json         @default("[]")
+  caseRemark      String?      @map("case_remark")
+  summaryGroup    String?      @map("summary_group")
+  custom          Json         @default("{}")
+  sortOrder       Int          @default(0) @map("sort_order")
+  /// Explicit assignee; null = the run's tester.
+  assigneeId      Int?         @map("assignee_id")
+  status          ResultStatus @default(untested)
+  actualResult    String?      @map("actual_result")
+  resultRemark    String?      @map("result_remark")
+  /// `StepResultDTO[]` index-aligned with `steps`, or null.
+  stepResults     Json?        @map("step_results")
+  executedById    Int?         @map("executed_by_id")
+  executedAt      DateTime?    @map("executed_at") @db.Timestamptz(6)
+  elapsedSec      Int?         @map("elapsed_sec")
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  run         TestRun         @relation(fields: [runId], references: [id], onDelete: Cascade)
+  testCase    TestCase?       @relation(fields: [testCaseId], references: [id], onDelete: SetNull)
+  assignee    User?           @relation("RunCaseAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  executedBy  User?           @relation("RunCaseExecutedBy", fields: [executedById], references: [id], onDelete: SetNull)
+  results     RunCaseResult[]
+  defectLinks DefectLink[]
+
+  @@index([runId, sortOrder])
+  @@index([runId, status])
+  @@index([testCaseId])
+  @@index([assigneeId])
+  @@map("run_cases")
+}
+
+/// Append-only history of results recorded on a run case.
+model RunCaseResult {
+  id           Int          @id @default(autoincrement())
+  runCaseId    Int          @map("run_case_id")
+  status       ResultStatus
+  actualResult String?      @map("actual_result")
+  remark       String?
+  stepResults  Json?        @map("step_results")
+  source       ResultSource @default(ui)
+  executedById Int?         @map("executed_by_id")
+  executedAt   DateTime     @default(now()) @map("executed_at") @db.Timestamptz(6)
+  elapsedSec   Int?         @map("elapsed_sec")
+
+  runCase    RunCase @relation(fields: [runCaseId], references: [id], onDelete: Cascade)
+  executedBy User?   @relation(fields: [executedById], references: [id], onDelete: SetNull)
+
+  @@index([runCaseId])
+  @@index([executedAt])
+  @@map("run_case_results")
+}
+
+// --------------------------------------------------------------------- defects & collaboration
+
+model Defect {
+  id               Int            @id @default(autoincrement())
+  projectId        Int            @map("project_id")
+  /// Number inside the project → key `BUG-<seq>`.
+  seq              Int
+  title            String
+  description      String?
+  steps            String?
+  expected         String?
+  actual           String?
+  severity         DefectSeverity @default(major)
+  priority         DefectPriority @default(medium)
+  status           DefectStatus   @default(new)
+  assigneeId       Int?           @map("assignee_id")
+  reporterId       Int?           @map("reporter_id")
+  releaseId        Int?           @map("release_id")
+  foundIn          String?        @map("found_in")
+  fixedIn          String?        @map("fixed_in")
+  environment      String?
+  /// Linked Jira issue: key, browse URL, last synced status name and time.
+  externalKey      String?        @map("external_key")
+  externalUrl      String?        @map("external_url")
+  externalStatus   String?        @map("external_status")
+  externalSyncedAt DateTime?      @map("external_synced_at") @db.Timestamptz(6)
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  resolvedAt       DateTime?      @map("resolved_at") @db.Timestamptz(6)
+  closedAt         DateTime?      @map("closed_at") @db.Timestamptz(6)
+
+  project  Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee User?        @relation("DefectAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  reporter User?        @relation("DefectReporter", fields: [reporterId], references: [id], onDelete: SetNull)
+  release  Release?     @relation(fields: [releaseId], references: [id], onDelete: SetNull)
+  links    DefectLink[]
+
+  @@unique([projectId, seq])
+  @@index([projectId, status])
+  @@map("defects")
+}
+
+/// Defect ↔ run case (and its library case) link.
+model DefectLink {
+  id         Int      @id @default(autoincrement())
+  defectId   Int      @map("defect_id")
+  runCaseId  Int?     @map("run_case_id")
+  testCaseId Int?     @map("test_case_id")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  defect   Defect    @relation(fields: [defectId], references: [id], onDelete: Cascade)
+  runCase  RunCase?  @relation(fields: [runCaseId], references: [id], onDelete: Cascade)
+  testCase TestCase? @relation(fields: [testCaseId], references: [id], onDelete: SetNull)
+
+  @@unique([defectId, runCaseId], map: "defect_links_defect_run_case_key", where: raw("run_case_id IS NOT NULL"))
+  @@index([defectId])
+  @@index([runCaseId])
+  @@map("defect_links")
+}
+
+model Comment {
+  id         Int               @id @default(autoincrement())
+  projectId  Int               @map("project_id")
+  entityType CommentEntityType @map("entity_type")
+  entityId   Int               @map("entity_id")
+  body       String
+  authorId   Int?              @map("author_id")
+  createdAt  DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  author  User?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@map("comments")
+}
+
+/// Record of an Excel/CSV case import or a JUnit results import.
+model Import {
+  id          Int        @id @default(autoincrement())
+  projectId   Int        @map("project_id")
+  kind        ImportKind @default(cases)
+  suiteId     Int?       @map("suite_id")
+  runId       Int?       @map("run_id")
+  fileName    String     @map("file_name")
+  sheet       String     @default("")
+  /// Detected Excel layout; null for JUnit imports.
+  layout      String?
+  stats       Json       @default("{}")
+  createdById Int?       @map("created_by_id")
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  suite     Suite?   @relation(fields: [suiteId], references: [id], onDelete: SetNull)
+  run       TestRun? @relation(fields: [runId], references: [id], onDelete: SetNull)
+  createdBy User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+  @@map("imports")
+}
+
+/// Who did what, when (activity feed and audit).
+model ActivityLog {
+  id         Int      @id @default(autoincrement())
+  projectId  Int?     @map("project_id")
+  userId     Int?     @map("user_id")
+  entityType String   @map("entity_type")
+  entityId   Int?     @map("entity_id")
+  action     String
+  summary    String
+  data       Json?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, createdAt])
+  @@index([entityType, entityId])
+  @@map("activity_log")
+}
+
+/// Per-project integration settings (Jira). Secrets are sealed with AES-256-GCM (ADR-008).
+model ProjectIntegration {
+  id          Int             @id @default(autoincrement())
+  projectId   Int             @map("project_id")
+  kind        IntegrationKind
+  enabled     Boolean         @default(true)
+  /// Non-secret settings (base URL, project key, issue type, auth type, username, verifyTls).
+  config      Json            @default("{}")
+  /// `v1:<iv>:<tag>:<ciphertext>` (base64url parts) or null.
+  secretEnc   String?         @map("secret_enc")
+  updatedById Int?            @map("updated_by_id")
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  updatedBy User?   @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@unique([projectId, kind])
+  @@map("project_integrations")
+}

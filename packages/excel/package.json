@@ -1,0 +1,47 @@
+{
+  "name": "@tmt/excel",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Excel engines of TMT: workbook/CSV import with layout detection, and template-based report export.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./assets/*": "./assets/*"
+  },
+  "files": [
+    "dist",
+    "assets"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-vm-modules --disable-warning=ExperimentalWarning node_modules/jest/bin/jest.js",
+    "template:build": "tsx scripts/build-default-template.ts",
+    "clean": "rm -rf dist .turbo",
+    "test:cov": "node --experimental-vm-modules --disable-warning=ExperimentalWarning node_modules/jest/bin/jest.js --coverage",
+    "lint": "oxlint -c ../../.oxlintrc.json src test"
+  },
+  "dependencies": {
+    "@tmt/shared": "workspace:*",
+    "exceljs": "^4.4.0",
+    "jszip": "^3.10.1"
+  },
+  "devDependencies": {
+    "@jest/globals": "30.5.2",
+    "@swc/core": "1.16.13",
+    "@swc/jest": "0.2.39",
+    "@tmt/jest-config": "workspace:*",
+    "@tmt/tsconfig": "workspace:*",
+    "@types/node": "^22.18.0",
+    "jest": "30.5.2",
+    "tsup": "^8.5.0",
+    "tsx": "^4.20.0",
+    "typescript": "~6.0.2"
+  }
+}

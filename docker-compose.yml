@@ -1,0 +1,79 @@
+# TMT on one server: PostgreSQL + one-shot migration + API + web.
+#   cp .env.example .env   # set POSTGRES_PASSWORD, APP_SECRET, COOKIE_SECURE, WEB_ORIGINS, …
+#   docker compose up -d --build
+# Open http://localhost:${WEB_PORT:-3000}; the first administrator password is printed once in
+# `docker compose logs api` when INITIAL_ADMIN_PASSWORD is empty.
+name: tmt
+
+x-database-url: &database-url postgresql://${POSTGRES_USER:-tmt}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-tmt}?schema=public
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-tmt}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-tmt}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: migrate
+    environment:
+      DATABASE_URL: *database-url
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: 'no'
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: api
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: *database-url
+      # Container-internal values win over a copy of `.env.example` used on the host.
+      API_HOST: 0.0.0.0
+      API_PORT: 4000
+      DATA_DIR: /data
+      WEB_ORIGINS: ${WEB_ORIGINS:-http://localhost:3000}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - '${API_PUBLISHED_PORT:-4000}:4000'
+    volumes:
+      - tmt-data:/data
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: web
+    restart: unless-stopped
+    environment:
+      API_URL: http://api:4000
+      SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-tmt_session}
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - '${WEB_PORT:-3000}:3000'
+
+volumes:
+  db-data:
+  tmt-data:

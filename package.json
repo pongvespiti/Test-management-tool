@@ -1,0 +1,36 @@
+{
+  "name": "test-management-tool",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Test Management Tool (TMT) \u2014 on-prem test case, test run, defect and report management. Next.js + NestJS + Prisma monorepo.",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "bootstrap": "pnpm install && pnpm db:generate && pnpm build && pnpm db:deploy && pnpm db:seed",
+    "dev": "turbo run dev --filter=@tmt/api --filter=@tmt/web",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:generate": "pnpm --filter @tmt/database db:generate",
+    "db:migrate": "pnpm --filter @tmt/database db:migrate",
+    "db:deploy": "pnpm --filter @tmt/database db:deploy",
+    "db:reset": "pnpm --filter @tmt/database db:reset",
+    "db:seed": "pnpm --filter @tmt/api seed",
+    "db:studio": "pnpm --filter @tmt/database db:studio",
+    "clean": "turbo run clean",
+    "test:cov": "turbo run test:cov",
+    "test:e2e": "turbo run test:e2e"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "oxlint": "^1.58.0",
+    "prettier": "^3.6.2",
+    "turbo": "^2.11.10",
+    "typescript": "~6.0.2"
+  }
+}
