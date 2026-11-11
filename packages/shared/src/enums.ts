@@ -42,6 +42,13 @@ export type Judgement = (typeof JUDGEMENTS)[number];
 export const RELEASE_STATUSES = ['planned', 'active', 'completed'] as const;
 export type ReleaseStatus = (typeof RELEASE_STATUSES)[number];
 
+export const SESSION_STATUSES = ['planned', 'in_progress', 'completed'] as const;
+export type SessionStatus = (typeof SESSION_STATUSES)[number];
+
+/** What a timeline note of an exploratory session is. */
+export const SESSION_NOTE_KINDS = ['note', 'bug', 'question', 'idea'] as const;
+export type SessionNoteKind = (typeof SESSION_NOTE_KINDS)[number];
+
 export const DEFECT_STATUSES = [
   'new',
   'open',

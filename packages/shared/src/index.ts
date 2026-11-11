@@ -7,6 +7,7 @@ export * from './schemas/admin';
 export * from './schemas/library';
 export * from './schemas/execution';
 export * from './schemas/summary';
+export * from './schemas/sessions';
 export * from './schemas/imports';
 export * from './schemas/templates';
 export * from './schemas/integrations';

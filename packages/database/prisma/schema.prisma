@@ -123,6 +123,23 @@ enum ResultSource {
   @@map("result_source")
 }
 
+enum SessionStatus {
+  planned
+  in_progress
+  completed
+
+  @@map("session_status")
+}
+
+enum SessionNoteKind {
+  note
+  bug
+  question
+  idea
+
+  @@map("session_note_kind")
+}
+
 enum DefectStatus {
   new
   open
@@ -235,6 +252,9 @@ model User {
   activities          ActivityLog[]
   integrationsUpdated ProjectIntegration[]
   savedViews          SavedView[]
+  sessionsOwned       ExploratorySession[] @relation("SessionOwner")
+  sessionsCreated     ExploratorySession[] @relation("SessionCreatedBy")
+  sessionNotes        ExploratoryNote[]
 
   @@map("users")
 }
@@ -290,6 +310,7 @@ model Project {
   requireCaseReview Boolean  @default(false) @map("require_case_review")
   /// Next defect number (`BUG-<n>`), incremented atomically.
   nextDefectSeq     Int      @default(1) @map("next_defect_seq")
+  nextSessionSeq    Int      @default(1) @map("next_session_seq")
   /// Lists of values behind the run environment labels: `{ label, parent, values: { value, parent }[] }[]`.
   envDimensions     Json     @default("[]") @map("env_dimensions")
   createdById       Int?     @map("created_by_id")
@@ -310,6 +331,7 @@ model Project {
   activities      ActivityLog[]
   integrations    ProjectIntegration[]
   savedViews      SavedView[]
+  sessions        ExploratorySession[]
 
   @@map("projects")
 }
@@ -343,6 +365,7 @@ model Release {
   plans   TestPlan[]
   defects Defect[]
   builds  Build[]
+  sessions ExploratorySession[]
 
   @@index([projectId])
   @@map("releases")
@@ -363,6 +386,7 @@ model Build {
   runs         TestRun[]
   foundDefects Defect[]  @relation("DefectFoundInBuild")
   fixedDefects Defect[]  @relation("DefectFixedInBuild")
+  sessions     ExploratorySession[]
 
   @@unique([releaseId, name])
   @@map("builds")
@@ -768,6 +792,7 @@ model Defect {
   assignee User?        @relation("DefectAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   reporter User?        @relation("DefectReporter", fields: [reporterId], references: [id], onDelete: SetNull)
   release  Release?     @relation(fields: [releaseId], references: [id], onDelete: SetNull)
+  sessionLinks ExploratoryDefect[]
   foundInBuild Build?   @relation("DefectFoundInBuild", fields: [foundInBuildId], references: [id], onDelete: Restrict)
   fixedInBuild Build?   @relation("DefectFixedInBuild", fields: [fixedInBuildId], references: [id], onDelete: Restrict)
   links    DefectLink[]
@@ -895,4 +920,70 @@ model SavedView {
   @@unique([projectId, userId, name])
   @@index([projectId])
   @@map("saved_views")
+}
+
+/// A time-boxed exploration with a charter, a timeline of notes and the defects it found.
+model ExploratorySession {
+  id             Int           @id @default(autoincrement())
+  projectId      Int           @map("project_id")
+  /// Number inside the project → key `EXP-<seq>`.
+  seq            Int
+  title          String
+  charter        String?
+  ownerId        Int?          @map("owner_id")
+  releaseId      Int?          @map("release_id")
+  buildId        Int?          @map("build_id")
+  /// `{ label, value }[]` like a run's environment.
+  environment    Json          @default("[]")
+  timeBoxMinutes Int?          @map("time_box_minutes")
+  status         SessionStatus @default(planned)
+  startedAt      DateTime?     @map("started_at") @db.Timestamptz(6)
+  endedAt        DateTime?     @map("ended_at") @db.Timestamptz(6)
+  /// Requirements / Jira keys / specs explored, spelled like case references.
+  references     String?       @map("refs")
+  summary        String?
+  createdById    Int?          @map("created_by_id")
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  project   Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  owner     User?              @relation("SessionOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  createdBy User?              @relation("SessionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  release   Release?           @relation(fields: [releaseId], references: [id], onDelete: SetNull)
+  build     Build?             @relation(fields: [buildId], references: [id], onDelete: Restrict)
+  notes     ExploratoryNote[]
+  defects   ExploratoryDefect[]
+
+  @@unique([projectId, seq])
+  @@index([projectId, status])
+  @@index([buildId])
+  @@map("exploratory_sessions")
+}
+
+model ExploratoryNote {
+  id        Int             @id @default(autoincrement())
+  sessionId Int             @map("session_id")
+  kind      SessionNoteKind @default(note)
+  body      String
+  authorId  Int?            @map("author_id")
+  createdAt DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  session ExploratorySession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  author  User?              @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([sessionId, createdAt])
+  @@map("exploratory_notes")
+}
+
+model ExploratoryDefect {
+  sessionId Int      @map("session_id")
+  defectId  Int      @map("defect_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  session ExploratorySession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  defect  Defect             @relation(fields: [defectId], references: [id], onDelete: Cascade)
+
+  @@id([sessionId, defectId])
+  @@index([defectId])
+  @@map("exploratory_defects")
 }

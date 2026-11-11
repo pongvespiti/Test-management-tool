@@ -10,6 +10,8 @@ import type {
   ReleaseStatus,
   ResultSource,
   ResultStatus,
+  SessionNoteKind,
+  SessionStatus,
 } from './enums';
 
 export const RESULT_LABELS: Record<ResultStatus, string> = {
@@ -73,6 +75,19 @@ export const RELEASE_STATUS_LABELS: Record<ReleaseStatus, string> = {
   planned: 'Planned',
   active: 'Active',
   completed: 'Completed',
+};
+
+export const SESSION_STATUS_LABELS: Record<SessionStatus, string> = {
+  planned: 'Planned',
+  in_progress: 'In progress',
+  completed: 'Completed',
+};
+
+export const SESSION_NOTE_KIND_LABELS: Record<SessionNoteKind, string> = {
+  note: 'Note',
+  bug: 'Bug found',
+  question: 'Question',
+  idea: 'Idea',
 };
 
 export const DEFECT_STATUS_LABELS: Record<DefectStatus, string> = {

@@ -25,6 +25,8 @@ import type {
   ReleaseStatus,
   ResultSource,
   ResultStatus,
+  SessionNoteKind,
+  SessionStatus,
 } from './enums';
 import type { MatrixCell } from './logic/matrix';
 
@@ -1246,6 +1248,53 @@ export interface SummaryDTO {
   totals: { counts: StatusCounts; runs: number };
   /** Runs in the scope before the filters. */
   scopeRuns: number;
+}
+
+// ---------------------------------------------------------------- exploratory sessions
+
+export interface SessionListItemDTO {
+  id: number;
+  /** `EXP-<seq>` */
+  key: string;
+  title: string;
+  status: SessionStatus;
+  owner: UserRef | null;
+  release: NamedRef | null;
+  build: NamedRef | null;
+  references: string | null;
+  timeBoxMinutes: number | null;
+  startedAt: string | null;
+  endedAt: string | null;
+  noteCount: number;
+  defectCount: number;
+  createdAt: string;
+}
+
+export interface SessionNoteDTO {
+  id: number;
+  kind: SessionNoteKind;
+  body: string;
+  author: UserRef | null;
+  createdAt: string;
+}
+
+export interface SessionDefectDTO {
+  id: number;
+  key: string;
+  title: string;
+  status: DefectStatus;
+  severity: DefectSeverity;
+}
+
+export interface SessionDTO extends SessionListItemDTO {
+  projectId: number;
+  charter: string | null;
+  environment: EnvEntryDTO[];
+  summary: string | null;
+  createdBy: UserRef | null;
+  /** Oldest first. */
+  notes: SessionNoteDTO[];
+  defects: SessionDefectDTO[];
 }
 
 /** One run on the schedule: when its plan starts, when the run is due, who has it. */
