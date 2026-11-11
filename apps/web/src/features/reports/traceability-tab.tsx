@@ -10,6 +10,8 @@ import { MonoId } from '@/components/common/mono-id';
 import { SegmentedControl } from '@/components/common/list-controls';
 import { StackedProgress } from '@/components/common/stacked-progress';
 import { Button } from '@/components/ui/button';
+import { RequirementSourceBadge } from '@/features/requirements/requirement-badges';
+import { VIA_LABELS } from '@/features/requirements/requirement-dialog';
 import { useTraceabilityReport } from '@/lib/api/reports';
 import { formatNumber } from '@/lib/format';
 import { routes } from '@/lib/routes';
@@ -41,7 +43,7 @@ export function TraceabilityTab({
         <EmptyState
           icon={<Link2 className="size-6" strokeWidth={1.6} />}
           title="No references yet"
-          description="Write requirement ids, Jira keys or spec numbers in the References field of a test case, separated by commas."
+          description="Add requirements (Excel, Jira or by hand) and link cases to them, or write requirement ids, Jira keys or spec numbers in the References field of a test case."
         />
       ) : (
         <div className="flex flex-col gap-6">
@@ -53,7 +55,9 @@ export function TraceabilityTab({
               label="Need attention"
               value={formatNumber(data.rows.filter(needsAttention).length)}
             >
-              <p className="text-sm text-muted-foreground">Failed, open defect, or never run</p>
+              <p className="text-sm text-muted-foreground">
+                No case, failed, open defect, or never run
+              </p>
             </StatTile>
             <StatTile
               label="Cases without reference"
@@ -119,23 +123,42 @@ function ReferenceRow({ row, projectId }: { row: TraceabilityRowDTO; projectId: 
           <Icon className="size-4" />
         </button>
         <span className="min-w-[140px] font-medium">{row.reference}</span>
-        <span className="text-sm text-muted-foreground">
-          {counts.total} {counts.total === 1 ? 'case' : 'cases'}
-        </span>
-        <div className="w-40">
-          <StackedProgress
-            counts={{
-              ...emptyCounts(),
-              ok: counts.passed,
-              ng: counts.failed,
-              untested: counts.notExecuted + counts.neverRun,
-            }}
-          />
-        </div>
-        <span className="text-sm text-muted-foreground">
-          {counts.passed} passed · {counts.failed} failed · {counts.notExecuted + counts.neverRun}{' '}
-          not run
-        </span>
+        {row.requirement && (
+          <>
+            <span className="min-w-0 max-w-72 truncate text-sm">{row.requirement.title}</span>
+            <RequirementSourceBadge source={row.requirement.source} />
+            {row.requirement.externalStatus && (
+              <span className="text-sm text-muted-foreground">
+                {row.requirement.externalStatus}
+              </span>
+            )}
+          </>
+        )}
+        {counts.total === 0 ? (
+          <span className="text-sm font-semibold text-destructive">No case tests it</span>
+        ) : (
+          <span className="text-sm text-muted-foreground">
+            {counts.total} {counts.total === 1 ? 'case' : 'cases'}
+          </span>
+        )}
+        {counts.total > 0 && (
+          <div className="w-40">
+            <StackedProgress
+              counts={{
+                ...emptyCounts(),
+                ok: counts.passed,
+                ng: counts.failed,
+                untested: counts.notExecuted + counts.neverRun,
+              }}
+            />
+          </div>
+        )}
+        {counts.total > 0 && (
+          <span className="text-sm text-muted-foreground">
+            {counts.passed} passed · {counts.failed} failed · {counts.notExecuted + counts.neverRun}{' '}
+            not run
+          </span>
+        )}
         {row.defects.length > 0 && (
           <span className="ml-auto text-sm">
             {row.defects.length} {row.defects.length === 1 ? 'defect' : 'defects'}
@@ -145,6 +168,11 @@ function ReferenceRow({ row, projectId }: { row: TraceabilityRowDTO; projectId: 
       </div>
       {open && (
         <div className="mt-3 ml-9 flex flex-col gap-3">
+          {row.cases.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              No case is linked to {row.reference} or cites it in its References.
+            </p>
+          )}
           <ul aria-label={`Cases of ${row.reference}`} className="flex flex-col gap-1.5">
             {row.cases.map((c) => (
               <li key={c.id} className="flex flex-wrap items-center gap-3 text-sm">
@@ -156,6 +184,9 @@ function ReferenceRow({ row, projectId }: { row: TraceabilityRowDTO; projectId: 
                 </Link>
                 <span className="min-w-0 flex-1">{c.title}</span>
                 <span className="text-muted-foreground">{c.suite.name}</span>
+                {row.requirement && (
+                  <span className="text-xs text-muted-foreground">{VIA_LABELS[c.via]}</span>
+                )}
                 {c.status ? (
                   <ResultBadge status={c.status} />
                 ) : (

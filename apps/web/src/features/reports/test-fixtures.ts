@@ -297,6 +297,13 @@ export function makeTraceability(overrides: Partial<TraceabilityDTO> = {}): Trac
     rows: [
       {
         reference: 'REQ-1',
+        requirement: {
+          id: 1,
+          title: 'Unit powers on within 3 s',
+          source: 'manual',
+          externalUrl: null,
+          externalStatus: null,
+        },
         cases: [
           {
             id: 11,
@@ -304,6 +311,7 @@ export function makeTraceability(overrides: Partial<TraceabilityDTO> = {}): Trac
             title: 'Power on',
             suite: { id: 1, name: 'Unit operation test' },
             status: 'ng',
+            via: 'both',
           },
           {
             id: 12,
@@ -311,6 +319,7 @@ export function makeTraceability(overrides: Partial<TraceabilityDTO> = {}): Trac
             title: 'Power off',
             suite: { id: 1, name: 'Unit operation test' },
             status: 'ok',
+            via: 'linked',
           },
         ],
         counts: { total: 2, passed: 1, failed: 1, notExecuted: 0, neverRun: 0 },
@@ -321,6 +330,7 @@ export function makeTraceability(overrides: Partial<TraceabilityDTO> = {}): Trac
       },
       {
         reference: 'PROJ-7',
+        requirement: null,
         cases: [
           {
             id: 13,
@@ -328,6 +338,7 @@ export function makeTraceability(overrides: Partial<TraceabilityDTO> = {}): Trac
             title: 'Timer',
             suite: { id: 1, name: 'Unit operation test' },
             status: 'ok',
+            via: 'refs',
           },
         ],
         counts: { total: 1, passed: 1, failed: 0, notExecuted: 0, neverRun: 0 },

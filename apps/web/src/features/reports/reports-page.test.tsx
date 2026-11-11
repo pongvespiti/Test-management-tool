@@ -274,6 +274,9 @@ describe('ReportsPage', () => {
       expect(tile('Need attention')).toHaveTextContent('1');
       expect(tile('Cases without reference')).toHaveTextContent('3');
 
+      const reqRow = screen.getByRole('button', { name: 'Show cases of REQ-1' }).closest('li')!;
+      expect(reqRow).toHaveTextContent('Unit powers on within 3 s');
+      expect(reqRow).toHaveTextContent('Typed in');
       await user.click(screen.getByRole('button', { name: 'Show cases of REQ-1' }));
       const cases = screen.getByRole('list', { name: 'Cases of REQ-1' });
       expect(within(cases).getByRole('link', { name: 'UO-001' })).toHaveAttribute(
@@ -295,6 +298,40 @@ describe('ReportsPage', () => {
       URL.createObjectURL = realCreate;
       URL.revokeObjectURL = realRevoke;
     }
+  });
+
+  it('flags a requirement that no case tests', async () => {
+    openUrl('/projects/3/reports?tab=traceability');
+    const base = makeTraceability();
+    stubReports({
+      'GET /projects/3/reports/traceability': makeTraceability({
+        rows: [
+          ...base.rows,
+          {
+            reference: 'REQ-5',
+            requirement: {
+              id: 5,
+              title: 'Factory reset',
+              source: 'jira',
+              externalUrl: null,
+              externalStatus: 'Open',
+            },
+            cases: [],
+            counts: { total: 0, passed: 0, failed: 0, notExecuted: 0, neverRun: 0 },
+            defects: [],
+            openDefects: 0,
+          },
+        ],
+      }),
+    });
+    const { user } = renderWithProviders(<ReportsPage />, as());
+    const row = (await screen.findByText('REQ-5')).closest('li')!;
+    expect(row).toHaveTextContent('No case tests it');
+    expect(row).toHaveTextContent('Factory reset');
+    expect(tile('Need attention')).toHaveTextContent('2');
+    await user.click(screen.getByRole('radio', { name: 'Needs attention' }));
+    expect(screen.getByText('REQ-5')).toBeInTheDocument();
+    expect(screen.queryByText('PROJ-7')).not.toBeInTheDocument();
   });
 
   it('shows reopen counts per place and the defects that keep coming back', async () => {

@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   ListChecks,
   ListTodo,
+  ScrollText,
   PlugZap,
   Settings,
   ShieldUser,
@@ -67,6 +68,7 @@ export function projectNav(projectId: number, showTeam = false): NavSection[] {
       title: 'Library',
       items: [
         { label: 'Test cases', href: routes.cases(projectId), icon: ListChecks },
+        { label: 'Requirements', href: routes.requirements(projectId), icon: ScrollText },
         { label: 'Reviews', href: routes.reviews(projectId), icon: ClipboardCheck },
         { label: 'Shared steps', href: routes.sharedSteps(projectId), icon: Layers },
         { label: 'Import from Excel', href: routes.import(projectId), icon: Upload },
