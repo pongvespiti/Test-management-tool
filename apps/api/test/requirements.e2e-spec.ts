@@ -13,7 +13,6 @@ import type {
   RequirementImportResultDTO,
   RequirementJiraResultDTO,
   RequirementListItemDTO,
-  TestCaseDTO,
   TraceabilityDTO,
 } from '@tmt/shared';
 import {
@@ -86,7 +85,7 @@ let tester: Client;
 let viewer: Client;
 let outsider: Client;
 let P: string;
-let cases: TestCaseDTO[];
+let cases: { id: number }[];
 
 beforeAll(async () => {
   jiraServer = http.createServer((req, res) => {
