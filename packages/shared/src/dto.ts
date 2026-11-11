@@ -586,11 +586,34 @@ export interface BuildSummaryDTO {
   openDefects: number;
 }
 
+/** A failed case of a resolved defect that is not yet tested on the build with the fix. */
+export interface RetestCaseDTO {
+  runCaseId: number;
+  displayId: string;
+  title: string;
+  runId: number;
+  runCode: string;
+  planId: number;
+  planDocNo: string;
+  planStatus: PlanStatus;
+  /** A run on the fix build that holds this case but has no result yet. */
+  scheduledRun: { id: number; code: string } | null;
+}
+
+/** A resolved defect whose fix build has not been tested on its failed cases. */
+export interface RetestItemDTO {
+  defect: DefectRef & { externalKey: string | null };
+  fixedInBuild: NamedRef;
+  cases: RetestCaseDTO[];
+}
+
 export interface DashboardDTO {
   release: ReleaseDTO | null;
   releases: ReleaseDTO[];
   /** Builds of the release with their results, newest first (empty without a release). */
   builds: BuildSummaryDTO[];
+  /** Resolved defects with a fix build in this release that still await a retest there. */
+  retest: { total: number; items: RetestItemDTO[] };
   kpis: {
     planCount: number;
     plansByStatus: Record<PlanStatus, number>;

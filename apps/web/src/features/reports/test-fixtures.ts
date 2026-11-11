@@ -193,6 +193,7 @@ export function makeDashboard(overrides: Partial<DashboardDTO> = {}): DashboardD
     release: makeRelease(),
     releases: [makeRelease(), makeRelease({ id: 6, name: 'FW 3.0', status: 'planned' })],
     builds: [],
+    retest: { total: 0, items: [] },
     kpis: {
       planCount: 2,
       plansByStatus: { draft: 0, in_progress: 1, completed: 1 },

@@ -40,6 +40,7 @@ import { BuildsCard } from './builds-card';
 import { AttentionList, OpenDefectsList } from './dashboard-lists';
 import { periodOf, releaseLabel } from './dashboard-format';
 import { KpiTiles } from './kpi-tiles';
+import { RetestCard } from './retest-card';
 
 const TREND_DAYS = 14;
 const LINK = 'text-sm font-semibold text-primary hover:underline';
@@ -182,6 +183,15 @@ function Dashboard() {
 
           {release && (
             <BuildsCard projectId={projectId} releaseName={release.name} builds={data.builds} />
+          )}
+
+          {release && (
+            <RetestCard
+              projectId={projectId}
+              total={data.retest.total}
+              items={data.retest.items}
+              canCreate={can('writePlans')}
+            />
           )}
 
           <div className="grid items-stretch gap-6 lg:grid-cols-12">

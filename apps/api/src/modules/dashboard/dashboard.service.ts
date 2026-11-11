@@ -17,6 +17,7 @@ import { buildDefectListItems, defectRefsByRunCase } from '../defects/defects.qu
 import { buildPlanDTOs, countsByRun } from '../execution/execution.queries.js';
 import { toReleaseDTO } from '../projects/projects.mapper.js';
 import { toAttentionItem } from './dashboard.mapper.js';
+import { retestQueue } from './retest.js';
 
 const ATTENTION_LIMIT = 10;
 const OPEN_DEFECT_LIMIT = 10;
@@ -155,10 +156,16 @@ export class DashboardService {
       attentionRows.map((r) => r.id),
     );
 
+    const builds = await buildSummaries(db, release);
     return {
       release: release ? toReleaseDTO(release) : null,
       releases: releases.map(toReleaseDTO),
-      builds: await buildSummaries(db, release),
+      builds,
+      retest: await retestQueue(
+        db,
+        projectId,
+        builds.map((b) => b.build),
+      ),
       kpis: {
         planCount: plans.length,
         plansByStatus,

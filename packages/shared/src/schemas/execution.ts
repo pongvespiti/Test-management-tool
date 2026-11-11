@@ -103,6 +103,8 @@ export const rerunSchema = z.object({
   code: runCodeSchema,
   scenario: optionalLine(300),
   statuses: z.array(z.enum(RERUN_STATUSES)).min(1).default(['ng', 'blocked']),
+  /** Only these run cases of the source run (that also match `statuses`); omitted = all matching. */
+  runCaseIds: z.array(idSchema).min(1).max(2000).optional(),
   /** Copy the source run's environment (ignored when `environment` is given). */
   copyEnvironment: z.boolean().default(true),
   environment: z.array(envEntrySchema).max(80).optional(),

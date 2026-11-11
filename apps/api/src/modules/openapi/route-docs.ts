@@ -579,6 +579,8 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
   'POST /api/v1/projects/{projectId}/runs/{runId}/rerun': {
     tag: 'Runs',
     summary: 'Re-run the cases of a run whose result is in `statuses`',
+    notes:
+      'Optional `runCaseIds` limits the re-run to those cases; `buildId` is the build to test.',
     success: 201,
     response: 'RunDTO',
   },

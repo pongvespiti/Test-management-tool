@@ -190,7 +190,11 @@ export class RunChangesService {
     await assertActiveUser(db, input.testerId);
     await assertBuildForPlan(db, ctx.id, plan, input.buildId);
     const picked = await db.runCase.findMany({
-      where: { runId: source.id, status: { in: input.statuses } },
+      where: {
+        runId: source.id,
+        status: { in: input.statuses },
+        ...(input.runCaseIds && { id: { in: input.runCaseIds } }),
+      },
       orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
     });
     if (picked.length === 0) {

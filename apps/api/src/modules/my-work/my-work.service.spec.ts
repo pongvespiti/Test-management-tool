@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from '@jest/globals';
 import { Prisma } from '@tmt/database';
-import { runCaseRow, unitConfig } from '../../../test/unit/fixtures.js';
+import { groupByMock, runCaseRow, unitConfig } from '../../../test/unit/fixtures.js';
 import { createPrismaMock, type PrismaMock } from '../../../test/unit/prisma-mock.js';
 import type { AuthUser } from '../../common/types/auth.js';
 import { MyWorkService } from './my-work.service.js';
@@ -27,7 +27,7 @@ describe('MyWorkService', () => {
   beforeEach(() => {
     mock = createPrismaMock();
     service = new MyWorkService(mock.prisma, unitConfig());
-    mock.db.runCase.groupBy.mockResolvedValue([] as never);
+    groupByMock(mock.db.runCase.groupBy).mockResolvedValue([] as never);
     mock.db.runCase.findMany.mockResolvedValue([] as never);
     mock.db.$queryRaw.mockResolvedValue([] as never);
     mock.db.defect.findMany.mockResolvedValue([] as never);
@@ -50,7 +50,8 @@ describe('MyWorkService', () => {
 
   it('asks for my cases in open plans of the project: assigned to me, else my runs', async () => {
     await service.get(10, me, { range: 'day' }, NOW);
-    const where = mock.db.runCase.groupBy.mock.calls[0]![0]!.where;
+    const where = (groupByMock(mock.db.runCase.groupBy).mock.calls[0]![0] as { where: unknown })
+      .where;
     expect(where).toEqual({
       status: { in: ['untested', 'ng', 'blocked'] },
       run: { plan: { projectId: 10, status: { not: 'completed' } } },
@@ -59,7 +60,7 @@ describe('MyWorkService', () => {
   });
 
   it('lists NG first with release and build names and counts every status', async () => {
-    mock.db.runCase.groupBy.mockResolvedValue([
+    groupByMock(mock.db.runCase.groupBy).mockResolvedValue([
       { status: 'untested', _count: { _all: 3 }, _sum: { estimateMinutes: 45 } },
       { status: 'ng', _count: { _all: 1 }, _sum: { estimateMinutes: 5 } },
     ] as never);
