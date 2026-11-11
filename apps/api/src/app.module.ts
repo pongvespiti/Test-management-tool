@@ -26,6 +26,7 @@ import { MyWorkModule } from './modules/my-work/my-work.module.js';
 import { DimensionsModule } from './modules/dimensions/dimensions.module.js';
 import { TopicsModule } from './modules/topics/topics.module.js';
 import { ReportsModule } from './modules/reports/reports.module.js';
+import { RequirementsModule } from './modules/requirements/requirements.module.js';
 import { SessionsModule } from './modules/sessions/sessions.module.js';
 import { TemplatesModule } from './modules/templates/templates.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
@@ -49,6 +50,7 @@ const FEATURE_MODULES = [
   MyWorkModule,
   TopicsModule,
   DimensionsModule,
+  RequirementsModule,
   SessionsModule,
   OpenApiModule,
 ];

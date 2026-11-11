@@ -8,6 +8,7 @@ import type {
   PlanStatus,
   ProjectRole,
   ReleaseStatus,
+  RequirementSource,
   ResultSource,
   ResultStatus,
   SessionNoteKind,
@@ -88,6 +89,12 @@ export const SESSION_NOTE_KIND_LABELS: Record<SessionNoteKind, string> = {
   bug: 'Bug found',
   question: 'Question',
   idea: 'Idea',
+};
+
+export const REQUIREMENT_SOURCE_LABELS: Record<RequirementSource, string> = {
+  manual: 'Typed in',
+  excel: 'Excel',
+  jira: 'Jira',
 };
 
 export const DEFECT_STATUS_LABELS: Record<DefectStatus, string> = {

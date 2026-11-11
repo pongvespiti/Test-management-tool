@@ -205,6 +205,36 @@ describe('JiraClient', () => {
     expect((await jiraError(client.getIssue('TEAM-7'))).status).toBe(401);
   });
 
+  it('searches issues read-only, falling back to the older endpoint of Server/Data Center', async () => {
+    const issue = {
+      key: 'IOT-1',
+      fields: { summary: 'Pairing', description: 'h3. text', status: { name: 'Done' } },
+    };
+    requestJson.mockResolvedValueOnce(answer(200, { issues: [issue, 'junk', { fields: {} }] }));
+    await expect(client.searchIssues('key in (IOT-1)', 50)).resolves.toEqual([
+      { key: 'IOT-1', summary: 'Pairing', description: 'h3. text', statusName: 'Done' },
+    ]);
+    const first = requestJson.mock.calls[0]![0];
+    expect(first.method).toBe('GET');
+    expect(first.url).toBe(
+      'https://jira.example.local/rest/api/2/search/jql?jql=key%20in%20(IOT-1)&fields=summary,status,description&maxResults=50',
+    );
+
+    requestJson.mockResolvedValueOnce(answer(404, {}));
+    requestJson.mockResolvedValueOnce(answer(200, { issues: [issue] }));
+    await expect(client.searchIssues('project = IOT')).resolves.toHaveLength(1);
+    expect(requestJson.mock.calls[2]![0].url).toMatch(
+      /\/rest\/api\/2\/search\?jql=project%20%3D%20IOT/,
+    );
+
+    requestJson.mockResolvedValueOnce(answer(400, { errorMessages: ['Error in the JQL Query'] }));
+    expect((await jiraError(client.searchIssues('bad ('))).messages).toEqual([
+      'Error in the JQL Query',
+    ]);
+    requestJson.mockResolvedValueOnce(answer(200, {}));
+    await expect(client.searchIssues('project = IOT')).resolves.toEqual([]);
+  });
+
   it('builds clients that share the (adjustable) limits of the factory', async () => {
     const factory = new JiraClientFactory({ requestJson } as unknown as HttpClient);
     expect(factory.limits).toEqual({ timeoutMs: 15_000, maxBytes: 5 * 1024 * 1024 });

@@ -49,6 +49,10 @@ export type SessionStatus = (typeof SESSION_STATUSES)[number];
 export const SESSION_NOTE_KINDS = ['note', 'bug', 'question', 'idea'] as const;
 export type SessionNoteKind = (typeof SESSION_NOTE_KINDS)[number];
 
+/** Where a requirement came from: typed in TMT, an Excel/CSV import, or read from Jira. */
+export const REQUIREMENT_SOURCES = ['manual', 'excel', 'jira'] as const;
+export type RequirementSource = (typeof REQUIREMENT_SOURCES)[number];
+
 export const DEFECT_STATUSES = [
   'new',
   'open',

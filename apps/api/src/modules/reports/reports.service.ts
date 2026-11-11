@@ -318,7 +318,20 @@ export class ReportsService {
         suite: { select: { id: true, name: true, prefix: true } },
       },
     });
-    if (cases.length === 0) return { rows: [], casesWithoutReference: 0, totalCases: 0 };
+    const requirementRows = await db.requirement.findMany({
+      where: { projectId },
+      select: {
+        id: true,
+        key: true,
+        title: true,
+        source: true,
+        externalUrl: true,
+        externalStatus: true,
+        cases: { select: { testCaseId: true } },
+      },
+    });
+    if (cases.length === 0 && requirementRows.length === 0)
+      return { rows: [], casesWithoutReference: 0, totalCases: 0 };
     const release =
       releaseId !== undefined ? Prisma.sql`AND p.release_id = ${releaseId}` : Prisma.empty;
     const latest = await db.$queryRaw<{ testCaseId: number; status: ResultStatus }[]>`
@@ -356,6 +369,15 @@ export class ReportsService {
       new Map(latest.map((r) => [r.testCaseId, r.status])),
       defects,
       defectKey,
+      requirementRows.map((r) => ({
+        id: r.id,
+        key: r.key,
+        title: r.title,
+        source: r.source,
+        externalUrl: r.externalUrl,
+        externalStatus: r.externalStatus,
+        linkedCaseIds: new Set(r.cases.map((c) => c.testCaseId)),
+      })),
     );
   }
 

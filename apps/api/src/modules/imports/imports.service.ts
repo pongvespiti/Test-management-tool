@@ -55,7 +55,7 @@ export function importFormatError(e: { code: string; message: string }): AppExce
 }
 
 /** Runs engine code, turning format errors (corrupt file, missing sheet …) into API errors. */
-async function engine<T>(fn: () => T | Promise<T>): Promise<T> {
+export async function engine<T>(fn: () => T | Promise<T>): Promise<T> {
   try {
     return await fn();
   } catch (e) {

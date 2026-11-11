@@ -17,7 +17,13 @@ export const createSessionSchema = z.object({
   buildId: idSchema.nullable().optional(),
   /** Same label/value pairs as a run (Platform, OS ver, Unit model …). */
   environment: z.array(envEntrySchema).max(80).default([]),
-  timeBoxMinutes: z.number().int().min(SESSION_MIN_MINUTES).max(SESSION_MAX_MINUTES).nullable().optional(),
+  timeBoxMinutes: z
+    .number()
+    .int()
+    .min(SESSION_MIN_MINUTES)
+    .max(SESSION_MAX_MINUTES)
+    .nullable()
+    .optional(),
   /** Requirements, Jira keys or specs the session explores — spelled like case references. */
   references: optionalText(1000),
 });

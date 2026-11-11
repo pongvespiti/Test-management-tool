@@ -10,6 +10,6 @@ import { ImportsService } from './imports.service.js';
 @Module({
   controllers: [ImportsController],
   providers: [ImportsService, ImportUploadStore],
-  exports: [],
+  exports: [ImportUploadStore],
 })
 export class ImportsModule {}

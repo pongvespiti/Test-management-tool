@@ -44,6 +44,14 @@ export interface JiraIssue {
   statusName: string | null;
 }
 
+/** An issue as read for a requirement: summary, wiki-markup description and status. */
+export interface JiraIssueDetail extends JiraIssue {
+  description: string | null;
+}
+
+/** Most issues one search returns (one page; JQL imports stop here). */
+export const JIRA_SEARCH_MAX = 200;
+
 export interface JiraServerInfo {
   serverTitle: string | null;
   version: string | null;
@@ -226,6 +234,39 @@ export class JiraClient {
       summary: typeof fields.summary === 'string' ? fields.summary : null,
       statusName: typeof fields.status?.name === 'string' ? fields.status.name : null,
     };
+  }
+
+  /**
+   * Read-only JQL search (summary, status, description of up to `max` issues). Jira Cloud serves
+   * `/search/jql`; Server/Data Center only has the older `/search`, used when the first answers
+   * 404/405/410.
+   */
+  async searchIssues(jql: string, max = JIRA_SEARCH_MAX): Promise<JiraIssueDetail[]> {
+    const query = `jql=${encodeURIComponent(jql)}&fields=summary,status,description&maxResults=${max}`;
+    let res = await this.call<Record<string, unknown>>('GET', `/rest/api/2/search/jql?${query}`);
+    if ([404, 405, 410].includes(res.status)) {
+      res = await this.call<Record<string, unknown>>('GET', `/rest/api/2/search?${query}`);
+    }
+    if (res.status < 200 || res.status >= 300) throw statusError(res.status, res.data);
+    const issues = Array.isArray(res.data?.issues) ? (res.data.issues as unknown[]) : [];
+    const out: JiraIssueDetail[] = [];
+    for (const raw of issues) {
+      if (typeof raw !== 'object' || raw === null) continue;
+      const issue = raw as {
+        key?: unknown;
+        fields?: { summary?: unknown; description?: unknown; status?: { name?: unknown } };
+      };
+      if (typeof issue.key !== 'string') continue;
+      out.push({
+        key: issue.key,
+        summary: typeof issue.fields?.summary === 'string' ? issue.fields.summary : null,
+        statusName:
+          typeof issue.fields?.status?.name === 'string' ? issue.fields.status.name : null,
+        description:
+          typeof issue.fields?.description === 'string' ? issue.fields.description : null,
+      });
+    }
+    return out;
   }
 }
 

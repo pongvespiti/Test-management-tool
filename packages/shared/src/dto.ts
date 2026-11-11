@@ -25,6 +25,7 @@ import type {
   ReleaseStatus,
   ResultSource,
   ResultStatus,
+  RequirementSource,
   SessionNoteKind,
   SessionStatus,
 } from './enums';
@@ -1162,6 +1163,103 @@ export interface NormalizeRunsResultDTO {
   addedValues: number;
 }
 
+/** Why a case counts for a requirement: linked in the requirements table, cited in its refs, or both. */
+export type RequirementVia = 'linked' | 'refs' | 'both';
+
+export interface RequirementListItemDTO {
+  id: number;
+  /** Canonical key, the same spelling cases use in their references. */
+  key: string;
+  title: string;
+  source: RequirementSource;
+  sourceRef: string | null;
+  externalUrl: string | null;
+  /** Jira status at the last refresh. */
+  externalStatus: string | null;
+  syncedAt: string | null;
+  /** Cases linked in the table or citing the key. */
+  caseCount: number;
+  updatedAt: string;
+}
+
+export interface RequirementCaseDTO {
+  id: number;
+  displayId: string;
+  title: string;
+  suite: { id: number; name: string };
+  via: RequirementVia;
+}
+
+export interface RequirementDTO extends RequirementListItemDTO {
+  projectId: number;
+  description: string | null;
+  cases: RequirementCaseDTO[];
+  createdBy: UserRef | null;
+  createdAt: string;
+}
+
+export interface RequirementImportColumnDTO {
+  col: number;
+  letter: string;
+  header: string;
+  samples: string[];
+  /** Field the header looks like (null = none). */
+  suggested: 'key' | 'title' | 'description' | 'sourceRef' | null;
+}
+
+export interface RequirementImportAnalysisDTO {
+  uploadId: string;
+  fileName: string;
+  sheets: ImportSheetInfo[];
+  sheet: string;
+  headerRow: number;
+  headerCandidates: number[];
+  columns: RequirementImportColumnDTO[];
+  dataRowCount: number;
+}
+
+export interface RequirementImportRowDTO {
+  /** Sheet row number. */
+  row: number;
+  key: string;
+  title: string;
+  action: 'create' | 'update' | 'skip' | 'invalid';
+  reason: string | null;
+}
+
+export interface RequirementImportPreviewDTO {
+  create: number;
+  update: number;
+  skip: number;
+  invalid: number;
+  /** The sheet was longer than the import limit. */
+  truncated: boolean;
+  /** The first rows of the file with what would happen to each. */
+  rows: RequirementImportRowDTO[];
+}
+
+export interface RequirementImportResultDTO {
+  created: number;
+  updated: number;
+  skipped: number;
+  invalid: number;
+}
+
+export interface RequirementJiraResultDTO {
+  created: number;
+  updated: number;
+  /** Requested keys Jira did not return (wrong key or no access). */
+  missing: string[];
+}
+
+export interface TraceRequirementDTO {
+  id: number;
+  title: string;
+  source: RequirementSource;
+  externalUrl: string | null;
+  externalStatus: string | null;
+}
+
 /** A library case under a reference, with its latest result in scope. */
 export interface TraceCaseDTO {
   id: number;
@@ -1170,6 +1268,7 @@ export interface TraceCaseDTO {
   suite: { id: number; name: string };
   /** Latest result in scope; null = never run. */
   status: ResultStatus | null;
+  via: RequirementVia;
 }
 
 export interface TraceDefectDTO {
@@ -1183,6 +1282,8 @@ export interface TraceDefectDTO {
 /** One requirement / Jira key / spec reference with the cases that cite it. */
 export interface TraceabilityRowDTO {
   reference: string;
+  /** The requirement of the table this reference is the key of; null = only written in cases. */
+  requirement: TraceRequirementDTO | null;
   cases: TraceCaseDTO[];
   counts: {
     total: number;

@@ -47,6 +47,59 @@ describe('traceabilityOf', () => {
     });
   });
 
+  describe('with the requirements table', () => {
+    const req = (id: number, key: string, linked: number[] = []) => ({
+      id,
+      key,
+      title: `Requirement ${key}`,
+      source: 'manual' as const,
+      externalUrl: null,
+      externalStatus: null,
+      linkedCaseIds: new Set(linked),
+    });
+
+    it('shows a requirement without cases as a row with none', () => {
+      const out = traceabilityOf([c(1, null)], new Map(), [], key, [req(1, 'REQ-5')]);
+      expect(out.rows).toHaveLength(1);
+      expect(out.rows[0]).toMatchObject({
+        reference: 'REQ-5',
+        requirement: { id: 1, title: 'Requirement REQ-5', source: 'manual' },
+        counts: { total: 0 },
+      });
+      expect(out.casesWithoutReference).toBe(1);
+    });
+
+    it('joins linked cases with the cases that cite the key', () => {
+      const out = traceabilityOf([c(1, 'req 5'), c(2, null), c(3, 'REQ-5')], new Map(), [], key, [
+        req(1, 'REQ-5', [2, 3]),
+      ]);
+      const row = out.rows[0]!;
+      expect(row.cases.map((x) => [x.displayId, x.via])).toEqual([
+        ['UO-001', 'refs'],
+        ['UO-002', 'linked'],
+        ['UO-003', 'both'],
+      ]);
+      expect(row.counts.total).toBe(3);
+      // A linked case has a requirement, so it is not "without reference".
+      expect(out.casesWithoutReference).toBe(0);
+    });
+
+    it('matches keys without regard to case and ignores links to cases that no longer count', () => {
+      const out = traceabilityOf([c(1, 'sec a')], new Map(), [], key, [req(1, 'Sec A', [99])]);
+      expect(out.rows).toHaveLength(1);
+      expect(out.rows[0]!.reference).toBe('Sec A');
+      expect(out.rows[0]!.cases.map((x) => x.via)).toEqual(['refs']);
+    });
+
+    it('keeps references that are not requirements as plain rows', () => {
+      const out = traceabilityOf([c(1, 'JIRA-9')], new Map(), [], key, [req(1, 'REQ-1')]);
+      expect(out.rows.map((r) => [r.reference, r.requirement?.id ?? null])).toEqual([
+        ['JIRA-9', null],
+        ['REQ-1', 1],
+      ]);
+    });
+  });
+
   it('lists each linked defect once and counts the open ones', () => {
     const d = (testCaseId: number, id: number, status: 'open' | 'closed') => ({
       testCaseId,

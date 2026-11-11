@@ -123,6 +123,14 @@ enum ResultSource {
   @@map("result_source")
 }
 
+enum RequirementSource {
+  manual
+  excel
+  jira
+
+  @@map("requirement_source")
+}
+
 enum SessionStatus {
   planned
   in_progress
@@ -254,6 +262,7 @@ model User {
   savedViews          SavedView[]
   sessionsOwned       ExploratorySession[] @relation("SessionOwner")
   sessionsCreated     ExploratorySession[] @relation("SessionCreatedBy")
+  requirementsCreated Requirement[]        @relation("RequirementCreatedBy")
   sessionNotes        ExploratoryNote[]
 
   @@map("users")
@@ -332,6 +341,7 @@ model Project {
   integrations    ProjectIntegration[]
   savedViews      SavedView[]
   sessions        ExploratorySession[]
+  requirements    Requirement[]
 
   @@map("projects")
 }
@@ -499,6 +509,7 @@ model TestCase {
   versions          TestCaseVersion[]
   runCases          RunCase[]
   defectLinks       DefectLink[]
+  requirementLinks  RequirementCase[]
 
   @@unique([suiteId, seq])
   @@unique([suiteId, code], map: "test_cases_suite_code_live_key", where: raw("code IS NOT NULL AND NOT is_deleted"))
@@ -986,4 +997,46 @@ model ExploratoryDefect {
   @@id([sessionId, defectId])
   @@index([defectId])
   @@map("exploratory_defects")
+}
+
+/// What the product must do, from a spec, an Excel list or Jira. Cases cite it by key in their
+/// references, or are linked here; the traceability report joins the two.
+model Requirement {
+  id          Int               @id @default(autoincrement())
+  projectId   Int               @map("project_id")
+  /// Canonical key (same spelling rules as case references): `REQ-12`, `IOT-345`, `3.2.1`.
+  key         String
+  title       String
+  description String?
+  source      RequirementSource @default(manual)
+  /// Where the full text lives: spec section, PDF page, meeting minutes.
+  sourceRef   String?           @map("source_ref")
+  externalUrl String?           @map("external_url")
+  /// Jira status at the last refresh.
+  externalStatus String?        @map("external_status")
+  syncedAt    DateTime?         @map("synced_at") @db.Timestamptz(6)
+  createdById Int?              @map("created_by_id")
+  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  project   Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy User?             @relation("RequirementCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  cases     RequirementCase[]
+
+  @@unique([projectId, key])
+  @@index([projectId, source])
+  @@map("requirements")
+}
+
+model RequirementCase {
+  requirementId Int      @map("requirement_id")
+  testCaseId    Int      @map("test_case_id")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  requirement Requirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  testCase    TestCase    @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+
+  @@id([requirementId, testCaseId])
+  @@index([testCaseId])
+  @@map("requirement_cases")
 }
