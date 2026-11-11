@@ -5,6 +5,7 @@ import {
   planRow,
   releaseRow,
   runCaseRow,
+  unitConfig,
 } from '../../../test/unit/fixtures.js';
 import { createPrismaMock } from '../../../test/unit/prisma-mock.js';
 import { toAttentionItem } from './dashboard.mapper.js';
@@ -13,7 +14,7 @@ import { DashboardService, openDefectsWhere, pickRelease } from './dashboard.ser
 describe('dashboard', () => {
   const releases = [
     releaseRow({ id: 3, name: 'Next', status: 'planned' }),
-    releaseRow({ id: 2, name: 'Current', status: 'active' }),
+    releaseRow({ id: 2, name: 'Current', status: 'active', endDate: new Date('2026-11-30') }),
     releaseRow({ id: 1, name: 'Old', status: 'completed' }),
   ];
 
@@ -83,8 +84,26 @@ describe('dashboard', () => {
         run: { id: 3, code: 'KR', plan: { id: 7, docNo: 'D' } },
       },
     ] as never);
-    const d = await new DashboardService(prisma).get(10);
+    db.$queryRaw.mockResolvedValue([{ total: 20, remaining: 8, minutes: 80, recent: 14 }] as never);
+    // 2026-11-11 10:00 in Bangkok.
+    const d = await new DashboardService(prisma, unitConfig()).get(
+      10,
+      undefined,
+      new Date('2026-11-11T03:00:00Z'),
+    );
     expect(d.release?.name).toBe('Current');
+    // 14 cases in 7 days = 2 a day: 8 left need 4 days, the release ends in 19.
+    expect(d.readiness).toEqual({
+      state: 'on_track',
+      total: 20,
+      remaining: 8,
+      remainingMinutes: 80,
+      executedLast7Days: 14,
+      perDay: 2,
+      endDate: '2026-11-30',
+      daysLeft: 19,
+      projectedDate: '2026-11-15',
+    });
     expect(d.releases).toHaveLength(3);
     expect(d.builds).toEqual([]);
     expect(d.kpis).toMatchObject({
@@ -107,6 +126,25 @@ describe('dashboard', () => {
       status: { in: ['ng', 'ok_cond'] },
     });
     expect(attention.take).toBe(10);
+    // Only plans that are not completed count; the window starts 6 days before today (Bangkok).
+    expect(db.$queryRaw.mock.calls[0]).toContainEqual('2026-11-04T17:00:00.000Z');
+  });
+
+  it('reads no readiness figures for a release without open plans', async () => {
+    const { prisma, db } = createPrismaMock();
+    db.release.findMany.mockResolvedValue(releases);
+    db.testPlan.findMany.mockResolvedValue([planRow({ status: 'completed', releaseId: 2 })]);
+    db.testRun.findMany.mockResolvedValue([]);
+    db.build.findMany.mockResolvedValue([]);
+    db.attachment.findMany.mockResolvedValue([]);
+    db.user.findMany.mockResolvedValue([]);
+    groupByMock(db.defect.groupBy).mockResolvedValue([]);
+    db.defect.findMany.mockResolvedValue([]);
+    db.defectLink.findMany.mockResolvedValue([]);
+    db.runCase.findMany.mockResolvedValue([]);
+    const d = await new DashboardService(prisma, unitConfig()).get(10);
+    expect(db.$queryRaw).not.toHaveBeenCalled();
+    expect(d.readiness).toMatchObject({ state: 'no_cases', total: 0, remaining: 0 });
   });
 
   it('lists the builds of the release with results and open defects found in them', async () => {
@@ -134,7 +172,7 @@ describe('dashboard', () => {
         : []) as never);
     db.defect.findMany.mockResolvedValue([]);
     db.user.findMany.mockResolvedValue([]);
-    const d = await new DashboardService(prisma).get(10, 2);
+    const d = await new DashboardService(prisma, unitConfig()).get(10, 2);
     expect(db.build.findMany.mock.calls[0]![0]!.where).toEqual({ releaseId: 2 });
     expect(d.builds.map((b) => [b.build.name, b.runCount, b.openDefects])).toEqual([
       ['1.1.7(2.0.0)', 2, 2],

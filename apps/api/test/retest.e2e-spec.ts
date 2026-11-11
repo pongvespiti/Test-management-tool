@@ -191,3 +191,50 @@ describe('waiting for retest', () => {
     expect((await retest()).total).toBe(1);
   });
 });
+
+describe('release readiness', () => {
+  const day = (offset: number) => {
+    const d = new Date(Date.now() + offset * 86_400_000);
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }).format(d);
+  };
+  const readiness = async () =>
+    expectBody<DashboardDTO>(await tester.get(`${P}/dashboard?releaseId=${release.id}`), 200)
+      .readiness;
+
+  it('is done while every case of the open plans has a result', async () => {
+    expect(await readiness()).toMatchObject({ state: 'done', remaining: 0, endDate: null });
+  });
+
+  it('projects the finish from the last 7 days against the release end date', async () => {
+    expect((await lead.patch(`${P}/releases/${release.id}`, { endDate: day(10) })).status).toBe(
+      200,
+    );
+    // A third run brings 3 untested cases; 4 results were recorded today (3 + 1 above).
+    expectBody(
+      await tester.post(`${P}/plans/${plan.id}/runs`, {
+        suiteId: run1.suite.id,
+        code: 'R3',
+        buildId: b2.id,
+      }),
+      201,
+    );
+    expect(await readiness()).toEqual({
+      state: 'on_track',
+      total: 7,
+      remaining: 3,
+      remainingMinutes: 0,
+      executedLast7Days: 4,
+      perDay: 0.6,
+      endDate: day(10),
+      daysLeft: 10,
+      projectedDate: day(6),
+    });
+  });
+
+  it('turns at risk when the end date is too close and overdue once it has passed', async () => {
+    await lead.patch(`${P}/releases/${release.id}`, { endDate: day(3) });
+    expect((await readiness()).state).toBe('at_risk');
+    await lead.patch(`${P}/releases/${release.id}`, { endDate: day(-1) });
+    expect(await readiness()).toMatchObject({ state: 'overdue', daysLeft: -1 });
+  });
+});

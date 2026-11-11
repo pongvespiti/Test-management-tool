@@ -193,6 +193,17 @@ export function makeDashboard(overrides: Partial<DashboardDTO> = {}): DashboardD
     release: makeRelease(),
     releases: [makeRelease(), makeRelease({ id: 6, name: 'FW 3.0', status: 'planned' })],
     builds: [],
+    readiness: {
+      state: 'on_track',
+      total: 40,
+      remaining: 12,
+      remainingMinutes: 150,
+      executedLast7Days: 28,
+      perDay: 4,
+      endDate: '2026-11-30',
+      daysLeft: 19,
+      projectedDate: '2026-11-14',
+    },
     retest: { total: 0, items: [] },
     kpis: {
       planCount: 2,

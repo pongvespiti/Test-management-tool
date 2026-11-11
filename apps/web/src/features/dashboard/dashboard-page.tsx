@@ -40,6 +40,7 @@ import { BuildsCard } from './builds-card';
 import { AttentionList, OpenDefectsList } from './dashboard-lists';
 import { periodOf, releaseLabel } from './dashboard-format';
 import { KpiTiles } from './kpi-tiles';
+import { ReadinessCard } from './readiness-card';
 import { RetestCard } from './retest-card';
 
 const TREND_DAYS = 14;
@@ -152,6 +153,8 @@ function Dashboard() {
       <Refreshing active={!dashboard.data}>
         <div className="flex flex-col gap-6">
           <KpiTiles kpis={data.kpis} />
+
+          <ReadinessCard projectId={projectId} releaseId={releaseId} data={data} />
 
           <SectionCard
             title={release ? 'Test plans in this release' : 'Test plans'}

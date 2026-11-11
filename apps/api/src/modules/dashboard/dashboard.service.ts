@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { Prisma, Release } from '@tmt/database';
+import { Prisma, type Release } from '@tmt/database';
 import {
   addCounts,
   DEFECT_SEVERITIES,
@@ -11,13 +11,16 @@ import {
   type PlanStatus,
 } from '@tmt/shared';
 import { unprocessable } from '../../common/errors/app.exception.js';
-import { loadUserRefs } from '../../common/users/user-refs.js';
+import { dateOnly, loadUserRefs } from '../../common/users/user-refs.js';
+import { AppConfig } from '../../config/app-config.js';
 import { PrismaService, type Db } from '../../prisma/prisma.service.js';
 import { buildDefectListItems, defectRefsByRunCase } from '../defects/defects.queries.js';
 import { buildPlanDTOs, countsByRun } from '../execution/execution.queries.js';
 import { toReleaseDTO } from '../projects/projects.mapper.js';
 import { toAttentionItem } from './dashboard.mapper.js';
+import { PACE_DAYS, readinessOf } from './readiness.js';
 import { retestQueue } from './retest.js';
+import { addDays, localDate, startOfLocalDay } from '../reports/report-dates.js';
 
 const ATTENTION_LIMIT = 10;
 const OPEN_DEFECT_LIMIT = 10;
@@ -90,9 +93,45 @@ async function buildSummaries(db: Db, release: Release | null): Promise<BuildSum
 /** Project dashboard of one release (all plans when the project has no releases). */
 @Injectable()
 export class DashboardService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: AppConfig,
+  ) {}
 
-  async get(projectId: number, releaseId?: number): Promise<DashboardDTO> {
+  /** Untested work left in the not-completed plans and how much was tested in the last 7 days. */
+  private async readiness(
+    planIds: number[],
+    release: Release | null,
+    now: Date,
+  ): Promise<DashboardDTO['readiness']> {
+    const tz = this.config.reportTimezone;
+    const today = localDate(now, tz);
+    const since = startOfLocalDay(addDays(today, -(PACE_DAYS - 1)), tz);
+    const [row] = planIds.length
+      ? await this.prisma.db.$queryRaw<
+          Array<{ total: number; remaining: number; minutes: number; recent: number }>
+        >`
+          SELECT count(*)::int AS "total",
+                 (count(*) FILTER (WHERE rc.status = 'untested'))::int AS "remaining",
+                 coalesce(sum(rc.estimate_minutes) FILTER (WHERE rc.status = 'untested'), 0)::int
+                   AS "minutes",
+                 (count(*) FILTER (WHERE rc.status <> 'untested'
+                   AND rc.executed_at >= ${since.toISOString()}::timestamptz))::int AS "recent"
+          FROM run_cases rc
+          JOIN test_runs r ON r.id = rc.run_id
+          WHERE r.plan_id IN (${Prisma.join(planIds)})`
+      : [];
+    return readinessOf({
+      total: row?.total ?? 0,
+      remaining: row?.remaining ?? 0,
+      remainingMinutes: row?.minutes ?? 0,
+      executedLast7Days: row?.recent ?? 0,
+      endDate: dateOnly(release?.endDate),
+      today,
+    });
+  }
+
+  async get(projectId: number, releaseId?: number, now = new Date()): Promise<DashboardDTO> {
     const db = this.prisma.db;
     const releases = await db.release.findMany({
       where: { projectId },
@@ -161,6 +200,11 @@ export class DashboardService {
       release: release ? toReleaseDTO(release) : null,
       releases: releases.map(toReleaseDTO),
       builds,
+      readiness: await this.readiness(
+        planRows.filter((p) => p.status !== 'completed').map((p) => p.id),
+        release,
+        now,
+      ),
       retest: await retestQueue(
         db,
         projectId,

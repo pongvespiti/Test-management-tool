@@ -52,6 +52,11 @@ interface Id {
 
 type Call = <T = Id>(method: string, path: string, body?: unknown) => Promise<T>;
 
+/** `YYYY-MM-DD` of today plus `days` (UTC calendar; demo dates need no time zone care). */
+function dayFromToday(days: number): string {
+  return new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+}
+
 function say(line: string): void {
   process.stdout.write(`${line}\n`);
 }
@@ -131,7 +136,14 @@ async function seedProjectContent(call: Call, projectId: number, testerId: numbe
 
   const releases: Id[] = [];
   for (const release of DEMO_RELEASES) {
-    releases.push(await call('POST', `${projectPath}/releases`, release));
+    const { startInDays, endInDays, ...fields } = release;
+    releases.push(
+      await call('POST', `${projectPath}/releases`, {
+        ...fields,
+        ...(startInDays !== undefined && { startDate: dayFromToday(startInDays) }),
+        ...(endInDays !== undefined && { endDate: dayFromToday(endInDays) }),
+      }),
+    );
   }
   const activeRelease = releases[0]!;
   const buildIds = new Map<string, number>();
@@ -189,7 +201,14 @@ async function seedProjectContent(call: Call, projectId: number, testerId: numbe
     }
   }
 
-  for (const { linkToFirstNg, comment, foundInBuild, fixedInBuild, ...fields } of DEMO_DEFECTS) {
+  for (const {
+    linkToFirstNg,
+    comment,
+    foundInBuild,
+    fixedInBuild,
+    resolved,
+    ...fields
+  } of DEMO_DEFECTS) {
     const defect = await call('POST', `${projectPath}/defects`, {
       ...fields,
       releaseId: activeRelease.id,
@@ -197,6 +216,11 @@ async function seedProjectContent(call: Call, projectId: number, testerId: numbe
       fixedInBuildId: buildId(fixedInBuild),
       ...(linkToFirstNg && firstNg !== null ? { runCaseId: firstNg } : {}),
     });
+    if (resolved) {
+      for (const to of ['open', 'resolved']) {
+        await call('POST', `${projectPath}/defects/${defect.id}/transition`, { to });
+      }
+    }
     if (comment) {
       await call('POST', `${projectPath}/comments`, {
         entityType: 'defect',

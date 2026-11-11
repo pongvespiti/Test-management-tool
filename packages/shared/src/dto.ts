@@ -586,6 +586,30 @@ export interface BuildSummaryDTO {
   openDefects: number;
 }
 
+export type ReadinessState =
+  'no_cases' | 'done' | 'no_deadline' | 'on_track' | 'at_risk' | 'overdue';
+
+/** Whether the untested cases of the open plans can be finished by the release end date. */
+export interface ReadinessDTO {
+  state: ReadinessState;
+  /** Run cases of the plans in scope that are not completed. */
+  total: number;
+  /** Of those, not tested yet. */
+  remaining: number;
+  /** Estimated minutes of the remaining cases (cases without an estimate count as 0). */
+  remainingMinutes: number;
+  /** Cases with a result in the last 7 days (REPORT_TIMEZONE days, today included). */
+  executedLast7Days: number;
+  /** Average per calendar day over those 7 days. */
+  perDay: number;
+  /** Release end date (`YYYY-MM-DD`) or null. */
+  endDate: string | null;
+  /** Calendar days from today to the end date; negative once it has passed; null without one. */
+  daysLeft: number | null;
+  /** Day the remaining cases are done at the current pace; null when nothing was tested lately. */
+  projectedDate: string | null;
+}
+
 /** A failed case of a resolved defect that is not yet tested on the build with the fix. */
 export interface RetestCaseDTO {
   runCaseId: number;
@@ -612,6 +636,7 @@ export interface DashboardDTO {
   releases: ReleaseDTO[];
   /** Builds of the release with their results, newest first (empty without a release). */
   builds: BuildSummaryDTO[];
+  readiness: ReadinessDTO;
   /** Resolved defects with a fix build in this release that still await a retest there. */
   retest: { total: number; items: RetestItemDTO[] };
   kpis: {

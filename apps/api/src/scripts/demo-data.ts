@@ -30,10 +30,18 @@ export const DEMO_USERS: readonly DemoUser[] = [
   { username: 'demo.viewer', displayName: 'Demo Viewer', role: 'viewer' },
 ];
 
-export const DEMO_RELEASES = [
-  { name: 'v1.0', status: 'active' },
+/** The active release started a week ago and ends in `endInDays` days (dates are relative to the seed day). */
+export interface DemoRelease {
+  name: string;
+  status: 'planned' | 'active' | 'completed';
+  startInDays?: number;
+  endInDays?: number;
+}
+
+export const DEMO_RELEASES: readonly DemoRelease[] = [
+  { name: 'v1.0', status: 'active', startInDays: -7, endInDays: 14 },
   { name: 'v1.1', status: 'planned' },
-] as const;
+];
 
 /** Application builds per release (index into DEMO_RELEASES); runs and defects refer to them by name. */
 export const DEMO_BUILDS = [
@@ -169,6 +177,8 @@ export interface DemoDefect {
   fixedInBuild?: string;
   /** Linked to the first NG result of the demo runs. */
   linkToFirstNg?: boolean;
+  /** Moved to Resolved (needs `fixedInBuild`): its failed case waits for a retest on that build. */
+  resolved?: boolean;
   comment?: string;
 }
 
@@ -183,6 +193,7 @@ export const DEMO_DEFECTS: readonly DemoDefect[] = [
     foundInBuild: '1.0.0(1.0.0)',
     fixedInBuild: '1.0.0(2.0.0)',
     linkToFirstNg: true,
+    resolved: true,
     comment: 'Reproduced on bench unit A with firmware 1.0.0-rc1.',
   },
   {
