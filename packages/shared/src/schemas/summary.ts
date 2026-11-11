@@ -38,3 +38,14 @@ export const savedViewInputSchema = z.object({
   config: summaryViewConfigSchema,
 });
 export type SavedViewInput = z.infer<typeof savedViewInputSchema>;
+
+/** One side of a comparison: a single run (`run:12`) or the latest results of a build (`build:3`). */
+export const compareSideSchema = z
+  .string()
+  .regex(/^(run|build):[1-9]\d{0,9}$/, 'Use run:<id> or build:<id>');
+
+export const reportCompareQuerySchema = z.object({
+  base: compareSideSchema,
+  target: compareSideSchema,
+});
+export type ReportCompareQuery = z.infer<typeof reportCompareQuerySchema>;

@@ -811,6 +811,20 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     success: 200,
     response: 'ReopenReportDTO',
   },
+  'GET /api/v1/projects/{projectId}/reports/compare/sides': {
+    tag: 'Reports',
+    summary: 'Runs and builds that can be compared (newest first)',
+    success: 200,
+    response: 'CompareSideDTO[]',
+  },
+  'GET /api/v1/projects/{projectId}/reports/compare': {
+    tag: 'Reports',
+    summary: 'What changed per test case between two runs or two builds',
+    notes:
+      '`base` and `target` are `run:<id>` or `build:<id>`. A build side uses the latest result of each case over the runs of that build. Cases are matched by library case.',
+    success: 200,
+    response: 'CompareDTO',
+  },
   'GET /api/v1/projects/{projectId}/reports/summary': {
     tag: 'Reports',
     summary: 'Result counts of the runs, filtered and grouped by environment dimensions',

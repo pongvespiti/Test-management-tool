@@ -4,6 +4,7 @@
  */
 import { jest } from '@jest/globals';
 import type {
+  CompareDTO,
   CoverageRowDTO,
   DashboardDTO,
   DefectReportDTO,
@@ -440,6 +441,70 @@ export function makeReopens(overrides: Partial<ReopenReportDTO> = {}): ReopenRep
         topic: null,
       },
     ],
+    ...overrides,
+  };
+}
+
+export function makeCompare(overrides: Partial<CompareDTO> = {}): CompareDTO {
+  const side = (kind: 'run' | 'build', id: number, label: string) => ({
+    value: `${kind}:${id}`,
+    kind,
+    id,
+    label,
+    detail: '',
+  });
+  const suite = 'Unit operation test';
+  return {
+    base: side('build', 1, 'Step 1 / B1'),
+    target: side('build', 2, 'Step 1 / B2'),
+    rows: [
+      {
+        testCaseId: 1,
+        displayId: 'UO-001',
+        title: 'Power on',
+        suite,
+        base: 'ok',
+        target: 'ng',
+        change: 'regression',
+      },
+      {
+        testCaseId: 2,
+        displayId: 'UO-002',
+        title: 'Power off',
+        suite,
+        base: 'ng',
+        target: 'ok',
+        change: 'fixed',
+      },
+      {
+        testCaseId: 3,
+        displayId: 'UO-003',
+        title: 'Timer',
+        suite,
+        base: 'ok',
+        target: 'untested',
+        change: 'not_run',
+      },
+      {
+        testCaseId: 4,
+        displayId: 'UO-004',
+        title: 'Reset',
+        suite,
+        base: 'ok',
+        target: 'ok',
+        change: 'unchanged',
+      },
+    ],
+    summary: {
+      regression: 1,
+      still_failing: 0,
+      not_run: 1,
+      newly_run: 0,
+      fixed: 1,
+      only_base: 0,
+      only_target: 0,
+      unchanged: 1,
+    },
     ...overrides,
   };
 }

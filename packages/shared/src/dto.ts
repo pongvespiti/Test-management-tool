@@ -1245,6 +1245,46 @@ export interface SummaryDTO {
   scopeRuns: number;
 }
 
+/** What a case did between the two sides of a comparison. */
+export const COMPARE_CHANGES = [
+  'regression',
+  'still_failing',
+  'not_run',
+  'newly_run',
+  'fixed',
+  'only_base',
+  'only_target',
+  'unchanged',
+] as const;
+export type CompareChange = (typeof COMPARE_CHANGES)[number];
+
+/** A run or a build that can be compared (`value` is `run:<id>` or `build:<id>`). */
+export interface CompareSideDTO {
+  value: string;
+  kind: 'run' | 'build';
+  id: number;
+  label: string;
+  detail: string;
+}
+
+export interface CompareRowDTO {
+  testCaseId: number;
+  displayId: string;
+  title: string;
+  suite: string;
+  /** Result on each side; null = the case is not in that run / build. */
+  base: ResultStatus | null;
+  target: ResultStatus | null;
+  change: CompareChange;
+}
+
+export interface CompareDTO {
+  base: CompareSideDTO;
+  target: CompareSideDTO;
+  rows: CompareRowDTO[];
+  summary: Record<CompareChange, number>;
+}
+
 export interface SavedViewDTO {
   id: number;
   name: string;

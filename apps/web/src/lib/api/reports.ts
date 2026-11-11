@@ -2,6 +2,8 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   filtersToParams,
+  type CompareDTO,
+  type CompareSideDTO,
   type CoverageRowDTO,
   type DefectReportDTO,
   type ReleaseComparisonRowDTO,
@@ -152,6 +154,26 @@ export function useReopenReport(projectId: number, scope: { releaseId?: number |
   return useQuery({
     queryKey: qk.report(projectId, 'reopens', params),
     queryFn: () => api.get<ReopenReportDTO>(`/projects/${projectId}/reports/reopens`, params),
+    ...keepFrame,
+  });
+}
+
+/** Runs and builds that can be compared. */
+export function useCompareSides(projectId: number) {
+  return useQuery({
+    queryKey: qk.report(projectId, 'compare-sides', {}),
+    queryFn: () => api.get<CompareSideDTO[]>(`/projects/${projectId}/reports/compare/sides`),
+    staleTime: 30_000,
+  });
+}
+
+/** What changed per case from `base` to `target` (`run:<id>` / `build:<id>`); waits for both. */
+export function useCompareReport(projectId: number, base: string | null, target: string | null) {
+  const params = { base: base ?? undefined, target: target ?? undefined };
+  return useQuery({
+    queryKey: qk.report(projectId, 'compare', params),
+    queryFn: () => api.get<CompareDTO>(`/projects/${projectId}/reports/compare`, params),
+    enabled: base !== null && target !== null,
     ...keepFrame,
   });
 }

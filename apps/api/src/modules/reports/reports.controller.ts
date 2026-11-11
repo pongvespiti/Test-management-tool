@@ -3,13 +3,17 @@ import { ApiTags } from '@nestjs/swagger';
 import {
   reportCoverageQuerySchema,
   reportDefectsQuerySchema,
+  reportCompareQuerySchema,
   reportScopeSchema,
   reportSummaryQuerySchema,
   reportTrendQuerySchema,
   type CoverageRowDTO,
   type DefectReportDTO,
   type ReleaseComparisonRowDTO,
+  type CompareDTO,
+  type CompareSideDTO,
   type ReopenReportDTO,
+  type ReportCompareQuery,
   type ReportDefectsQuery,
   type ReportSummaryQuery,
   type ReportTrendDTO,
@@ -112,5 +116,23 @@ export class ReportsController {
     @Query({ schema: reportCoverageQuerySchema }) q: z.infer<typeof reportCoverageQuerySchema>,
   ): Promise<ReopenReportDTO> {
     return this.reports.reopens(ctx.id, q.releaseId);
+  }
+
+  /** Runs and builds that can be compared. */
+  @Get('compare/sides')
+  @ProjectPermission('viewReports')
+  compareSides(@CurrentProject() ctx: ProjectContext): Promise<CompareSideDTO[]> {
+    return this.reports.compareSides(ctx.id);
+  }
+
+  /** What changed per test case between two runs or two builds (`run:<id>` / `build:<id>`). */
+  @Get('compare')
+  @ProjectPermission('viewReports')
+  @ApiErrorCodes('RUN_NOT_FOUND', 'BUILD_NOT_FOUND')
+  compare(
+    @CurrentProject() ctx: ProjectContext,
+    @Query({ schema: reportCompareQuerySchema }) q: ReportCompareQuery,
+  ): Promise<CompareDTO> {
+    return this.reports.compare(ctx.id, q);
   }
 }

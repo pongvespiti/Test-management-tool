@@ -13,6 +13,7 @@ import { makePlan, makeRelease } from '@/features/plans/test-fixtures';
 import { makeProject, renderWithProviders } from '@/test/render';
 import { ReportsPage } from './reports-page';
 import {
+  makeCompare,
   makeCoverage,
   makeReopens,
   makeTraceability,
@@ -341,6 +342,43 @@ describe('ReportsPage', () => {
     });
     renderWithProviders(<ReportsPage />, as());
     expect(await screen.findByText('No defects in this scope')).toBeInTheDocument();
+  });
+
+  it('compares two builds and filters the cases that changed', async () => {
+    openUrl('/projects/3/reports?tab=compare&from=build%3A1&to=build%3A2');
+    const api = stubReports({
+      'GET /projects/3/reports/compare/sides': [
+        { value: 'build:2', kind: 'build', id: 2, label: 'Step 1 / B2', detail: '2 runs' },
+        { value: 'build:1', kind: 'build', id: 1, label: 'Step 1 / B1', detail: '1 run' },
+      ],
+      'GET /projects/3/reports/compare': makeCompare(),
+    });
+    const { user } = renderWithProviders(<ReportsPage />, as());
+    expect(await screen.findByText('Step 1 / B1 → Step 1 / B2')).toBeInTheDocument();
+    const call = api.find('GET', '/projects/3/reports/compare').at(-1)!;
+    expect(call.query.get('base')).toBe('build:1');
+    expect(call.query.get('target')).toBe('build:2');
+    expect(tile('Regression')).toHaveTextContent('1OK before, NG or Blocked now');
+    expect(tile('Fixed')).toHaveTextContent('1');
+    expect(tile('Not run again')).toHaveTextContent('1');
+
+    const table = screen.getByRole('table');
+    expect(within(table).getAllByRole('row')).toHaveLength(5);
+    await user.click(screen.getByRole('radio', { name: 'Changed' }));
+    expect(within(table).getAllByRole('row')).toHaveLength(4);
+    await user.click(screen.getByRole('radio', { name: 'Regression' }));
+    const rows = within(table).getAllByRole('row');
+    expect(rows).toHaveLength(2);
+    expect(rows[1]).toHaveTextContent('UO-001 Power on');
+    expect(rows[1]).toHaveTextContent('Regression');
+  });
+
+  it('asks for two runs or builds before comparing', async () => {
+    openUrl('/projects/3/reports?tab=compare');
+    const api = stubReports({ 'GET /projects/3/reports/compare/sides': [] });
+    renderWithProviders(<ReportsPage />, as());
+    expect(await screen.findByText('Pick two runs or two builds')).toBeInTheDocument();
+    expect(api.find('GET', '/projects/3/reports/compare')).toHaveLength(0);
   });
 
   it('explains how to add references when none exist', async () => {

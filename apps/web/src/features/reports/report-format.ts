@@ -230,6 +230,7 @@ export const REPORT_TABS = [
   'workload',
   'defects',
   'reopens',
+  'compare',
   'releases',
   'coverage',
   'traceability',
@@ -245,6 +246,7 @@ export const TAB_SCOPE: Record<ReportTab, { release: boolean; plan: boolean; day
   workload: { release: true, plan: true, days: false },
   defects: { release: true, plan: false, days: true },
   reopens: { release: true, plan: false, days: false },
+  compare: { release: false, plan: false, days: false },
   releases: { release: false, plan: false, days: false },
   coverage: { release: true, plan: false, days: false },
   traceability: { release: true, plan: false, days: false },
@@ -269,6 +271,7 @@ const TAB_SUBJECT: Partial<Record<ReportTab, string>> = {
 
 /** Explains a filter the tab ignores, or what the tab counts. */
 export function scopeNote(tab: ReportTab, planSelected: boolean): string | null {
+  if (tab === 'compare') return 'Pick two runs or two builds; the scope filters do not apply.';
   if (tab === 'releases')
     return 'Compares every release of the project — the scope filters do not apply.';
   if (planSelected && !TAB_SCOPE[tab].plan)

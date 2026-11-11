@@ -1,6 +1,16 @@
 'use client';
 
-import { Bug, ChartLine, Flag, Grid3x3, Link2, RotateCcw, Target, Users } from 'lucide-react';
+import {
+  Bug,
+  ChartLine,
+  Flag,
+  GitCompareArrows,
+  Grid3x3,
+  Link2,
+  RotateCcw,
+  Target,
+  Users,
+} from 'lucide-react';
 import { Suspense, useMemo, type ReactNode } from 'react';
 import { Spinner } from '@/components/common/error-alert';
 import { PageHeader } from '@/components/common/page-header';
@@ -12,6 +22,7 @@ import { useUrlSearchParams } from '@/hooks/use-url-search-params';
 import { usePlans } from '@/lib/api/plans';
 import { toId } from '@/lib/forms';
 import { useProject } from '@/providers/project-provider';
+import { CompareTab } from './compare-tab';
 import { CoverageTab } from './coverage-tab';
 import { DefectsTab } from './defects-tab';
 import { ReleasesTab } from './releases-tab';
@@ -36,6 +47,7 @@ const TAB_ITEMS: { value: ReportTab; label: string; icon: ReactNode }[] = [
   { value: 'workload', label: 'Workload', icon: <Users /> },
   { value: 'defects', label: 'Defects', icon: <Bug /> },
   { value: 'reopens', label: 'Reopens', icon: <RotateCcw /> },
+  { value: 'compare', label: 'Compare', icon: <GitCompareArrows /> },
   { value: 'releases', label: 'Releases', icon: <Flag /> },
   { value: 'coverage', label: 'Coverage', icon: <Target /> },
   { value: 'traceability', label: 'Traceability', icon: <Link2 /> },
@@ -167,6 +179,9 @@ function Reports() {
         </TabsContent>
         <TabsContent value="reopens">
           <ReopensTab projectId={projectId} releaseId={releaseId} />
+        </TabsContent>
+        <TabsContent value="compare">
+          <CompareTab projectId={projectId} />
         </TabsContent>
         <TabsContent value="releases">
           <ReleasesTab />
