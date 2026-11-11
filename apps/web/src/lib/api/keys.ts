@@ -58,6 +58,12 @@ export const qk = {
     ['defects', projectId, 'list', params] as const,
   defect: (projectId: number, defectId: number) => ['defects', projectId, 'one', defectId] as const,
 
+  sessions: (projectId: number) => ['sessions', projectId] as const,
+  sessionList: (projectId: number, params: object) =>
+    ['sessions', projectId, 'list', params] as const,
+  session: (projectId: number, sessionId: number) =>
+    ['sessions', projectId, 'one', sessionId] as const,
+
   comments: (projectId: number, entityType: string, entityId: number) =>
     ['comments', projectId, entityType, entityId] as const,
   attachments: (projectId: number, entityType: string, entityId: number) =>

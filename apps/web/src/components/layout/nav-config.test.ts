@@ -9,6 +9,7 @@ describe('navigation config', () => {
       'Dashboard',
       'My work',
       'Test plans',
+      'Exploratory',
       'Defects',
       'Reports',
     ]);
@@ -23,6 +24,7 @@ describe('navigation config', () => {
       'My work',
       'Team',
       'Test plans',
+      'Exploratory',
       'Defects',
       'Reports',
     ]);

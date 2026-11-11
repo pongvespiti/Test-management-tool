@@ -19,3 +19,4 @@ export * from './automation';
 export * from './my-work';
 export * from './topics';
 export * from './env-dimensions';
+export * from './sessions';

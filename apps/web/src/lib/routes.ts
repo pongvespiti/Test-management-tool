@@ -59,6 +59,8 @@ export const routes = {
     `${project(projectId)}/team${toQueryString({ release: query?.release ?? undefined })}`,
   myWork: (projectId: Id, query?: { user?: Id | null }) =>
     `${project(projectId)}/my-work${toQueryString({ user: query?.user ?? undefined })}`,
+  sessions: (projectId: Id) => `${project(projectId)}/sessions`,
+  session: (projectId: Id, sessionId: Id) => `${project(projectId)}/sessions/${sessionId}`,
   reports: (projectId: Id) => `${project(projectId)}/reports`,
   releases: (projectId: Id) => `${project(projectId)}/releases`,
   members: (projectId: Id) => `${project(projectId)}/members`,
