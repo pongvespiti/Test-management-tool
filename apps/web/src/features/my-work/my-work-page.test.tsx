@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { screen, waitFor, within } from '@testing-library/react';
 import { emptyCounts, type MyWorkDTO } from '@tmt/shared';
 import { followUrl, mockApi, openUrl, urlParams } from '@/features/cases/test-utils';
+import { makeTopics } from '@/features/topics/test-fixtures';
 import { makeProject, renderWithProviders } from '@/test/render';
 import { MyWorkPage } from './my-work-page';
 
@@ -176,5 +177,25 @@ describe('MyWorkPage', () => {
     expect(screen.getByRole('region', { name: 'Defects Ann reported' })).toBeInTheDocument();
     expect(screen.getByText(/work of another member/)).toBeInTheDocument();
     expect(api.find('GET', '/projects/3/my-work').at(-1)!.query.get('userId')).toBe('8');
+  });
+
+  it('lists my topics of the release and follows the release chosen in the URL', async () => {
+    openUrl('/projects/3/my-work?release=4');
+    const api = mockApi({
+      'GET /projects/3/my-work': makeMyWork(),
+      'GET /projects/3/topics': makeTopics({
+        user: { id: 5, username: 'tom', displayName: 'Tom' },
+      }),
+    });
+    renderWithProviders(<MyWorkPage />, { project });
+    const mine = await screen.findByRole('region', { name: 'My topics' });
+    expect(
+      await within(mine).findByRole('region', { name: 'Adapter operation test' }),
+    ).toBeVisible();
+    const call = api.find('GET', '/projects/3/topics').at(-1)!;
+    expect(call.query.get('releaseId')).toBe('4');
+    expect(call.query.get('userId')).toBe('5');
+    // Testers cannot pick another person.
+    expect(screen.queryByLabelText('Person')).not.toBeInTheDocument();
   });
 });

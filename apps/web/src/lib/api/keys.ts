@@ -63,6 +63,8 @@ export const qk = {
   activity: (projectId: number, params: object) => ['activity', projectId, params] as const,
   dashboard: (projectId: number, releaseId: number | null) =>
     ['dashboard', projectId, releaseId] as const,
+  topics: (projectId: number, releaseId: number | null, userId: number | null) =>
+    ['topics', projectId, releaseId, userId] as const,
   myWork: (projectId: number, range: string, date: string | null, userId: number | null = null) =>
     ['my-work', projectId, range, date, userId] as const,
 

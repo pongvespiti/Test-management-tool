@@ -31,6 +31,7 @@ import { formatDate, pluralize } from '@/lib/format';
 import { notifyError, notifySuccess } from '@/lib/notify';
 import { routes } from '@/lib/routes';
 import { useProject } from '@/providers/project-provider';
+import { MyTopics } from './my-topics';
 import { periodTitle, shiftDate, stepOf, summaryText } from './my-work-format';
 
 const RANGES = [
@@ -56,14 +57,23 @@ export function MyWorkPage() {
 }
 
 function MyWork() {
-  const { project, projectId } = useProject();
+  const { project, projectId, can } = useProject();
   const [params, setParams] = useUrlSearchParams();
   const range: MyWorkRange = params.get('range') === 'week' ? 'week' : 'day';
   const dateParam = params.get('date');
   const date = dateParam && DATE_PARAM.test(dateParam) ? dateParam : null;
   const userParam = Number(params.get('user'));
   const userId = Number.isInteger(userParam) && userParam > 0 ? userParam : null;
+  const releaseParam = Number(params.get('release'));
+  const releaseId = Number.isInteger(releaseParam) && releaseParam > 0 ? releaseParam : null;
   const query = useMyWork(projectId, range, date, userId);
+  const pickRelease = (next: number | null) =>
+    setParams((prev) => {
+      const out = new URLSearchParams(prev);
+      if (next) out.set('release', String(next));
+      else out.delete('release');
+      return out;
+    });
   const pickUser = (next: number | null) =>
     setParams((prev) => {
       const out = new URLSearchParams(prev);
@@ -99,31 +109,40 @@ function MyWork() {
       <PageHeader
         eyebrow={project.name}
         title="My work"
-        subtitle="Test cases waiting for you or a team member, and what was tested in a day or a week."
+        subtitle="The topics handed to you, the cases waiting for you, and what you tested in a day or a week."
       />
       <div className="flex flex-col gap-6">
-        <div className="flex flex-wrap items-center gap-3">
-          <label htmlFor="my-work-person" className="text-sm font-medium">
-            Person
-          </label>
-          <div className="w-72">
-            <UserSelect
-              id="my-work-person"
-              projectId={projectId}
-              value={userId}
-              onChange={pickUser}
-              placeholder="Me"
-            />
+        {can('viewTeam') && (
+          <div className="flex flex-wrap items-center gap-3">
+            <label htmlFor="my-work-person" className="text-sm font-medium">
+              Person
+            </label>
+            <div className="w-72">
+              <UserSelect
+                id="my-work-person"
+                projectId={projectId}
+                value={userId}
+                onChange={pickUser}
+                placeholder="Me"
+              />
+            </div>
+            {userId !== null && (
+              <p className="text-sm text-muted-foreground">
+                Showing the work of another member (read-only view).
+              </p>
+            )}
           </div>
-          {userId !== null && (
-            <p className="text-sm text-muted-foreground">
-              Showing the work of another member (read-only view).
-            </p>
-          )}
-        </div>
+        )}
         <QueryState query={query}>
           {data && (
             <>
+              <MyTopics
+                projectId={projectId}
+                userId={data.user.id}
+                releaseId={releaseId}
+                onRelease={pickRelease}
+                own={userId === null}
+              />
               <Waiting data={data} projectId={projectId} other={userId !== null} />
               <section aria-label="Period" className="flex flex-wrap items-center gap-3">
                 <SegmentedControl
