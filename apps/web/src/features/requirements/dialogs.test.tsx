@@ -38,18 +38,18 @@ describe('import mapping', () => {
   });
 });
 
-describe('JiraImportDialog', () => {
-  const render = () =>
-    renderWithProviders(<JiraImportDialog onClose={() => undefined} />, {
-      project: makeProject({ myRole: 'tester' }),
-    });
+const renderJira = () =>
+  renderWithProviders(<JiraImportDialog onClose={() => undefined} />, {
+    project: makeProject({ myRole: 'tester' }),
+  });
 
+describe('JiraImportDialog', () => {
   it('reads issues by key and rejects text that is not a key', async () => {
     openUrl('/projects/3/requirements');
     const api = mockApi({
       'POST /projects/3/requirements/jira/import': { created: 2, updated: 0, missing: [] },
     });
-    const { user } = render();
+    const { user } = renderJira();
     const read = screen.getByRole('button', { name: 'Read from Jira' });
     expect(read).toBeDisabled();
     await user.type(screen.getByLabelText('Issue keys'), 'iot-12, nonsense');
@@ -70,7 +70,7 @@ describe('JiraImportDialog', () => {
     const api = mockApi({
       'POST /projects/3/requirements/jira/import': { created: 1, updated: 0, missing: [] },
     });
-    const { user } = render();
+    const { user } = renderJira();
     await user.click(screen.getByRole('radio', { name: 'JQL search' }));
     await user.type(screen.getByLabelText('JQL search'), 'project = IOT');
     await user.click(screen.getByRole('button', { name: 'Read from Jira' }));

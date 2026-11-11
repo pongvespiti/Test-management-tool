@@ -10,22 +10,16 @@ import {
   type DefectReportDTO,
   type ReleaseComparisonRowDTO,
   type ReportDefectsQuery,
-  type CompareDTO,
-  type CompareSideDTO,
   type ReopenReportDTO,
   type ScheduleDTO,
-  type ReportCompareQuery,
   type ReportSummaryQuery,
   type ReportTrendDTO,
   type ReportTrendQuery,
-  type ResultStatus,
   type SummaryDTO,
-  type TraceabilityDTO,
   type WorkloadRowDTO,
 } from '@tmt/shared';
 import { dimensionsOf } from '../dimensions/dimensions.service.js';
 import { envOf } from '../execution/execution.mapper.js';
-import { notFound } from '../../common/errors/app.exception.js';
 import { dateOnly, loadUserRefs, refOf } from '../../common/users/user-refs.js';
 import { AppConfig } from '../../config/app-config.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
@@ -39,10 +33,8 @@ import {
   workloadRows,
   type WorkloadAggregate,
 } from './report-compute.js';
-import { compareResults, type SideResult } from './compare.js';
 import { reopenReportOf, type ReopenDefect } from './reopens.js';
 import { summaryOf, type SummaryRun } from './summary.js';
-import { traceabilityOf } from './traceability.js';
 import { addDays, dayRange, localDate, startOfLocalDay } from './report-dates.js';
 
 /** Plans in scope: one plan (wins), the plans of a release, or the whole project. */
@@ -51,9 +43,6 @@ export interface ReportScope {
   planId?: number;
   releaseId?: number;
 }
-
-type TraceDefectStatus = TraceabilityDTO['rows'][number]['defects'][number]['status'];
-type TraceDefectSeverity = TraceabilityDTO['rows'][number]['defects'][number]['severity'];
 
 /** Library cases listed in the defect report. */
 const TOP_CASES = 10;
@@ -297,91 +286,6 @@ export class ReportsService {
   }
 
   /**
-   * Traceability: library cases grouped by the references in their `refs` text, with the latest
-   * result in scope and the defects linked to the cases.
-   */
-  async traceability(projectId: number, releaseId?: number): Promise<TraceabilityDTO> {
-    const db = this.prisma.db;
-    await assertReleaseInProject(db, projectId, releaseId);
-    const cases = await db.testCase.findMany({
-      where: {
-        suite: { projectId, isArchived: false },
-        isDeleted: false,
-        status: { not: 'deprecated' },
-      },
-      orderBy: [{ suite: { sortOrder: 'asc' } }, { suiteId: 'asc' }, { seq: 'asc' }],
-      select: {
-        id: true,
-        seq: true,
-        title: true,
-        references: true,
-        suite: { select: { id: true, name: true, prefix: true } },
-      },
-    });
-    const requirementRows = await db.requirement.findMany({
-      where: { projectId },
-      select: {
-        id: true,
-        key: true,
-        title: true,
-        source: true,
-        externalUrl: true,
-        externalStatus: true,
-        cases: { select: { testCaseId: true } },
-      },
-    });
-    if (cases.length === 0 && requirementRows.length === 0)
-      return { rows: [], casesWithoutReference: 0, totalCases: 0 };
-    const release =
-      releaseId !== undefined ? Prisma.sql`AND p.release_id = ${releaseId}` : Prisma.empty;
-    const latest = await db.$queryRaw<{ testCaseId: number; status: ResultStatus }[]>`
-      SELECT DISTINCT ON (rc.test_case_id) rc.test_case_id AS "testCaseId", rc.status::text AS status
-      FROM run_cases rc
-      JOIN test_runs r ON r.id = rc.run_id
-      JOIN test_plans p ON p.id = r.plan_id
-      WHERE p.project_id = ${projectId} AND rc.test_case_id IS NOT NULL ${release}
-      ORDER BY rc.test_case_id, r.created_at DESC, r.id DESC, rc.id DESC`;
-    const defectRelease =
-      releaseId !== undefined ? Prisma.sql`AND d.release_id = ${releaseId}` : Prisma.empty;
-    const defects = await db.$queryRaw<
-      {
-        testCaseId: number;
-        id: number;
-        seq: number;
-        title: string;
-        status: TraceDefectStatus;
-        severity: TraceDefectSeverity;
-      }[]
-    >`
-      SELECT DISTINCT dl.test_case_id AS "testCaseId", d.id, d.seq, d.title,
-             d.status::text AS status, d.severity::text AS severity
-      FROM defect_links dl
-      JOIN defects d ON d.id = dl.defect_id
-      WHERE d.project_id = ${projectId} AND dl.test_case_id IS NOT NULL ${defectRelease}`;
-    return traceabilityOf(
-      cases.map((c) => ({
-        id: c.id,
-        seq: c.seq,
-        title: c.title,
-        refs: c.references,
-        suite: c.suite,
-      })),
-      new Map(latest.map((r) => [r.testCaseId, r.status])),
-      defects,
-      defectKey,
-      requirementRows.map((r) => ({
-        id: r.id,
-        key: r.key,
-        title: r.title,
-        source: r.source,
-        externalUrl: r.externalUrl,
-        externalStatus: r.externalStatus,
-        linkedCaseIds: new Set(r.cases.map((c) => c.testCaseId)),
-      })),
-    );
-  }
-
-  /**
    * Result counts of the runs in scope, filtered and grouped by environment dimensions (Platform,
    * OS ver, Unit model …) and the built-ins topic / release / build. One run is one environment, so
    * every run case counts once, in the cell of its run.
@@ -491,103 +395,6 @@ export class ReportsService {
       };
     });
     return reopenReportOf(defects, events);
-  }
-
-  /** Runs (newest first) and builds (newest first) that can be compared. */
-  async compareSides(projectId: number): Promise<CompareSideDTO[]> {
-    const db = this.prisma.db;
-    const [runs, builds] = await Promise.all([
-      db.testRun.findMany({
-        where: { plan: { projectId } },
-        orderBy: { id: 'desc' },
-        select: {
-          id: true,
-          code: true,
-          environment: true,
-          suite: { select: { name: true } },
-          plan: { select: { docNo: true, release: { select: { name: true } } } },
-        },
-      }),
-      db.build.findMany({
-        where: { release: { projectId } },
-        orderBy: { id: 'desc' },
-        select: {
-          id: true,
-          name: true,
-          release: { select: { name: true } },
-          _count: { select: { runs: true } },
-        },
-      }),
-    ]);
-    return [
-      ...runs.map((r) => ({
-        value: `run:${r.id}`,
-        kind: 'run' as const,
-        id: r.id,
-        label: `${r.code} · ${r.suite.name}`,
-        detail: [
-          r.plan.docNo,
-          r.plan.release?.name,
-          ...envOf(r)
-            .map((e) => e.value.trim())
-            .filter(Boolean),
-        ]
-          .filter(Boolean)
-          .join(' · '),
-      })),
-      ...builds.map((b) => ({
-        value: `build:${b.id}`,
-        kind: 'build' as const,
-        id: b.id,
-        label: `${b.release.name} / ${b.name}`,
-        detail: `${b._count.runs} ${b._count.runs === 1 ? 'run' : 'runs'}`,
-      })),
-    ];
-  }
-
-  /**
-   * Results of one case per library case on two sides — a run, or the latest result of each case
-   * over the runs of a build — and what changed from the base to the target.
-   */
-  async compare(projectId: number, q: ReportCompareQuery): Promise<CompareDTO> {
-    const sides = await this.compareSides(projectId);
-    const find = (value: string) => {
-      const side = sides.find((s) => s.value === value);
-      if (!side)
-        throw notFound(
-          value.startsWith('run:') ? 'Run' : 'Build',
-          value.startsWith('run:') ? 'RUN_NOT_FOUND' : 'BUILD_NOT_FOUND',
-        );
-      return side;
-    };
-    const base = find(q.base);
-    const target = find(q.target);
-    const [baseResults, targetResults] = await Promise.all([
-      this.sideResults(base),
-      this.sideResults(target),
-    ]);
-    return { base, target, ...compareResults(baseResults, targetResults) };
-  }
-
-  private sideResults(side: CompareSideDTO): Promise<SideResult[]> {
-    const db = this.prisma.db;
-    if (side.kind === 'run') {
-      return db.$queryRaw<SideResult[]>`
-        SELECT rc.test_case_id AS "testCaseId", rc.display_id AS "displayId", rc.title,
-               s.name AS suite, rc.status::text AS status
-        FROM run_cases rc
-        JOIN test_runs r ON r.id = rc.run_id
-        JOIN suites s ON s.id = r.suite_id
-        WHERE r.id = ${side.id} AND rc.test_case_id IS NOT NULL`;
-    }
-    return db.$queryRaw<SideResult[]>`
-      SELECT DISTINCT ON (rc.test_case_id) rc.test_case_id AS "testCaseId",
-             rc.display_id AS "displayId", rc.title, s.name AS suite, rc.status::text AS status
-      FROM run_cases rc
-      JOIN test_runs r ON r.id = rc.run_id
-      JOIN suites s ON s.id = r.suite_id
-      WHERE r.build_id = ${side.id} AND rc.test_case_id IS NOT NULL
-      ORDER BY rc.test_case_id, r.created_at DESC, r.id DESC, rc.id DESC`;
   }
 
   /** Runs of the release (or the project) with their planned window, topic and tester. */

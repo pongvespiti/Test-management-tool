@@ -42,7 +42,7 @@ export function UserSelect({
   const options = (members.data ?? [])
     .filter((m) => !roles || roles.includes(m.role))
     .map((m) => ({ value: String(m.user.id), label: `${m.user.displayName} (${m.user.username})` }))
-    .sort((a, b) => a.label.localeCompare(b.label));
+    .toSorted((a, b) => a.label.localeCompare(b.label));
   return (
     <Select
       value={value === null ? NONE : String(value)}

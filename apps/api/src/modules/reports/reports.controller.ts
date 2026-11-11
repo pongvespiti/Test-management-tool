@@ -27,13 +27,19 @@ import type { z } from 'zod';
 import { ApiErrorCodes, ProjectPermission } from '../../common/decorators/auth.decorators.js';
 import { CurrentProject } from '../../common/decorators/request.decorators.js';
 import type { ProjectContext } from '../../common/types/auth.js';
+import { CompareService } from './compare.service.js';
 import { ReportsService } from './reports.service.js';
+import { TraceabilityService } from './traceability.service.js';
 
 /** Reports: scope `planId` (wins) or `releaseId` or the whole project; days in REPORT_TIMEZONE. */
 @ApiTags('Reports')
 @Controller('projects/:projectId/reports')
 export class ReportsController {
-  constructor(private readonly reports: ReportsService) {}
+  constructor(
+    private readonly reports: ReportsService,
+    private readonly traces: TraceabilityService,
+    private readonly comparison: CompareService,
+  ) {}
 
   /** Daily results, burndown and pass rate. */
   @Get('trend')
@@ -94,7 +100,7 @@ export class ReportsController {
     @CurrentProject() ctx: ProjectContext,
     @Query({ schema: reportCoverageQuerySchema }) q: z.infer<typeof reportCoverageQuerySchema>,
   ): Promise<TraceabilityDTO> {
-    return this.reports.traceability(ctx.id, q.releaseId);
+    return this.traces.traceability(ctx.id, q.releaseId);
   }
 
   /** Result counts of the runs, filtered and grouped by environment dimensions, topic, release, build. */
@@ -123,7 +129,7 @@ export class ReportsController {
   @Get('compare/sides')
   @ProjectPermission('viewReports')
   compareSides(@CurrentProject() ctx: ProjectContext): Promise<CompareSideDTO[]> {
-    return this.reports.compareSides(ctx.id);
+    return this.comparison.compareSides(ctx.id);
   }
 
   /** What changed per test case between two runs or two builds (`run:<id>` / `build:<id>`). */
@@ -134,7 +140,7 @@ export class ReportsController {
     @CurrentProject() ctx: ProjectContext,
     @Query({ schema: reportCompareQuerySchema }) q: ReportCompareQuery,
   ): Promise<CompareDTO> {
-    return this.reports.compare(ctx.id, q);
+    return this.comparison.compare(ctx.id, q);
   }
 
   /** Runs with their planned window (plan start, run or plan due date), topic and tester — for the Gantt. */

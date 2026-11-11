@@ -47,9 +47,10 @@ export function filterRows(rows: readonly CompareRowDTO[], filter: CompareFilter
   return rows.filter((r) => r.change === filter);
 }
 
+const esc = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+
 /** Rows as CSV (case, suite, result on each side, what changed). */
 export function compareCsv(rows: readonly CompareRowDTO[]): string {
-  const esc = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
   const lines = [['Case', 'Title', 'Suite', 'From', 'To', 'Change']];
   for (const r of rows) {
     lines.push([

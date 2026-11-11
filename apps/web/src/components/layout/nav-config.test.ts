@@ -1,6 +1,8 @@
 import { describe, expect, it } from '@jest/globals';
 import { isNavItemActive, navSections, projectNav } from './nav-config';
 
+const labels = (show: boolean) => projectNav(3, show)[0]!.items.map((i) => i.label);
+
 describe('navigation config', () => {
   it('shows the project groups of the mockup inside a project', () => {
     const sections = projectNav(3);
@@ -17,7 +19,6 @@ describe('navigation config', () => {
   });
 
   it('adds the Team page for managers and leads only', () => {
-    const labels = (show: boolean) => projectNav(3, show)[0]!.items.map((i) => i.label);
     expect(labels(false)).not.toContain('Team');
     expect(labels(true)).toEqual([
       'Dashboard',

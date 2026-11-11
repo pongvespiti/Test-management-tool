@@ -21,7 +21,7 @@ import { CreateProjectDialog } from './create-project-dialog';
 
 /** Active projects first; the server already sorts by name (the sort is stable). */
 export function sortProjects(projects: readonly ProjectDTO[]): ProjectDTO[] {
-  return [...projects].sort((a, b) => Number(a.isArchived) - Number(b.isArchived));
+  return projects.toSorted((a, b) => Number(a.isArchived) - Number(b.isArchived));
 }
 
 function ProjectCard({ project }: { project: ProjectDTO }) {
