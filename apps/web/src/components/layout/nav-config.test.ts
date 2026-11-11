@@ -15,6 +15,20 @@ describe('navigation config', () => {
     expect(sections[1]!.items.map((i) => i.href)).toContain('/projects/3/settings/suites');
   });
 
+  it('adds the Team page for managers and leads only', () => {
+    const labels = (show: boolean) => projectNav(3, show)[0]!.items.map((i) => i.label);
+    expect(labels(false)).not.toContain('Team');
+    expect(labels(true)).toEqual([
+      'Dashboard',
+      'My work',
+      'Team',
+      'Test plans',
+      'Defects',
+      'Reports',
+    ]);
+    expect(projectNav(3, true)[0]!.items[2]!.href).toBe('/projects/3/team');
+  });
+
   it('shows the workspace outside projects and the admin section to admins only', () => {
     expect(navSections(null, false).map((s) => s.title)).toEqual(['Workspace']);
     expect(navSections(null, true).map((s) => s.title)).toEqual(['Workspace', 'Admin']);

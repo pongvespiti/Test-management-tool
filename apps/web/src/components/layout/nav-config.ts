@@ -16,6 +16,7 @@ import {
   SlidersHorizontal,
   Upload,
   Users,
+  UsersRound,
   type LucideIcon,
 } from 'lucide-react';
 import { isUnder, routes } from '@/lib/routes';
@@ -36,7 +37,7 @@ export interface NavSection {
 }
 
 /** Sidebar of a project (same groups and order as the approved mockup). */
-export function projectNav(projectId: number): NavSection[] {
+export function projectNav(projectId: number, showTeam = false): NavSection[] {
   return [
     {
       title: 'Testing',
@@ -48,6 +49,7 @@ export function projectNav(projectId: number): NavSection[] {
           exact: true,
         },
         { label: 'My work', href: routes.myWork(projectId), icon: ListTodo },
+        ...(showTeam ? [{ label: 'Team', href: routes.team(projectId), icon: UsersRound }] : []),
         {
           label: 'Test plans',
           href: routes.plans(projectId),
@@ -100,8 +102,12 @@ export const ADMIN_NAV: NavSection = {
 };
 
 /** Sections shown for the current context. */
-export function navSections(projectId: number | null, isAdmin: boolean): NavSection[] {
-  const sections = projectId ? projectNav(projectId) : [WORKSPACE_NAV];
+export function navSections(
+  projectId: number | null,
+  isAdmin: boolean,
+  showTeam = false,
+): NavSection[] {
+  const sections = projectId ? projectNav(projectId, showTeam) : [WORKSPACE_NAV];
   return isAdmin ? [...sections, ADMIN_NAV] : sections;
 }
 

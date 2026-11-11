@@ -61,7 +61,7 @@ export function WorkloadTable({
   /** Dashboard version: person, untested, remaining estimate, last 7 days. */
   compact?: boolean;
 }) {
-  const { projectId } = useProject();
+  const { projectId, can } = useProject();
   const sorted = sortWorkload(rows);
   const right = cn(TH, 'text-right');
   return (
@@ -85,7 +85,7 @@ export function WorkloadTable({
         {sorted.map((r) => (
           <TableRow key={r.user?.id ?? 'unassigned'}>
             <TableCell className="pl-5 whitespace-nowrap">
-              {r.user ? (
+              {r.user && can('viewTeam') ? (
                 <Link
                   href={routes.myWork(projectId, { user: r.user.id })}
                   className="text-sm font-medium text-primary hover:underline"
@@ -94,7 +94,9 @@ export function WorkloadTable({
                   {personName(r.user)}
                 </Link>
               ) : (
-                <p className="text-sm text-muted-foreground">{personName(r.user)}</p>
+                <p className={cn('text-sm', !r.user && 'text-muted-foreground')}>
+                  {personName(r.user)}
+                </p>
               )}
               {compact && (
                 <p className="text-xs text-muted-foreground">

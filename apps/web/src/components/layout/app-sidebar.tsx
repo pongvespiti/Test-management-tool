@@ -55,7 +55,11 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const project = useOptionalProject();
   const { isAdmin } = useAuth();
-  const sections = navSections(project?.projectId ?? null, isAdmin);
+  const sections = navSections(
+    project?.projectId ?? null,
+    isAdmin,
+    project?.can('viewTeam') ?? false,
+  );
 
   return (
     <ScrollArea className="h-full">
