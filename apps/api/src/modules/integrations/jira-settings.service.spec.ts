@@ -42,13 +42,13 @@ describe('JiraSettingsService', () => {
     activity = { log: jest.fn<ActivityService['log']>().mockResolvedValue(undefined) };
     client = {
       serverInfo: jest.fn<JiraClient['serverInfo']>().mockResolvedValue({
-        serverTitle: 'DIT Jira',
+        serverTitle: 'Example Jira',
         version: '9.12.2',
         deploymentType: 'Server',
       }),
       project: jest
         .fn<JiraClient['project']>()
-        .mockResolvedValue({ key: 'TEAM', name: 'DIT Edge Devices' }),
+        .mockResolvedValue({ key: 'TEAM', name: 'Example Edge Devices' }),
     };
     factory = {
       create: jest.fn<JiraClientFactory['create']>(() => client as unknown as JiraClient),
@@ -179,9 +179,9 @@ describe('JiraSettingsService', () => {
       );
       await expect(service.test(ctx, undefined)).resolves.toEqual({
         ok: true,
-        message: 'Connected to DIT Jira (Server 9.12.2) — project TEAM (DIT Edge Devices)',
-        serverTitle: 'DIT Jira (Server 9.12.2)',
-        projectName: 'DIT Edge Devices',
+        message: 'Connected to Example Jira (Server 9.12.2) — project TEAM (Example Edge Devices)',
+        serverTitle: 'Example Jira (Server 9.12.2)',
+        projectName: 'Example Edge Devices',
       });
       expect(factory.create.mock.calls[0]![0]).toMatchObject({
         baseUrl: 'https://jira.example',
@@ -236,8 +236,8 @@ describe('JiraSettingsService', () => {
       expect(await service.test(ctx, settings({ projectKey: 'NOPE' }))).toEqual({
         ok: false,
         message:
-          'Connected to DIT Jira (Server 9.12.2), but project NOPE was not found or is not visible to this account',
-        serverTitle: 'DIT Jira (Server 9.12.2)',
+          'Connected to Example Jira (Server 9.12.2), but project NOPE was not found or is not visible to this account',
+        serverTitle: 'Example Jira (Server 9.12.2)',
         projectName: null,
       });
       client.project.mockRejectedValueOnce(new JiraError(403, [], 'Refused'));

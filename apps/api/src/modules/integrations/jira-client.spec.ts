@@ -99,10 +99,10 @@ describe('JiraClient', () => {
 
   it('calls Jira with the auth header, limits and TLS setting of the connection', async () => {
     requestJson.mockResolvedValue(
-      answer(200, { serverTitle: 'DIT Jira', version: '9.12.2', deploymentType: '' }),
+      answer(200, { serverTitle: 'Example Jira', version: '9.12.2', deploymentType: '' }),
     );
     await expect(client.serverInfo()).resolves.toEqual({
-      serverTitle: 'DIT Jira',
+      serverTitle: 'Example Jira',
       version: '9.12.2',
       deploymentType: null,
     });

@@ -97,13 +97,13 @@ async function handleJira(req: http.IncomingMessage, res: http.ServerResponse, r
       baseUrl: mock.url,
       version: '9.12.2',
       deploymentType: 'Server',
-      serverTitle: 'DIT Jira',
+      serverTitle: 'Example Jira',
     });
   }
   const project = /^\/rest\/api\/2\/project\/([^/]+)$/.exec(p);
   if (req.method === 'GET' && project) {
     return project[1] === 'TEAM'
-      ? json(res, 200, { key: 'TEAM', name: 'DIT Edge Devices' })
+      ? json(res, 200, { key: 'TEAM', name: 'Example Edge Devices' })
       : json(res, 404, {
           errorMessages: [`No project could be found with key '${project[1]}'.`],
           errors: {},
@@ -372,9 +372,9 @@ describe('POST integrations/jira/test', () => {
     );
     expect(res).toEqual({
       ok: true,
-      message: 'Connected to DIT Jira (Server 9.12.2) — project TEAM (DIT Edge Devices)',
-      serverTitle: 'DIT Jira (Server 9.12.2)',
-      projectName: 'DIT Edge Devices',
+      message: 'Connected to Example Jira (Server 9.12.2) — project TEAM (Example Edge Devices)',
+      serverTitle: 'Example Jira (Server 9.12.2)',
+      projectName: 'Example Edge Devices',
     });
     expect(mock.requests.map((r) => r.path)).toEqual([
       '/rest/api/2/serverInfo',
@@ -407,7 +407,7 @@ describe('POST integrations/jira/test', () => {
 
     const wrongProject = await test(jiraSettings({ projectKey: 'NOPE', secret: undefined }));
     expect(wrongProject.ok).toBe(false);
-    expect(wrongProject.serverTitle).toBe('DIT Jira (Server 9.12.2)');
+    expect(wrongProject.serverTitle).toBe('Example Jira (Server 9.12.2)');
     expect(wrongProject.message).toMatch(/project NOPE was not found/);
 
     const wrongToken = await test(jiraSettings({ secret: 'wrong-token' }));
