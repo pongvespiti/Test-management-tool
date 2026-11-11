@@ -1,6 +1,6 @@
 import { type CanActivate, type ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { PERMISSIONS, roleAtLeast, type PermissionKey, type ProjectRole } from '@tmt/shared';
+import { can, requiredRole, type PermissionKey, type ProjectRole } from '@tmt/shared';
 import type { Request } from 'express';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { PROJECT_PERMISSION } from '../decorators/metadata-keys.js';
@@ -30,9 +30,10 @@ export class ProjectAccessGuard implements CanActivate {
 
     const project = await this.loadContext(parsed.data, user.id, user.isAdmin);
     if (!project) throw notFound('Project', 'PROJECT_NOT_FOUND');
-    const minRole = PERMISSIONS[permission];
-    if (!roleAtLeast(project.role, minRole)) {
-      throw forbidden(`This action needs the ${minRole} role in project ${project.key}`);
+    if (!can(project.role, permission)) {
+      throw forbidden(
+        `This action needs the ${requiredRole(permission)} role in project ${project.key}`,
+      );
     }
     req.project = project;
     return true;

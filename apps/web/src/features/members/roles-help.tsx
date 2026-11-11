@@ -5,12 +5,16 @@ import { Card } from '@/components/ui/card';
 const ROWS: { role: ProjectRole; text: string }[] = [
   { role: 'viewer', text: 'Read everything in the project and export test cases and reports.' },
   {
+    role: 'manager',
+    text: 'Reads everything like a viewer, and also sees the Team page and assigns test topics to people and sets due dates. Does not record results or edit test cases.',
+  },
+  {
     role: 'tester',
     text: 'Also write test cases and shared steps, import from Excel or JUnit, create plans and runs, record results, report defects, use Jira and comment.',
   },
   {
     role: 'lead',
-    text: 'Also manage suites and fields, releases, members, report templates, integrations and project settings, approve reviews, delete items and reopen completed plans.',
+    text: 'Also the team view and topic assignment of a manager, and manage suites and fields, releases, members, report templates, integrations and project settings, approve reviews, delete items and reopen completed plans.',
   },
 ];
 

@@ -100,6 +100,7 @@ export const DEFECT_PRIORITY_LABELS: Record<DefectPriority, string> = {
 
 export const ROLE_LABELS: Record<ProjectRole, string> = {
   viewer: 'Viewer',
+  manager: 'Manager',
   tester: 'Tester',
   lead: 'Lead',
 };

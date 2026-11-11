@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, type Suite, type TestCase } from '@tmt/database';
-import { can, PERMISSIONS, type BulkCasesInput, type PermissionKey } from '@tmt/shared';
+import { can, requiredRole, type BulkCasesInput, type PermissionKey } from '@tmt/shared';
 import { forbidden } from '../../common/errors/app.exception.js';
 import type { AuthUser, ProjectContext } from '../../common/types/auth.js';
 import { PrismaService, type Db } from '../../prisma/prisma.service.js';
@@ -45,7 +45,7 @@ function sameTags(a: readonly string[], b: readonly string[]): boolean {
 
 function assertCan(ctx: ProjectContext, permission: PermissionKey): void {
   if (!can(ctx.role, permission)) {
-    throw forbidden(`This action needs the ${PERMISSIONS[permission]} role`);
+    throw forbidden(`This action needs the ${requiredRole(permission)} role`);
   }
 }
 

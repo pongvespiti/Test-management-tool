@@ -49,5 +49,10 @@ export function toBuildDTO(b: BuildWithCounts): BuildDTO {
   };
 }
 
-/** Members sort leads first, then testers, then viewers. */
-export const ROLE_ORDER: Record<ProjectRole, number> = { lead: 0, tester: 1, viewer: 2 };
+/** Members sort leads first, then testers, managers, viewers. */
+export const ROLE_ORDER: Record<ProjectRole, number> = {
+  lead: 0,
+  tester: 1,
+  manager: 2,
+  viewer: 3,
+};

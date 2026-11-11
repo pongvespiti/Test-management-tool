@@ -13,6 +13,7 @@ import {
   normalizeText,
   passRateOf,
   progressOf,
+  requiredRole,
   roleAtLeast,
   safeFileName,
   slugKey,
@@ -155,5 +156,23 @@ describe('permissions', () => {
     expect(can('viewer', 'manageBuilds')).toBe(false);
     expect(can('tester', 'manageReleases')).toBe(false);
     expect(can('viewer', 'export')).toBe(true);
+  });
+
+  it('gives managers the team view but no testing rights', () => {
+    // Order: viewer < manager < tester < lead.
+    expect(roleAtLeast('manager', 'viewer')).toBe(true);
+    expect(roleAtLeast('manager', 'tester')).toBe(false);
+    expect(can('manager', 'viewReports')).toBe(true);
+    expect(can('manager', 'execute')).toBe(false);
+    expect(can('manager', 'writePlans')).toBe(false);
+    for (const action of ['viewTeam', 'assignTopics'] as const) {
+      expect(can('manager', action)).toBe(true);
+      expect(can('lead', action)).toBe(true);
+      expect(can('tester', action)).toBe(false);
+      expect(can('viewer', action)).toBe(false);
+      expect(can(null, action)).toBe(false);
+      expect(requiredRole(action)).toBe('manager');
+    }
+    expect(requiredRole('execute')).toBe('tester');
   });
 });

@@ -7,6 +7,7 @@ const TITLES: Record<string, string> = {
   user: 'Any signed-in user',
   admin: 'System administrators only',
   viewer: 'Minimum project role: viewer',
+  manager: 'Project role: manager or lead',
   tester: 'Minimum project role: tester',
   lead: 'Minimum project role: lead (administrators act as lead)',
 };
@@ -16,6 +17,7 @@ const HINTS: Record<string, string> = {
   user: 'any signed-in user, no project role needed',
   admin: 'system administrators only',
   viewer: 'any project member',
+  manager: 'managers and leads of the project',
   tester: 'testers and leads of the project',
   lead: 'project leads (and administrators)',
 };
@@ -25,7 +27,13 @@ export function MinRoleLabel({ role }: { role: string | null }) {
   if (!role) return null;
   const title = TITLES[role] ?? `Minimum role: ${role}`;
   let pill;
-  if (role === 'viewer' || role === 'tester' || role === 'lead' || role === 'admin')
+  if (
+    role === 'viewer' ||
+    role === 'manager' ||
+    role === 'tester' ||
+    role === 'lead' ||
+    role === 'admin'
+  )
     pill = <RoleBadge role={role} />;
   else if (role === 'public') pill = <StatusPill tone={GRAY}>Public</StatusPill>;
   else if (role === 'user') pill = <StatusPill tone={GRAY}>Any user</StatusPill>;

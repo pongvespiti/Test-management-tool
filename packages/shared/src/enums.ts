@@ -1,8 +1,13 @@
 /** Project roles, lowest to highest privilege. Admins (system flag) pass every project check. */
-export const PROJECT_ROLES = ['viewer', 'tester', 'lead'] as const;
+export const PROJECT_ROLES = ['viewer', 'manager', 'tester', 'lead'] as const;
 export type ProjectRole = (typeof PROJECT_ROLES)[number];
 
-export const ROLE_RANK: Record<ProjectRole, number> = { viewer: 1, tester: 2, lead: 3 };
+export const ROLE_RANK: Record<ProjectRole, number> = {
+  viewer: 1,
+  manager: 2,
+  tester: 3,
+  lead: 4,
+};
 
 /** Result of one run case. Vocabulary follows the team's Excel: OK / NG / OK with condition / N/T / N/A. */
 export const RESULT_STATUSES = ['untested', 'ok', 'ng', 'ok_cond', 'blocked', 'nt', 'na'] as const;

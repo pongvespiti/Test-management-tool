@@ -31,9 +31,11 @@ enum AuthProvider {
   @@map("auth_provider")
 }
 
-/// Project role, lowest to highest privilege. System administrators act as `lead` everywhere.
+/// Project role, lowest to highest privilege (viewer < manager < tester < lead). A manager reads
+/// everything and sees the team view but does not work on tests. System administrators act as `lead`.
 enum ProjectRole {
   viewer
+  manager
   tester
   lead
 

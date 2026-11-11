@@ -136,7 +136,7 @@ export const MATRIX_TONES: Record<MatrixCell, Tone> = {
   nt: GRAY,
 };
 
-export const ROLE_TONES = { lead: VIOLET, tester: BLUE, viewer: GRAY } as const;
+export const ROLE_TONES = { lead: VIOLET, manager: TEAL, tester: BLUE, viewer: GRAY } as const;
 
 export const labels = {
   result: RESULT_LABELS,

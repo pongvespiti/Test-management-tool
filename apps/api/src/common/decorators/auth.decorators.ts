@@ -1,6 +1,6 @@
 import { applyDecorators, SetMetadata, UseGuards } from '@nestjs/common';
 import { ApiExtension } from '@nestjs/swagger';
-import { PERMISSIONS, type PermissionKey } from '@tmt/shared';
+import { requiredRole, type PermissionKey } from '@tmt/shared';
 import { AdminGuard } from '../guards/admin.guard.js';
 import { ProjectAccessGuard } from '../guards/project-access.guard.js';
 
@@ -31,7 +31,7 @@ export const ProjectPermission = (permission: PermissionKey) =>
     SetMetadata(PROJECT_PERMISSION, permission),
     UseGuards(ProjectAccessGuard),
     // The 403 response is added to the document from this role (see openapi.enrich.ts).
-    ApiExtension('x-min-role', PERMISSIONS[permission]),
+    ApiExtension('x-min-role', requiredRole(permission)),
   );
 
 /** System administrators only. */

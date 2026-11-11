@@ -1,5 +1,6 @@
 'use client';
 
+import type { ProjectRole } from '@tmt/shared';
 import { useMembers } from '@/lib/api/projects';
 import {
   Select,
@@ -35,7 +36,7 @@ export function UserSelect({
   'aria-describedby'?: string;
   'aria-invalid'?: boolean;
   /** Restrict to these roles (e.g. reviewers = leads). */
-  roles?: readonly ('viewer' | 'tester' | 'lead')[];
+  roles?: readonly ProjectRole[];
 }) {
   const members = useMembers(projectId);
   const options = (members.data ?? [])
