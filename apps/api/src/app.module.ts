@@ -22,6 +22,7 @@ import { ExecutionModule } from './modules/execution/execution.module.js';
 import { ImportsModule } from './modules/imports/imports.module.js';
 import { IntegrationsModule } from './modules/integrations/integrations.module.js';
 import { LibraryModule } from './modules/library/library.module.js';
+import { MyWorkModule } from './modules/my-work/my-work.module.js';
 import { ReportsModule } from './modules/reports/reports.module.js';
 import { TemplatesModule } from './modules/templates/templates.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
@@ -42,6 +43,7 @@ const FEATURE_MODULES = [
   IntegrationsModule,
   ReportsModule,
   DashboardModule,
+  MyWorkModule,
   OpenApiModule,
 ];
 

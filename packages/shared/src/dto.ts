@@ -603,6 +603,70 @@ export interface DashboardDTO {
   openDefects: DefectListItem[];
 }
 
+// ---------------------------------------------------------------- my work
+
+/** A run case waiting for me (open plans only). */
+export interface MyWorkItemDTO {
+  runCaseId: number;
+  displayId: string;
+  code: string | null;
+  title: string;
+  status: Extract<ResultStatus, 'untested' | 'ng' | 'blocked'>;
+  priority: CasePriority;
+  estimateMinutes: number | null;
+  runId: number;
+  runCode: string;
+  planId: number;
+  planDocNo: string;
+  release: NamedRef | null;
+  build: NamedRef | null;
+}
+
+/** Results I recorded in the period for one release / build. */
+export interface MyWorkGroupDTO {
+  release: NamedRef | null;
+  build: NamedRef | null;
+  /** Run cases with a result in the period (each counted once, by its latest result). */
+  executed: number;
+  counts: StatusCounts;
+  elapsedSec: number;
+}
+
+export interface MyWorkDayDTO {
+  /** `YYYY-MM-DD` in the report timezone. */
+  date: string;
+  executed: number;
+  elapsedSec: number;
+}
+
+export interface MyWorkDTO {
+  user: UserRef;
+  timezone: string;
+  range: 'day' | 'week';
+  /** First and last day of the period (inclusive, `YYYY-MM-DD`). */
+  from: string;
+  to: string;
+  assigned: {
+    untested: number;
+    ng: number;
+    blocked: number;
+    total: number;
+    remainingEstimateMinutes: number;
+    /** NG first, then blocked, then untested; by priority inside each. */
+    items: MyWorkItemDTO[];
+    truncated: boolean;
+  };
+  summary: {
+    executed: number;
+    counts: StatusCounts;
+    elapsedSec: number;
+    days: MyWorkDayDTO[];
+    groups: MyWorkGroupDTO[];
+    /** Defects I reported in the period. */
+    defects: DefectRef[];
+  };
+}
+
 // ---------------------------------------------------------------- import
 
 export interface ImportSheetInfo {

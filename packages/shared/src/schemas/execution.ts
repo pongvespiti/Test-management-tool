@@ -250,6 +250,18 @@ export const dashboardQuerySchema = z.object({
   releaseId: idSchema.optional(),
 });
 
+/** "My work": the day or the Monday-to-Sunday week that contains `date` (default: today). */
+export const MY_WORK_RANGES = ['day', 'week'] as const;
+export type MyWorkRange = (typeof MY_WORK_RANGES)[number];
+export const myWorkQuerySchema = z.object({
+  range: z.enum(MY_WORK_RANGES).default('day'),
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a date as YYYY-MM-DD')
+    .optional(),
+});
+export type MyWorkQuery = z.infer<typeof myWorkQuerySchema>;
+
 // ---------------------------------------------------------------- automation (JUnit XML)
 
 /** Query string of `POST …/runs/:runId/junit` (multipart field `file`). */

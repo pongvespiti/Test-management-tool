@@ -9,6 +9,7 @@ import {
   Layers,
   LayoutDashboard,
   ListChecks,
+  ListTodo,
   PlugZap,
   Settings,
   ShieldUser,
@@ -46,6 +47,7 @@ export function projectNav(projectId: number): NavSection[] {
           icon: LayoutDashboard,
           exact: true,
         },
+        { label: 'My work', href: routes.myWork(projectId), icon: ListTodo },
         {
           label: 'Test plans',
           href: routes.plans(projectId),

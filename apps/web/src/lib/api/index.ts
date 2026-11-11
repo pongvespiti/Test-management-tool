@@ -16,3 +16,4 @@ export * from './tokens';
 export * from './shared-steps';
 export * from './reports';
 export * from './automation';
+export * from './my-work';

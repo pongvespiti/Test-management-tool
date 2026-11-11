@@ -740,6 +740,14 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     success: 200,
     response: 'DashboardDTO',
   },
+  'GET /api/v1/projects/{projectId}/my-work': {
+    tag: 'Reports',
+    summary: 'Run cases waiting for me and my results of a day or week',
+    notes:
+      'Waiting = assigned to me (else the run tester is me) in not-completed plans. `range` day|week (Monday–Sunday) around `date` (REPORT_TIMEZONE).',
+    success: 200,
+    response: 'MyWorkDTO',
+  },
   'GET /api/v1/projects/{projectId}/reports/trend': {
     tag: 'Reports',
     summary: 'Daily results, burndown and pass rate (REPORT_TIMEZONE days)',

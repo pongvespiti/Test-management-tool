@@ -63,6 +63,8 @@ export const qk = {
   activity: (projectId: number, params: object) => ['activity', projectId, params] as const,
   dashboard: (projectId: number, releaseId: number | null) =>
     ['dashboard', projectId, releaseId] as const,
+  myWork: (projectId: number, range: string, date: string | null) =>
+    ['my-work', projectId, range, date] as const,
 
   // ---- v1.1 (keys are shared; each API module owns its hooks)
   tags: (projectId: number) => ['tags', projectId] as const,

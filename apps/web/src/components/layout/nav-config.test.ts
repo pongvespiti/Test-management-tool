@@ -7,6 +7,7 @@ describe('navigation config', () => {
     expect(sections.map((s) => s.title)).toEqual(['Testing', 'Library', 'Project']);
     expect(sections[0]!.items.map((i) => i.label)).toEqual([
       'Dashboard',
+      'My work',
       'Test plans',
       'Defects',
       'Reports',
@@ -27,7 +28,7 @@ describe('navigation config', () => {
 
   it('marks the dashboard only on exact match and plans also for runs', () => {
     const [testing] = projectNav(3);
-    const [dashboard, plans] = testing!.items;
+    const [dashboard, , plans] = testing!.items;
     expect(isNavItemActive('/projects/3', dashboard!)).toBe(true);
     expect(isNavItemActive('/projects/3/plans', dashboard!)).toBe(false);
     expect(isNavItemActive('/projects/3/plans/9', plans!)).toBe(true);
