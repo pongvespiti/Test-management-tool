@@ -26,6 +26,7 @@ export interface DemoUser {
 /** Accounts created for the demo, one per project role. */
 export const DEMO_USERS: readonly DemoUser[] = [
   { username: 'demo.lead', displayName: 'Demo Lead', role: 'lead' },
+  { username: 'demo.manager', displayName: 'Demo Manager', role: 'manager' },
   { username: 'demo.tester', displayName: 'Demo Tester', role: 'tester' },
   { username: 'demo.viewer', displayName: 'Demo Viewer', role: 'viewer' },
 ];
@@ -61,7 +62,12 @@ export const DEMO_BUILDS = [
 ] as const;
 
 /** Build each demo run was tested on (by run index). */
-export const DEMO_RUN_BUILDS: readonly string[] = ['1.0.0(1.0.0)', '1.0.0(2.0.0)', '1.0.0(2.0.0)'];
+export const DEMO_RUN_BUILDS: readonly string[] = [
+  '1.0.0(1.0.0)',
+  '1.0.0(2.0.0)',
+  '1.0.0(2.0.0)',
+  '1.0.0(2.0.0)',
+];
 
 export const DEMO_SHARED_STEP = {
   name: 'Sign in to the app',
@@ -76,15 +82,31 @@ export type DemoCase = readonly [title: string, type: CaseType, priority: CasePr
 
 export interface DemoSuite {
   name: string;
+  /** Big topic the suite belongs to (empty = the suite name). */
+  topic?: string;
   prefix: string;
   /** Environment labels a run of this suite fills in. */
   envTemplate: readonly string[];
   sections: Record<string, readonly DemoCase[]>;
 }
 
+const ADAPTER_SECTIONS: DemoSuite['sections'] = {
+  Pairing: [
+    ['Pair with 2.4 GHz router', 'Normal', 'critical'],
+    ['Pair with wrong password', 'Abnormal', 'high'],
+    ['Pair while router reboots', 'Abnormal', 'medium'],
+  ],
+  'Cloud sync': [
+    ['Status reaches app within 3 s', 'Normal', 'high'],
+    ['Command queued while offline', 'Abnormal', 'medium'],
+    ['Firmware update over the air', 'Normal', 'critical'],
+  ],
+};
+
 export const DEMO_SUITES: readonly DemoSuite[] = [
   {
     name: 'Unit operation test',
+    topic: 'Unit operation test',
     prefix: 'UO',
     envTemplate: ['Unit', 'Firmware'],
     sections: {
@@ -110,6 +132,7 @@ export const DEMO_SUITES: readonly DemoSuite[] = [
   },
   {
     name: 'Modbus system test',
+    topic: 'Modbus system test',
     prefix: 'MB',
     envTemplate: ['Unit', 'Firmware', 'Modbus master'],
     sections: {
@@ -125,25 +148,22 @@ export const DEMO_SUITES: readonly DemoSuite[] = [
     },
   },
   {
-    name: 'Adapter operation test',
+    name: 'Adapter operation test – Model A',
+    topic: 'Adapter operation test',
     prefix: 'AO',
     envTemplate: ['Unit', 'Firmware', 'Router'],
-    sections: {
-      Pairing: [
-        ['Pair with 2.4 GHz router', 'Normal', 'critical'],
-        ['Pair with wrong password', 'Abnormal', 'high'],
-        ['Pair while router reboots', 'Abnormal', 'medium'],
-      ],
-      'Cloud sync': [
-        ['Status reaches app within 3 s', 'Normal', 'high'],
-        ['Command queued while offline', 'Abnormal', 'medium'],
-        ['Firmware update over the air', 'Normal', 'critical'],
-      ],
-    },
+    sections: ADAPTER_SECTIONS,
+  },
+  {
+    name: 'Adapter operation test – Model B',
+    topic: 'Adapter operation test',
+    prefix: 'AP',
+    envTemplate: ['Unit', 'Firmware', 'Router'],
+    sections: ADAPTER_SECTIONS,
   },
 ];
 
-/** A step-by-step case (with the shared steps) added to the first section of the last suite (Adapter operation test). */
+/** A step-by-step case (with the shared steps) added to the Adapter operation test – Model A suite. */
 export const DEMO_STEPS_CASE = {
   title: 'Unit appears in the app after pairing',
   priority: 'high' as CasePriority,
@@ -166,7 +186,20 @@ export const DEMO_RUN_ENVIRONMENTS: readonly Record<string, string>[] = [
   { Unit: 'Bench unit A', Firmware: '1.0.0-rc1' },
   { Unit: 'Bench unit A', Firmware: '1.0.0-rc1', 'Modbus master': 'PLC simulator' },
   { Unit: 'Bench unit B', Firmware: '1.0.0-rc1', Router: 'AX3000' },
+  { Unit: 'Bench unit C', Firmware: '1.0.0-rc1', Router: 'AX3000' },
 ];
+
+/**
+ * Who holds the run of each suite: the tester, no one (still to hand out) or the lead, and its due
+ * date in days from the seed day. Model B is handed out through the topics API, like the Team page does.
+ */
+export const DEMO_RUN_HOLDERS: readonly ('tester' | 'none' | 'lead')[] = [
+  'tester',
+  'none',
+  'tester',
+  'lead',
+];
+export const DEMO_RUN_DUE_IN_DAYS: readonly number[] = [10, 12, 8, 14];
 
 /** Repeating result pattern applied to the run cases (`untested` ones are left alone). */
 export const DEMO_RESULT_PATTERN: readonly ResultStatus[] = [

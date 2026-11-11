@@ -56,6 +56,7 @@ from the others.
 | `modules/templates`                                | report templates (upload, check, default)                                                                 |
 | `modules/reports`                                  | run report, plan/run Excel export, project report                                                         |
 | `modules/dashboard`                                | release overview, results per build, release readiness, waiting-for-retest queue                          |
+| `modules/topics`                                   | progress by topic → suite → run in a release (whole team or one person), handing suites to a person       |
 | `modules/my-work`                                  | cases waiting for the signed-in user and a day/week summary of their results                              |
 | `modules/collab`                                   | comments, attachments                                                                                     |
 | `modules/integrations`                             | Jira settings and client                                                                                  |
@@ -98,7 +99,7 @@ building blocks, `lib/api` the REST client with one React Query hook set per res
 
 ## Data model
 
-Authorisation roles per project: `viewer < tester < lead`; administrators manage users and can see
+Authorisation roles per project: `viewer < manager < tester < lead` (a manager sees the Team page and hands out topics like a lead, but cannot record results); administrators manage users and can see
 every project. The ERD shows ownership (a project owns its data); optional "created by / assigned
 to" links to `User` are omitted for readability.
 

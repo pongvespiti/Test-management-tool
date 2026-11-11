@@ -50,11 +50,12 @@ pnpm dev                             # API on :4000, web on :3000
 
 Open <http://localhost:3000> and sign in with a demo account:
 
-| Account       | Role in the demo project | Password                                             |
-| ------------- | ------------------------ | ---------------------------------------------------- |
-| `demo.lead`   | lead                     | `SEED_USER_PASSWORD`, or the one printed by the seed |
-| `demo.tester` | tester                   | same                                                 |
-| `demo.viewer` | viewer                   | same                                                 |
+| Account        | Role in the demo project | Password                                             |
+| -------------- | ------------------------ | ---------------------------------------------------- |
+| `demo.lead`    | lead                     | `SEED_USER_PASSWORD`, or the one printed by the seed |
+| `demo.manager` | manager                  | same                                                 |
+| `demo.tester`  | tester                   | same                                                 |
+| `demo.viewer`  | viewer                   | same                                                 |
 
 The seed needs no running server and can be repeated (an existing demo project is left alone).
 The administrator account (`admin`) is created at the first start: with an empty
@@ -111,7 +112,7 @@ pattern of a project at any time under **Settings → General**.
   login rate limit and lock-out, forced password change for initial/reset passwords.
 - API tokens (hash stored, shown once) for automation; they cannot reach session-only endpoints.
 - Integration secrets (Jira token) are encrypted with `APP_SECRET`.
-- Project roles (viewer · tester · lead) enforced on every route; administrators manage users.
+- Project roles (viewer · manager · tester · lead) enforced on every route; administrators manage users.
 
 ## Contributing
 

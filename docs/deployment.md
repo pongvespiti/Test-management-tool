@@ -70,5 +70,5 @@ Run both processes under a service manager (systemd, NSSM/WinSW on Windows).
   sign-in. Further accounts are created in **Admin → Users**.
 - Demo data (optional, e.g. for a training server): `docker compose exec api node dist/scripts/seed.js`
   or `pnpm db:seed` on a plain host. It adds the project `DEMO` and the accounts `demo.lead`,
-  `demo.tester`, `demo.viewer` (password from `SEED_USER_PASSWORD`, else printed once). Do not seed
+  `demo.manager`, `demo.tester`, `demo.viewer` (password from `SEED_USER_PASSWORD`, else printed once). Do not seed
   a production database you do not want demo accounts in.

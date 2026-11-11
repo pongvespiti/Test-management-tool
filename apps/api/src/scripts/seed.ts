@@ -38,7 +38,9 @@ import {
   DEMO_RELEASES,
   DEMO_RESULT_PATTERN,
   DEMO_RUN_BUILDS,
+  DEMO_RUN_DUE_IN_DAYS,
   DEMO_RUN_ENVIRONMENTS,
+  DEMO_RUN_HOLDERS,
   DEMO_SHARED_STEP,
   DEMO_STEPS_CASE,
   DEMO_SUITES,
@@ -107,6 +109,7 @@ async function seedSuite(call: Call, projectPath: string, suite: DemoSuite): Pro
     name: suite.name,
     prefix: suite.prefix,
     envTemplate: suite.envTemplate,
+    ...(suite.topic && { topic: suite.topic }),
   });
   for (const [sectionName, cases] of Object.entries(suite.sections)) {
     const section = await call('POST', `${projectPath}/suites/${created.id}/sections`, {
@@ -131,7 +134,12 @@ async function seedSuite(call: Call, projectPath: string, suite: DemoSuite): Pro
 }
 
 /** Library, plan, runs, results and defects of the demo project (as the demo lead). */
-async function seedProjectContent(call: Call, projectId: number, testerId: number): Promise<void> {
+async function seedProjectContent(
+  call: Call,
+  projectId: number,
+  testerId: number,
+  leadId: number,
+): Promise<void> {
   const projectPath = `/projects/${projectId}`;
 
   const releases: Id[] = [];
@@ -160,7 +168,7 @@ async function seedProjectContent(call: Call, projectId: number, testerId: numbe
   const sharedStep = await call('POST', `${projectPath}/shared-steps`, DEMO_SHARED_STEP);
   const suites: Id[] = [];
   for (const suite of DEMO_SUITES) suites.push(await seedSuite(call, projectPath, suite));
-  await call('POST', `${projectPath}/suites/${suites.at(-1)!.id}/cases`, {
+  await call('POST', `${projectPath}/suites/${suites[2]!.id}/cases`, {
     title: DEMO_STEPS_CASE.title,
     priority: DEMO_STEPS_CASE.priority,
     template: 'steps',
@@ -186,9 +194,19 @@ async function seedProjectContent(call: Call, projectId: number, testerId: numbe
       code: `RUN-${index + 1}`,
       scenario: DEMO_SUITES[index]!.name,
       environment,
-      testerId,
+      // Model B is handed out below, like the Team page does it.
+      ...(DEMO_RUN_HOLDERS[index] === 'tester' && { testerId }),
+      dueDate: dayFromToday(DEMO_RUN_DUE_IN_DAYS[index] ?? 14),
       buildId: buildId(DEMO_RUN_BUILDS[index]),
     });
+    if (DEMO_RUN_HOLDERS[index] === 'lead') {
+      await call('POST', `${projectPath}/topics/assign`, {
+        releaseId: activeRelease.id,
+        suiteIds: [suite.id],
+        testerId: leadId,
+        dueDate: dayFromToday(DEMO_RUN_DUE_IN_DAYS[index] ?? 14),
+      });
+    }
     const runCases = await call<Id[]>('GET', `${projectPath}/runs/${run.id}/cases`);
     for (const [position, runCase] of runCases.entries()) {
       const status = DEMO_RESULT_PATTERN[(position + index * 3) % DEMO_RESULT_PATTERN.length]!;
@@ -292,7 +310,7 @@ async function seed(app: NestExpressApplication): Promise<void> {
     `${config.sessionCookieName}=${session.token}`,
   );
   try {
-    await seedProjectContent(call, project.id, testerId);
+    await seedProjectContent(call, project.id, testerId, leadId);
   } finally {
     await call('POST', '/auth/logout').catch(() => undefined);
   }
