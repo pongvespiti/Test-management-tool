@@ -36,13 +36,16 @@ import {
   DEMO_PLAN,
   DEMO_PROJECT,
   DEMO_RELEASES,
+  DEMO_REQUIREMENTS,
   DEMO_RESULT_PATTERN,
   DEMO_ENV_LISTS,
   DEMO_RUNS,
+  DEMO_SESSIONS,
   DEMO_SHARED_STEP,
   DEMO_STEPS_CASE,
   DEMO_SUITES,
   DEMO_USERS,
+  DEMO_VIEWS,
   type DemoSuite,
 } from './demo-data.js';
 
@@ -102,19 +105,25 @@ async function ensureDemoUsers(
   return { ids, created };
 }
 
-async function seedSuite(call: Call, projectPath: string, suite: DemoSuite): Promise<Id> {
+interface SeededSuite extends Id {
+  /** Case ids by title. */
+  cases: Map<string, number>;
+}
+
+async function seedSuite(call: Call, projectPath: string, suite: DemoSuite): Promise<SeededSuite> {
   const created = await call('POST', `${projectPath}/suites`, {
     name: suite.name,
     prefix: suite.prefix,
     envTemplate: suite.envTemplate,
     ...(suite.topic && { topic: suite.topic }),
   });
+  const caseIds = new Map<string, number>();
   for (const [sectionName, cases] of Object.entries(suite.sections)) {
     const section = await call('POST', `${projectPath}/suites/${created.id}/sections`, {
       name: sectionName,
     });
     for (const [title, caseType, priority] of cases) {
-      await call('POST', `${projectPath}/suites/${created.id}/cases`, {
+      const createdCase = await call('POST', `${projectPath}/suites/${created.id}/cases`, {
         sectionId: section.id,
         title,
         caseType,
@@ -126,9 +135,65 @@ async function seedSuite(call: Call, projectPath: string, suite: DemoSuite): Pro
         expected: 'The unit responds within 1 s and the display matches the command',
         tags: caseType === 'Abnormal' ? ['negative'] : ['smoke'],
       });
+      caseIds.set(title, createdCase.id);
     }
   }
-  return created;
+  return { ...created, cases: caseIds };
+}
+
+/** Requirements with their linked cases; other cases only cite the key in their References. */
+async function seedRequirements(
+  call: Call,
+  projectPath: string,
+  suites: readonly SeededSuite[],
+): Promise<void> {
+  const caseId = ([suite, title]: readonly [number, string]) => suites[suite]!.cases.get(title)!;
+  for (const requirement of DEMO_REQUIREMENTS) {
+    const { linked, cited = [], ...fields } = requirement;
+    const created = await call('POST', `${projectPath}/requirements`, fields);
+    if (linked.length > 0) {
+      await call('PUT', `${projectPath}/requirements/${created.id}/cases`, {
+        caseIds: linked.map(caseId),
+      });
+    }
+    for (const ref of cited) {
+      await call('PATCH', `${projectPath}/cases/${caseId(ref)}`, { references: requirement.key });
+    }
+  }
+}
+
+/** Exploratory sessions in every state, with notes and a defect found in one of them. */
+async function seedSessions(
+  call: Call,
+  projectPath: string,
+  ctx: {
+    testerId: number;
+    releaseId: number;
+    buildId: (name: string | undefined) => number | undefined;
+    defectIds: readonly number[];
+  },
+): Promise<void> {
+  for (const demo of DEMO_SESSIONS) {
+    const { state, notes = [], summary, defect, build, environment, ...fields } = demo;
+    const session = await call('POST', `${projectPath}/sessions`, {
+      ...fields,
+      ownerId: ctx.testerId,
+      releaseId: ctx.releaseId,
+      buildId: ctx.buildId(build),
+      environment: Object.entries(environment).map(([label, value]) => ({ label, value })),
+    });
+    const base = `${projectPath}/sessions/${session.id}`;
+    if (state === 'planned') continue;
+    await call('POST', `${base}/start`);
+    for (const note of notes) await call('POST', `${base}/notes`, note);
+    if (defect !== undefined) {
+      await call('POST', `${base}/defects`, { defectId: ctx.defectIds[defect] });
+    }
+    if (state === 'completed') {
+      if (summary) await call('PATCH', base, { summary });
+      await call('POST', `${base}/complete`);
+    }
+  }
 }
 
 /** Library, plan, runs, results and defects of the demo project (as the demo lead). */
@@ -164,7 +229,7 @@ async function seedProjectContent(
   const buildId = (name: string | undefined) => (name ? buildIds.get(name) : undefined);
 
   const sharedStep = await call('POST', `${projectPath}/shared-steps`, DEMO_SHARED_STEP);
-  const suites: Id[] = [];
+  const suites: SeededSuite[] = [];
   for (const suite of DEMO_SUITES) suites.push(await seedSuite(call, projectPath, suite));
   await call('POST', `${projectPath}/suites/${suites[2]!.id}/cases`, {
     title: DEMO_STEPS_CASE.title,
@@ -177,9 +242,12 @@ async function seedProjectContent(
     tags: ['smoke'],
   });
 
+  const { startInDays, dueInDays, ...planFields } = DEMO_PLAN;
   const plan = await call('POST', `${projectPath}/plans`, {
-    ...DEMO_PLAN,
+    ...planFields,
     releaseId: activeRelease.id,
+    startDate: dayFromToday(startInDays),
+    dueDate: dayFromToday(dueInDays),
   });
 
   await call('PUT', `${projectPath}/env-dimensions`, { dimensions: DEMO_ENV_LISTS });
@@ -223,8 +291,10 @@ async function seedProjectContent(
     });
   }
 
+  const defectIds: number[] = [];
   for (const {
     linkToFirstNg,
+    reopens = 0,
     comment,
     foundInBuild,
     fixedInBuild,
@@ -242,7 +312,13 @@ async function seedProjectContent(
       for (const to of ['open', 'resolved']) {
         await call('POST', `${projectPath}/defects/${defect.id}/transition`, { to });
       }
+      for (let i = 0; i < reopens; i++) {
+        for (const to of ['reopened', 'resolved']) {
+          await call('POST', `${projectPath}/defects/${defect.id}/transition`, { to });
+        }
+      }
     }
+    defectIds.push(defect.id);
     if (comment) {
       await call('POST', `${projectPath}/comments`, {
         entityType: 'defect',
@@ -251,6 +327,19 @@ async function seedProjectContent(
       });
     }
   }
+
+  await seedRequirements(call, projectPath, suites);
+  await seedSessions(call, projectPath, {
+    testerId,
+    releaseId: activeRelease.id,
+    buildId,
+    defectIds,
+  });
+  await seedSummaryViews(call, projectPath);
+}
+
+async function seedSummaryViews(call: Call, projectPath: string): Promise<void> {
+  for (const view of DEMO_VIEWS) await call('POST', `${projectPath}/reports/views`, view);
 }
 
 async function seed(app: NestExpressApplication): Promise<void> {

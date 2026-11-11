@@ -187,6 +187,9 @@ export const DEMO_PLAN = {
   purpose: 'Confirm unit operation, Modbus and Wi-Fi adapter functions before release v1.0',
   testMethod: 'Manual test on the bench unit',
   judgementCriteria: 'All critical and high priority cases are OK',
+  /** Planned first and last day of testing, in days from the seed day (they feed the Gantt chart). */
+  startInDays: -7,
+  dueInDays: 14,
 } as const;
 
 /** Lists behind the environment labels (Platform → OS ver / Mobile model depend on each other). */
@@ -375,6 +378,8 @@ export interface DemoDefect {
   fixedInBuild?: string;
   /** Linked to the first NG result of the demo runs. */
   linkToFirstNg?: boolean;
+  /** Times the defect is reopened after it was resolved (needs `resolved`); the last move is Resolved again. */
+  reopens?: number;
   /** Moved to Resolved (needs `fixedInBuild`): its failed case waits for a retest on that build. */
   resolved?: boolean;
   comment?: string;
@@ -392,6 +397,7 @@ export const DEMO_DEFECTS: readonly DemoDefect[] = [
     fixedInBuild: '1.0.0(2.0.0)',
     linkToFirstNg: true,
     resolved: true,
+    reopens: 1,
     comment: 'Reproduced on bench unit A with firmware 1.0.0-rc1.',
   },
   {
@@ -400,4 +406,131 @@ export const DEMO_DEFECTS: readonly DemoDefect[] = [
     priority: 'medium',
     foundInBuild: '1.0.0(2.0.0)',
   },
+  {
+    title: 'Setpoint 16 °C is rejected by the Modbus master',
+    severity: 'major',
+    priority: 'medium',
+    foundInBuild: '1.0.0(1.0.0)',
+    fixedInBuild: '1.0.0(2.0.0)',
+    resolved: true,
+    reopens: 2,
+    comment: 'Fixed twice and still reproduced with the register map of Model B.',
+  },
 ];
+
+/** A suite and a case title of DEMO_SUITES: how a requirement names the cases that test it. */
+export type DemoCaseRef = readonly [suite: number, title: string];
+
+export interface DemoRequirement {
+  key: string;
+  title: string;
+  description?: string;
+  /** Document the requirement was taken from (PDF, minutes): kept as text. */
+  sourceRef?: string;
+  /** Cases linked in the requirements table. */
+  linked: readonly DemoCaseRef[];
+  /** Cases that only write the key in their References field. */
+  cited?: readonly DemoCaseRef[];
+}
+
+/** Requirements typed in by hand; one of them has no case yet, which the traceability report flags. */
+export const DEMO_REQUIREMENTS: readonly DemoRequirement[] = [
+  {
+    key: 'REQ-001',
+    title: 'The unit powers on from standby within 3 seconds',
+    description: 'From the remote command to the ready tone, at room temperature.',
+    sourceRef: 'Spec 26-AC-001 §4.2 (PDF)',
+    linked: [[0, 'Power on from standby']],
+    cited: [[0, 'Power off during compressor start']],
+  },
+  {
+    key: 'REQ-002',
+    title: 'Modbus master can read and write the setpoint',
+    sourceRef: 'Minutes of the 2026-10-28 design review',
+    linked: [
+      [1, 'Read operating mode register'],
+      [1, 'Write setpoint 25 °C'],
+      [1, 'Write setpoint out of range'],
+    ],
+  },
+  {
+    key: 'REQ-003',
+    title: 'The adapter pairs with a 2.4 GHz router',
+    linked: [
+      [2, 'Pair with 2.4 GHz router'],
+      [3, 'Pair with 2.4 GHz router'],
+    ],
+    cited: [[2, 'Pair with wrong password']],
+  },
+  {
+    key: 'REQ-004',
+    title: 'Firmware can be updated over the air',
+    description: 'Not tested yet: the cases are still to be written.',
+    linked: [],
+  },
+];
+
+export interface DemoSession {
+  title: string;
+  charter: string;
+  timeBoxMinutes: number;
+  environment: Record<string, string>;
+  build: string;
+  /** Requirement keys or specs the session explores. */
+  references?: string;
+  state: 'planned' | 'in_progress' | 'completed';
+  notes?: readonly { kind: 'note' | 'bug' | 'question' | 'idea'; body: string }[];
+  summary?: string;
+  /** Index in DEMO_DEFECTS of a defect found in the session. */
+  defect?: number;
+}
+
+/** Exploratory sessions in each state, owned by the demo tester. */
+export const DEMO_SESSIONS: readonly DemoSession[] = [
+  {
+    title: 'Pairing while the router restarts',
+    charter: 'Explore pairing when the router reboots in the middle, looking for lost settings.',
+    timeBoxMinutes: 60,
+    environment: { Platform: 'Android', 'OS ver': '15', 'Mobile model': 'Phone A' },
+    build: '1.0.0(2.0.0)',
+    references: 'REQ-003',
+    state: 'completed',
+    notes: [
+      {
+        kind: 'note',
+        body: 'Router reboot at 70 % of the pairing: the app waits without a message.',
+      },
+      { kind: 'bug', body: 'App shows offline for about 10 s after the router is back.' },
+      { kind: 'question', body: 'Should the app retry pairing by itself?' },
+    ],
+    summary: 'Pairing recovers after a reboot, but the offline banner stays too long.',
+    defect: 1,
+  },
+  {
+    title: 'Mode changes during defrost',
+    charter: 'Switch modes at different moments of the defrost cycle and compare unit and app.',
+    timeBoxMinutes: 45,
+    environment: { 'Unit model': 'Model A', 'FW version': '1.0.0-rc1' },
+    build: '1.0.0(1.0.0)',
+    references: 'REQ-001',
+    state: 'in_progress',
+    notes: [{ kind: 'idea', body: 'Try the same with the remote control and the app at once.' }],
+  },
+  {
+    title: 'Timer after a power failure',
+    charter: 'Cut the power with an on-timer set, restore it and check what the unit remembers.',
+    timeBoxMinutes: 30,
+    environment: { 'Unit model': 'Model B' },
+    build: '1.0.0(2.0.0)',
+    state: 'planned',
+  },
+];
+
+/** A saved view of the summary report: shared with the project. */
+export const DEMO_VIEWS = [
+  {
+    name: 'Platform × topic',
+    shared: true,
+    config: { rows: 'Platform', cols: '@topic', filters: {} },
+  },
+] as const;
