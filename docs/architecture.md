@@ -55,7 +55,8 @@ from the others.
 | `modules/defects`                                  | defects, links to run cases, workflow transitions                                                         |
 | `modules/templates`                                | report templates (upload, check, default)                                                                 |
 | `modules/reports`                                  | run report, plan/run Excel export, project report                                                         |
-| `modules/dashboard`                                | release overview numbers, results per build                                                               |
+| `modules/dashboard`                                | release overview, results per build, release readiness, waiting-for-retest queue                          |
+| `modules/my-work`                                  | cases waiting for the signed-in user and a day/week summary of their results                              |
 | `modules/collab`                                   | comments, attachments                                                                                     |
 | `modules/integrations`                             | Jira settings and client                                                                                  |
 | `modules/automation`                               | JUnit XML upload for CI                                                                                   |
