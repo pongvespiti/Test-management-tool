@@ -54,7 +54,11 @@ from the others.
 | `modules/execution`                                | plans, runs, run cases, results, history, bulk actions                                                    |
 | `modules/defects`                                  | defects, links to run cases, workflow transitions                                                         |
 | `modules/templates`                                | report templates (upload, check, default)                                                                 |
-| `modules/reports`                                  | run report, plan/run Excel export, project report                                                         |
+| `modules/reports`                                  | run report, plan/run Excel export, trend, summary by dimensions (+ saved views), reopens, schedule        |
+| `modules/reports` (`traceability`, `compare`)      | requirement → case → result → defect table; comparison of two runs or builds                              |
+| `modules/dimensions`                               | environment dimension lists of a project (Platform → OS ver / Mobile model), stored with the project      |
+| `modules/requirements`                             | requirements table, Excel import, read-only Jira import/refresh, links to cases                           |
+| `modules/sessions`                                 | exploratory sessions: charter, time box, notes timeline, linked defects                                   |
 | `modules/dashboard`                                | release overview, results per build, release readiness, waiting-for-retest queue                          |
 | `modules/topics`                                   | progress by topic → suite → run in a release (whole team or one person), handing suites to a person       |
 | `modules/my-work`                                  | cases waiting for the signed-in user and a day/week summary of their results                              |
@@ -120,6 +124,14 @@ erDiagram
   Project ||--o{ Import : has
   Project ||--o{ ProjectIntegration : "integrates (one per kind)"
   Project ||--o{ ActivityLog : audits
+  Project ||--o{ Requirement : has
+  Requirement ||--o{ RequirementCase : "tested by"
+  TestCase ||--o{ RequirementCase : "tests"
+  Project ||--o{ ExploratorySession : has
+  ExploratorySession ||--o{ ExploratoryNote : "timeline"
+  ExploratorySession ||--o{ ExploratoryDefect : "found"
+  Defect ||--o{ ExploratoryDefect : "found in session"
+  Project ||--o{ SavedView : "summary views"
   Suite ||--o{ Section : "organised in"
   Section ||--o{ Section : "sub-sections"
   Suite ||--o{ TestCase : contains
@@ -152,6 +164,29 @@ How the team's words map to the model:
 | Test topic (system test, modbus test, …) | Suite                                                               |
 | Test report document                     | Test plan (belongs to one release)                                  |
 | One device / configuration               | Run (Test ID) with its environment entries (model, firmware, phone) |
+
+Reports added later, all computed on request (no stored aggregates):
+
+- **Summary** counts the run cases of the runs in scope by environment dimension (Platform, OS ver,
+  Mobile model, App version, Unit model, FW version, Router …) and the built-ins topic / release /
+  build. One run is one environment, so every run case counts once, in the cell of its run. Views
+  (rows, columns, filters) can be saved per user or shared with the project (`saved_views`).
+- **Traceability** joins requirements, the cases that test them and the latest results and defects.
+  A case counts for a requirement when it is linked in the table (`requirement_cases`) or writes the
+  key in its References text (key spellings such as `req 1` and `REQ-1` are the same key). Deleted,
+  deprecated and archived cases do not count. Requirements come from Excel/CSV (column mapping,
+  preview, one transaction), from Jira (read only: by issue keys or JQL, refreshed on demand; Jira is
+  the authority for the title, description and status of those requirements) or are typed in.
+  PDF and meeting-minutes sources are kept as a text reference (`source_ref`) only.
+- **Compare** shows, per library case, the result on two runs or the latest result on two builds and
+  what changed (a case that passed and now fails is a regression).
+- **Schedule** (Gantt) places plans and runs on their planned dates (plan start/due, run due date),
+  by topic or person.
+- **Reopens** counts how often a defect was reopened from the activity log (entity `defect`, to =
+  `reopened`), by release, build, platform and topic, and lists defects reopened twice or more.
+- **Exploratory sessions** (`exploratory_sessions`, notes, linked defects) are unscripted, time-boxed
+  testing with a charter; they belong to a release and optionally a build and can cite requirements
+  in their references.
 
 A run may name a build of its plan's release (422 `BAD_BUILD` otherwise). Defects take a
 "found in" and a "fixed in" build; a defect reported from a result starts with the build of that

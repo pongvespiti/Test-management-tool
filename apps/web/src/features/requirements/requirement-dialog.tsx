@@ -3,6 +3,7 @@
 import type { RequirementVia } from '@tmt/shared';
 import { ExternalLink, Link2, Pencil, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import { useState } from 'react';
 import { confirmDelete } from '@/components/common/confirm-host';
 import { QueryState } from '@/components/common/error-alert';
 import { MonoId } from '@/components/common/mono-id';
@@ -42,7 +43,8 @@ export function RequirementDialog({
   onClose: () => void;
 }) {
   const { projectId, can } = useProject();
-  const query = useRequirement(projectId, requirementId);
+  const [deleted, setDeleted] = useState(false);
+  const query = useRequirement(projectId, deleted ? null : requirementId);
   const remove = useDeleteRequirement(projectId);
   const editor = useModalTarget<'edit'>();
   const linker = useModalTarget<'link'>();
@@ -55,10 +57,12 @@ export function RequirementDialog({
       `requirement ${r.key}`,
       async () => {
         try {
+          setDeleted(true);
           await remove.mutateAsync(r.id);
           notifySuccess(`${r.key} deleted.`);
           onClose();
         } catch (err) {
+          setDeleted(false);
           notifyError(err, 'Could not delete the requirement');
         }
       },

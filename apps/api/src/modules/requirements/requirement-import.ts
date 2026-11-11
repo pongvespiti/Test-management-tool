@@ -11,12 +11,13 @@ import {
 } from '@tmt/shared';
 
 const HEADER_HINTS: Record<RequirementField, RegExp> = {
-  key: /^(req(uirement)?s?[\s._-]*(id|no\.?|number|#|key|code)?|id|key|no\.?|#|ref(erence)?[\s._-]*(id|no\.?)|jira([\s._-]*(key|id))?|issue[\s._-]*(key|id)|item)$/i,
+  key: /^(req|req(uirement)?s?[\s._-]*(id|no\.?|number|#|key|code)|id|key|no\.?|#|ref(erence)?[\s._-]*(id|no\.?)|jira([\s._-]*(key|id))?|issue[\s._-]*(key|id)|item)$/i,
   title:
-    /^(title|summary|name|requirement|requirement[\s._-]*(title|name|summary)|subject|feature)$/i,
+    /^(title|summary|name|requirements?|requirement[\s._-]*(title|name|summary)|subject|feature)$/i,
   description:
     /^(description|detail(s)?|text|specification|spec|content|requirement[\s._-]*(text|description|detail(s)?))$/i,
-  sourceRef: /^(source|document|doc|reference|ref|spec[\s._-]*(ref|section)|origin|section|page)$/i,
+  sourceRef:
+    /^(source([\s._-]*(doc(ument)?s?|ref(erence)?))?|documents?|docs?|reference|ref|spec[\s._-]*(ref|section)|origin|section|page)$/i,
 };
 
 /** The field a column header looks like (first matching field in priority order), or null. */

@@ -163,6 +163,17 @@ describe('Requirements page', () => {
     );
   });
 
+  it('deletes a requirement without fetching it again', async () => {
+    const api = stub({ 'DELETE /projects/3/requirements/21': undefined });
+    const { user } = renderWithProviders(<RequirementsPage />, as());
+    await user.click(await screen.findByText('REQ-1'));
+    await user.click(await screen.findByRole('button', { name: 'Delete requirement' }));
+    await user.click(await screen.findByRole('button', { name: /^Delete$/ }));
+    await waitFor(() => expect(api.find('DELETE', '/projects/3/requirements/21')).toHaveLength(1));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(api.find('GET', '/projects/3/requirements/21')).toHaveLength(1);
+  });
+
   it('hides every change from viewers', async () => {
     stub({}, true);
     renderWithProviders(<RequirementsPage />, as('viewer'));

@@ -12,6 +12,9 @@ describe('suggestField', () => {
     expect(suggestField('Summary')).toBe('title');
     expect(suggestField('Description')).toBe('description');
     expect(suggestField('Source')).toBe('sourceRef');
+    expect(suggestField('Req ID')).toBe('key');
+    expect(suggestField('Requirement')).toBe('title');
+    expect(suggestField('Source doc')).toBe('sourceRef');
     expect(suggestField('Priority')).toBeNull();
     expect(suggestField('')).toBeNull();
   });

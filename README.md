@@ -65,6 +65,11 @@ whichever starts first) and must be changed at first sign-in.
 Swagger UI is at <http://localhost:4000/api/docs>; browse the database with `pnpm db:studio`
 (Prisma Studio).
 
+The demo project shows every area: a release with builds and dates, a plan with start and due dates,
+runs with environments and results, defects (one reopened twice), requirements with linked cases
+(one without a case yet), exploratory sessions in each state and a shared summary view. Look at
+Reports (Summary, Schedule, Reopens, Compare, Traceability), Requirements and Exploratory.
+
 ## Docker (one server)
 
 ```bash

@@ -74,10 +74,15 @@ export function useUpdateRequirement(projectId: number) {
 }
 
 export function useDeleteRequirement(projectId: number) {
-  const { all } = useRefresh(projectId);
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: (requirementId: number) => api.delete(`${base(projectId)}/${requirementId}`),
-    onSuccess: all,
+    // The deleted requirement is not fetched again (that would be a 404): only the lists are.
+    onSuccess: (_, requirementId) => {
+      qc.removeQueries({ queryKey: qk.requirement(projectId, requirementId) });
+      void qc.invalidateQueries({ queryKey: [...qk.requirements(projectId), 'list'] });
+      void qc.invalidateQueries({ queryKey: qk.reports(projectId) });
+    },
   });
 }
 
