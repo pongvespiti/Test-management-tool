@@ -584,6 +584,22 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     success: 201,
     response: 'RunDTO',
   },
+  'GET /api/v1/projects/{projectId}/topics': {
+    tag: 'Runs',
+    summary: 'Progress by topic and suite of a release (whole team or one person)',
+    notes:
+      'Runs of a release grouped by the topic of their suite. Without `userId` it is the whole team (managers and leads) and lists suites without a run; with `userId` only that person’s cases count (own list: any member, another person: managers and leads).',
+    success: 200,
+    response: 'TopicsDTO',
+  },
+  'POST /api/v1/projects/{projectId}/topics/assign': {
+    tag: 'Runs',
+    summary: 'Give the runs of suites in a release to a person',
+    notes:
+      'Sets the tester (null = none) and, when `dueDate` is sent, the due date of every run of the suites in the release. Runs in completed plans are left alone. Case-level assignments stay.',
+    success: 200,
+    response: 'AssignSuitesResultDTO',
+  },
   'POST /api/v1/projects/{projectId}/runs/{runId}/assign': {
     tag: 'Runs',
     summary: 'Assign run cases (null = back to the run tester)',
@@ -746,7 +762,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     tag: 'Reports',
     summary: 'Run cases waiting for me and my results of a day or week',
     notes:
-      'Waiting = assigned to me (else the run tester is me) in not-completed plans. `range` day|week (Monday–Sunday) around `date` (REPORT_TIMEZONE). `userId` = another member of the project (422 BAD_USER).',
+      'Waiting = assigned to me (else the run tester is me) in not-completed plans. `range` day|week (Monday–Sunday) around `date` (REPORT_TIMEZONE). `userId` = another member of the project (managers and leads; 422 BAD_USER).',
     success: 200,
     response: 'MyWorkDTO',
   },

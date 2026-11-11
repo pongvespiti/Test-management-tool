@@ -268,6 +268,28 @@ export const myWorkQuerySchema = z.object({
 });
 export type MyWorkQuery = z.infer<typeof myWorkQuerySchema>;
 
+// ---------------------------------------------------------------- topics (work by suite)
+
+/**
+ * Topics of a release with the progress of their runs. `userId` limits the list to the runs of one
+ * person (and counts only their cases); another person's list is for managers and leads.
+ */
+export const topicsQuerySchema = z.object({
+  releaseId: idSchema.optional(),
+  userId: idSchema.optional(),
+});
+export type TopicsQuery = z.infer<typeof topicsQuerySchema>;
+
+/** Give the runs of some suites of a release to one person (null = take them away). */
+export const assignSuitesSchema = z.object({
+  releaseId: idSchema,
+  suiteIds: z.array(idSchema).min(1).max(200),
+  testerId: idSchema.nullable(),
+  /** Omitted = keep the due dates; empty = clear them. */
+  dueDate: optionalDate,
+});
+export type AssignSuitesInput = z.infer<typeof assignSuitesSchema>;
+
 // ---------------------------------------------------------------- automation (JUnit XML)
 
 /** Query string of `POST …/runs/:runId/junit` (multipart field `file`). */

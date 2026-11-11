@@ -62,7 +62,7 @@ describe('OpenAPI document', () => {
   it('gives every route a title, a declared section and a role', () => {
     const sections = document.tags.map((s) => s.name);
     expect(sections).toEqual(API_TAGS.map((s) => s.name));
-    const roles = ['public', 'user', 'viewer', 'tester', 'lead', 'admin'];
+    const roles = ['public', 'user', 'viewer', 'manager', 'tester', 'lead', 'admin'];
     for (const { key, op } of operations) {
       expect([key, op.summary]).toEqual([key, ROUTE_DOCS[key]!.summary]);
       expect([key, op.tags]).toEqual([key, [ROUTE_DOCS[key]!.tag]]);

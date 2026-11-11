@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  can,
   defectKey,
   type MyWorkDTO,
   type MyWorkItemDTO,
@@ -8,8 +9,8 @@ import {
   type ResultStatus,
   type UserRef,
 } from '@tmt/shared';
-import { unprocessable } from '../../common/errors/app.exception.js';
-import type { AuthUser } from '../../common/types/auth.js';
+import { forbidden, unprocessable } from '../../common/errors/app.exception.js';
+import type { AuthUser, ProjectContext } from '../../common/types/auth.js';
 import { toUserRef } from '../../common/users/user-refs.js';
 import { AppConfig } from '../../config/app-config.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
@@ -42,11 +43,17 @@ export class MyWorkService {
     private readonly config: AppConfig,
   ) {}
 
-  async get(projectId: number, me: AuthUser, q: MyWorkQuery, now = new Date()): Promise<MyWorkDTO> {
+  async get(
+    ctx: ProjectContext,
+    me: AuthUser,
+    q: MyWorkQuery,
+    now = new Date(),
+  ): Promise<MyWorkDTO> {
+    const projectId = ctx.id;
     const tz = this.config.reportTimezone;
     const { from, to } = periodOf(q.range, q.date ?? localDate(now, tz));
     const days = daysBetween(from, to);
-    const user = await this.person(projectId, me, q.userId);
+    const user = await this.person(ctx, me, q.userId);
     const [assigned, summary] = await Promise.all([
       this.assigned(projectId, user.id),
       this.summary(projectId, user.id, from, to, days, tz),
@@ -62,9 +69,13 @@ export class MyWorkService {
     };
   }
 
-  /** The signed-in user, or the project member asked for (422 BAD_USER when not a member). */
-  private async person(projectId: number, me: AuthUser, userId?: number): Promise<UserRef> {
+  /** The signed-in user, or the project member asked for (managers and leads; 422 BAD_USER when not a member). */
+  private async person(ctx: ProjectContext, me: AuthUser, userId?: number): Promise<UserRef> {
     if (userId === undefined || userId === me.id) return toUserRef(me);
+    if (!can(ctx.role, 'viewTeam')) {
+      throw forbidden('Other people’s work is for managers and leads');
+    }
+    const projectId = ctx.id;
     const member = await this.prisma.db.projectMember.findUnique({
       where: { projectId_userId: { projectId, userId } },
       select: { user: { select: { id: true, username: true, displayName: true } } },

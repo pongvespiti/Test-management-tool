@@ -19,6 +19,6 @@ export class MyWorkController {
     @CurrentUser() user: AuthUser,
     @Query({ schema: myWorkQuerySchema }) q: MyWorkQuery,
   ): Promise<MyWorkDTO> {
-    return this.myWork.get(ctx.id, user, q);
+    return this.myWork.get(ctx, user, q);
   }
 }

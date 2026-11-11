@@ -992,6 +992,68 @@ export interface WorkloadRowDTO {
   executedLast7Days: number;
 }
 
+/** Progress of a run, a suite or a topic, from its results (no one sets it by hand). */
+export type TopicState = 'not_started' | 'in_progress' | 'done';
+
+export interface TopicRunDTO {
+  id: number;
+  code: string;
+  scenario: string | null;
+  planId: number;
+  planDocNo: string;
+  planStatus: PlanStatus;
+  tester: UserRef | null;
+  build: NamedRef | null;
+  dueDate: string | null;
+  /** Past the due date (report time zone) while cases are untested. */
+  overdue: boolean;
+  /** With a person's list: only the cases that are theirs. */
+  counts: StatusCounts;
+  total: number;
+  remainingEstimateMinutes: number;
+  state: TopicState;
+}
+
+export interface TopicSuiteDTO {
+  suite: { id: number; name: string; prefix: string };
+  runs: TopicRunDTO[];
+  counts: StatusCounts;
+  total: number;
+  state: TopicState;
+  /** Earliest due date of the runs that are not done. */
+  dueDate: string | null;
+  overdue: boolean;
+}
+
+export interface TopicGroupDTO {
+  /** The suite's topic, or the suite name when it has none. */
+  topic: string;
+  suites: TopicSuiteDTO[];
+  counts: StatusCounts;
+  total: number;
+  state: TopicState;
+}
+
+export interface TopicsDTO {
+  release: NamedRef | null;
+  releases: NamedRef[];
+  /** null = every run of the release. */
+  user: UserRef | null;
+  timezone: string;
+  topics: TopicGroupDTO[];
+  /** Whole list only: suites with no run in the release (nothing to hand out yet). */
+  suitesWithoutRuns: Array<{ id: number; name: string; topic: string }>;
+}
+
+export interface AssignSuitesResultDTO {
+  /** Runs given to the person. */
+  updatedRuns: number;
+  /** Runs in completed plans, left as they were. */
+  lockedRuns: number;
+  /** Suites with no run in the release. */
+  suitesWithoutRuns: number[];
+}
+
 export interface DefectReportDTO {
   byStatus: Record<DefectStatus, number>;
   bySeverity: Record<DefectSeverity, number>;

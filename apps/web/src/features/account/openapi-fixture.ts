@@ -21,7 +21,7 @@ export const openApiFixture = {
         type: 'object',
         properties: {
           userId: { type: 'integer', minimum: 0, exclusiveMinimum: true },
-          role: { type: 'string', enum: ['viewer', 'tester', 'lead'] },
+          role: { type: 'string', enum: ['viewer', 'manager', 'tester', 'lead'] },
         },
         required: ['userId', 'role'],
       },

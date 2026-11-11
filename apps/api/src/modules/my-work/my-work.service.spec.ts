@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from '@jest/globals';
 import { Prisma } from '@tmt/database';
 import { groupByMock, runCaseRow, unitConfig } from '../../../test/unit/fixtures.js';
 import { createPrismaMock, type PrismaMock } from '../../../test/unit/prisma-mock.js';
-import type { AuthUser } from '../../common/types/auth.js';
+import type { AuthUser, ProjectContext } from '../../common/types/auth.js';
 import { MyWorkService } from './my-work.service.js';
 
 /** 2026-10-22 (Thursday) 10:00 in Bangkok. */
@@ -14,6 +14,9 @@ const me: AuthUser = {
   isAdmin: false,
   mustChangePassword: false,
 };
+
+const lead: ProjectContext = { id: 10, key: 'P', name: 'P', role: 'lead' };
+const tester: ProjectContext = { ...lead, role: 'tester' };
 
 function rawValues(mock: PrismaMock): unknown[] {
   const [, ...values] = mock.db.$queryRaw.mock.calls[0]! as unknown[];
@@ -36,7 +39,7 @@ describe('MyWorkService', () => {
   });
 
   it('is empty and uses today in the report time zone by default', async () => {
-    const r = await service.get(10, me, { range: 'day' }, NOW);
+    const r = await service.get(lead, me, { range: 'day' }, NOW);
     expect(r).toMatchObject({
       user: { id: 5, username: 'tom' },
       timezone: 'Asia/Bangkok',
@@ -49,7 +52,7 @@ describe('MyWorkService', () => {
   });
 
   it('asks for my cases in open plans of the project: assigned to me, else my runs', async () => {
-    await service.get(10, me, { range: 'day' }, NOW);
+    await service.get(lead, me, { range: 'day' }, NOW);
     const where = (groupByMock(mock.db.runCase.groupBy).mock.calls[0]![0] as { where: unknown })
       .where;
     expect(where).toEqual({
@@ -76,7 +79,7 @@ describe('MyWorkService', () => {
     }) as never);
     mock.db.release.findMany.mockResolvedValue([{ id: 5, name: 'Step 1.1.7' }] as never);
     mock.db.build.findMany.mockResolvedValue([{ id: 8, name: '1.1.7(2.0.0)' }] as never);
-    const r = await service.get(10, me, { range: 'day' }, NOW);
+    const r = await service.get(lead, me, { range: 'day' }, NOW);
     expect(r.assigned).toMatchObject({
       untested: 3,
       ng: 1,
@@ -122,7 +125,7 @@ describe('MyWorkService', () => {
     mock.db.defect.findMany.mockResolvedValue([
       { id: 9, seq: 4, title: 'Times out', status: 'new', severity: 'major' },
     ] as never);
-    const r = await service.get(10, me, { range: 'week', date: '2026-10-22' }, NOW);
+    const r = await service.get(lead, me, { range: 'week', date: '2026-10-22' }, NOW);
     expect(r.from).toBe('2026-10-19');
     expect(r.to).toBe('2026-10-25');
     expect(r.summary.executed).toBe(2);
@@ -160,7 +163,7 @@ describe('MyWorkService', () => {
     mock.db.projectMember.findUnique.mockResolvedValue({
       user: { id: 8, username: 'ann', displayName: 'Ann' },
     } as never);
-    const r = await service.get(10, me, { range: 'day', userId: 8 }, NOW);
+    const r = await service.get(lead, me, { range: 'day', userId: 8 }, NOW);
     expect(r.user).toEqual({ id: 8, username: 'ann', displayName: 'Ann' });
     expect(mock.db.projectMember.findUnique.mock.calls[0]![0]!.where).toEqual({
       projectId_userId: { projectId: 10, userId: 8 },
@@ -172,8 +175,14 @@ describe('MyWorkService', () => {
     expect(rawValues(mock)).toContain(8);
     expect(mock.db.defect.findMany.mock.calls[0]![0]!.where).toMatchObject({ reporterId: 8 });
 
+    // A tester may not look at other people's work.
+    await expect(service.get(tester, me, { range: 'day', userId: 8 }, NOW)).rejects.toMatchObject({
+      status: 403,
+    });
+    expect((await service.get(tester, me, { range: 'day', userId: 5 }, NOW)).user.id).toBe(5);
+
     mock.db.projectMember.findUnique.mockResolvedValue(null);
-    await expect(service.get(10, me, { range: 'day', userId: 9 }, NOW)).rejects.toMatchObject({
+    await expect(service.get(lead, me, { range: 'day', userId: 9 }, NOW)).rejects.toMatchObject({
       code: 'BAD_USER',
     });
   });

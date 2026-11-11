@@ -21,6 +21,7 @@ let lead: Client;
 let tom: Client;
 let ann: Client;
 let viewer: Client;
+let manager: Client;
 let tomId: number;
 let annId: number;
 let P: string;
@@ -31,7 +32,8 @@ let plan: PlanDTO;
 let run: RunDTO;
 let cases: RunCaseDTO[];
 
-const today = () => new Date().toISOString().slice(0, 10);
+/** Today in the report time zone (the API default), which is not the UTC date for hours of each day. */
+const today = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
 const mine = async (client: Client, query = '') =>
   expectBody<MyWorkDTO>(await client.get(`${P}/my-work${query}`), 200);
 
@@ -41,6 +43,7 @@ beforeAll(async () => {
   const a = await createUser(t.prisma, 'tom');
   const b = await createUser(t.prisma, 'ann');
   const v = await createUser(t.prisma, 'viewer');
+  const m = await createUser(t.prisma, 'mgr');
   tomId = a.id;
   annId = b.id;
   const projectId = (
@@ -49,6 +52,7 @@ beforeAll(async () => {
       { userId: a.id, role: 'tester' },
       { userId: b.id, role: 'tester' },
       { userId: v.id, role: 'viewer' },
+      { userId: m.id, role: 'manager' },
     ])
   ).id;
   P = `/projects/${projectId}`;
@@ -56,6 +60,7 @@ beforeAll(async () => {
   tom = await login(t, 'tom');
   ann = await login(t, 'ann');
   viewer = await login(t, 'viewer');
+  manager = await login(t, 'mgr');
   suite = await createSuite(t, projectId, { name: 'System', prefix: 'SY' });
   const section = await createSection(t, suite.id, 'All');
   for (const [title, priority] of [
@@ -193,9 +198,13 @@ describe('my work', () => {
     expect((await tom.get(`${P}/my-work?date=22-10-2026`)).status).toBe(400);
   });
 
-  it('lets a lead or a viewer open the work of another member', async () => {
+  it('lets a lead or a manager open the work of another member; testers and viewers may not', async () => {
     const own = await mine(tom);
-    for (const client of [lead, viewer]) {
+    expect((await mine(tom, `?userId=${tomId}`)).user.id).toBe(tomId);
+    for (const client of [ann, viewer]) {
+      expect((await client.get(`${P}/my-work?userId=${tomId}`)).status).toBe(403);
+    }
+    for (const client of [lead, manager]) {
       const seen = await mine(client, `?userId=${tomId}`);
       expect(seen.user.id).toBe(tomId);
       expect(seen.assigned).toEqual(own.assigned);
