@@ -201,6 +201,23 @@ export function SuiteEditor({ projectId, suite, readOnly, onDeleted }: SuiteEdit
             </div>
             <FormField
               control={form.control}
+              name="topic"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Topic</FormLabel>
+                  <FormControl>
+                    <Input readOnly={readOnly} {...field} value={field.value ?? ''} />
+                  </FormControl>
+                  <FormDescription>
+                    Suites of one topic are listed together, e.g. one suite per unit model under
+                    “Adapter operation test”. Empty = the suite name.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
               name="description"
               render={({ field }) => (
                 <FormItem>

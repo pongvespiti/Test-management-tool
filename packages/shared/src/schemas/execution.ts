@@ -84,6 +84,7 @@ export const createRunSchema = z.object({
   /** Build under test; must belong to the plan's release (422 BAD_BUILD). */
   buildId: idSchema.nullable().optional(),
   testedDate: optionalDate,
+  dueDate: optionalDate,
   ...runCaseFilterFields,
 });
 export type CreateRunInput = z.infer<typeof createRunSchema>;
@@ -136,6 +137,7 @@ export const updateRunSchema = z.object({
   testerId: idSchema.nullable().optional(),
   buildId: idSchema.nullable().optional(),
   testedDate: optionalDate,
+  dueDate: optionalDate,
   judgement: z.enum(JUDGEMENTS).nullable().optional(),
   judgementNote: optionalText(8000),
   remark: optionalText(8000),

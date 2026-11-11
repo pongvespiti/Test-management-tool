@@ -43,7 +43,7 @@ function CreateSuiteForm({
   const [prefixEdited, setPrefixEdited] = useState(false);
   const form = useForm({
     resolver: formResolver(createSuiteSchema),
-    defaultValues: { name: '', prefix: '', description: '' },
+    defaultValues: { name: '', prefix: '', description: '', topic: '' },
   });
 
   const onSubmit = form.handleSubmit(async (values) => {
@@ -108,6 +108,23 @@ function CreateSuiteForm({
             )}
           />
         </div>
+        <FormField
+          control={form.control}
+          name="topic"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Topic</FormLabel>
+              <FormControl>
+                <Input {...field} value={field.value ?? ''} />
+              </FormControl>
+              <FormDescription>
+                Suites of one topic are listed together (e.g. one suite per unit model). Empty = the
+                suite name.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <FormField
           control={form.control}
           name="description"

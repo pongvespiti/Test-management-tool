@@ -135,6 +135,7 @@ describe('PlanRunsCard', () => {
       testerId: 1,
       buildId: null,
       testedDate: '',
+      dueDate: '',
       // Template items keep their label even without a value (as in the old app).
       environment: [
         { label: 'Unit model', value: 'ACU18' },
@@ -195,6 +196,7 @@ describe('PlanRunsCard', () => {
       testerId: 1,
       buildId: null,
       testedDate: '2026-10-02',
+      dueDate: '',
       environment: makeRun().environment,
       judgement: 'pass',
       judgementNote: '',

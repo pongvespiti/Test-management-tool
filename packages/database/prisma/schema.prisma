@@ -374,6 +374,8 @@ model Suite {
   /// Prefix of case display ids (`MBS` → `MBS-036`).
   prefix      String
   description String?
+  /// Group of suites in the UI (e.g. "Adapter operation test" for one suite per unit model); null = the suite name.
+  topic       String?
   /// `FieldDef[]` — custom columns of the suite.
   fieldDefs   Json     @default("[]") @map("field_defs")
   /// `string[]` — environment labels a run fills in (device, firmware, …).
@@ -619,6 +621,8 @@ model TestRun {
   environment   Json       @default("[]")
   testerId      Int?       @map("tester_id")
   testedDate    DateTime?  @map("tested_date") @db.Date
+  /// Date the run should be finished (set when the work is assigned).
+  dueDate       DateTime?  @map("due_date") @db.Date
   judgement     Judgement?
   judgementNote String?    @map("judgement_note")
   remark        String?

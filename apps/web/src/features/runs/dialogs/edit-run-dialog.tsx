@@ -49,6 +49,7 @@ export interface EditRunValues {
   scenario: string;
   testerId: number | null;
   testedDate: string | null;
+  dueDate: string | null;
   judgement: Judgement | 'none';
   judgementNote: string;
   remark: string;
@@ -64,6 +65,7 @@ export function editRunBody(v: EditRunValues): UpdateRunBody {
     scenario: v.scenario,
     testerId: v.testerId,
     testedDate: v.testedDate ?? '',
+    dueDate: v.dueDate ?? '',
     judgement: v.judgement === NONE ? null : v.judgement,
     judgementNote: v.judgementNote,
     remark: v.remark,
@@ -83,6 +85,7 @@ function EditRunForm({ run, onDone }: { run: RunDTO; onDone: () => void }) {
       scenario: run.scenario ?? '',
       testerId: run.tester?.id ?? null,
       testedDate: run.testedDate,
+      dueDate: run.dueDate,
       judgement: run.judgement ?? NONE,
       judgementNote: run.judgementNote ?? '',
       remark: run.remark ?? '',
@@ -147,6 +150,19 @@ function EditRunForm({ run, onDone }: { run: RunDTO; onDone: () => void }) {
                     value={field.value}
                     onChange={field.onChange}
                   />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="dueDate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Due date</FormLabel>
+                <FormControl>
+                  <DateInput value={field.value} onChange={field.onChange} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

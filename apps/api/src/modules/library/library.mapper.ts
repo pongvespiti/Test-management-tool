@@ -32,6 +32,7 @@ export function toSuiteDTO(s: Suite, caseCount: number): SuiteDTO {
     name: s.name,
     prefix: s.prefix,
     description: s.description,
+    topic: s.topic,
     fieldDefs: fieldDefsOf(s),
     envTemplate: envTemplateOf(s),
     caseCount,

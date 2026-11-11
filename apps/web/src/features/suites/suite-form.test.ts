@@ -46,6 +46,7 @@ describe('suite form model', () => {
       name: 'Unit operation test',
       prefix: 'UOT',
       description: '',
+      topic: '',
       fieldDefs: [
         { key: 'test_id', label: 'Test ID', type: 'text', options: undefined, showInTable: true },
         {

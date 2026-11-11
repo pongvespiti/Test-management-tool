@@ -135,6 +135,7 @@ export function EditRunForm({ projectId, run, onDone }: Omit<RunFormProps, 'plan
             projectId={projectId}
             releaseId={run.planReleaseId}
           />
+          <DateField control={form.control} name="dueDate" label="Due date" />
           <DateField control={form.control} name="testedDate" label="Tested date" />
         </div>
 

@@ -202,6 +202,7 @@ export function NewRunForm({ projectId, planId, releaseId, existingRuns, onDone 
             projectId={projectId}
             releaseId={releaseId}
           />
+          <DateField control={form.control} name="dueDate" label="Due date" />
           <DateField control={form.control} name="testedDate" label="Tested date" />
         </div>
 

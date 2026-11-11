@@ -54,6 +54,8 @@ export const createSuiteSchema = z.object({
   name: requiredLine(200),
   prefix: suitePrefixSchema,
   description: optionalText(4000),
+  /** Topic the suite belongs to (empty = none). */
+  topic: optionalLine(200),
   fieldDefs: fieldDefsSchema.default([]),
   envTemplate: envTemplateSchema.default([]),
 });
@@ -63,6 +65,7 @@ export const updateSuiteSchema = z.object({
   name: requiredLine(200).optional(),
   prefix: suitePrefixSchema.optional(),
   description: optionalText(4000),
+  topic: optionalLine(200),
   fieldDefs: fieldDefsSchema.optional(),
   envTemplate: envTemplateSchema.optional(),
   isArchived: z.boolean().optional(),

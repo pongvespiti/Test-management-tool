@@ -132,6 +132,7 @@ describe('SuitesSettingsPage', () => {
       name: 'Unit operation test',
       prefix: 'UO',
       description: 'Unit operation workbook',
+      topic: '',
       fieldDefs: [
         {
           key: 'register_mb',

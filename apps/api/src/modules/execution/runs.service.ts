@@ -97,6 +97,7 @@ export class RunsService {
             testerId: input.testerId ?? null,
             buildId: input.buildId ?? null,
             testedDate: parseDateOnly(input.testedDate) ?? null,
+            dueDate: parseDateOnly(input.dueDate) ?? null,
             sortOrder: await nextRunSortOrder(tx, plan.id),
             createdById: me.id,
           },
@@ -145,6 +146,7 @@ export class RunsService {
             ...(input.testedDate !== undefined && {
               testedDate: parseDateOnly(input.testedDate),
             }),
+            ...(input.dueDate !== undefined && { dueDate: parseDateOnly(input.dueDate) }),
             ...(input.judgement !== undefined && { judgement: input.judgement }),
             ...(input.judgementNote !== undefined && { judgementNote: input.judgementNote }),
             ...(input.remark !== undefined && { remark: input.remark }),

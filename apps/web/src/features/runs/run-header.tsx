@@ -49,6 +49,7 @@ import { RESULT_BAR_ORDER, RESULT_TONES } from '@/lib/status';
 import { storageGet, storageSet } from '@/lib/storage';
 import { cn } from '@/lib/utils';
 import { useProject } from '@/providers/project-provider';
+import { runDue } from './due';
 import { statusLabelOf } from './run-cases';
 
 const ENV_OPEN_KEY = 'tmt:run-env-open';
@@ -65,6 +66,7 @@ export function RunHeader({ run, actions }: { run: RunDTO; actions: RunActions }
   const { projectId } = useProject();
   const [downloading, setDownloading] = useState(false);
   const locked = run.planStatus === 'completed';
+  const due = runDue(run);
   const more = [actions.onJunit, actions.onAddCases, actions.onRerun].some(Boolean);
 
   const download = async () => {
@@ -114,6 +116,7 @@ export function RunHeader({ run, actions }: { run: RunDTO; actions: RunActions }
             Suite {run.suite.name} · Tester {run.tester?.displayName ?? 'not set'}
             {run.build ? ` · Build ${run.build.name}` : ''}
             {run.testedDate ? ` · Tested ${formatDate(run.testedDate)}` : ''}
+            {due ? ` · Due ${formatDate(due.date)}${due.overdue ? ' (overdue)' : ''}` : ''}
           </span>
         }
         actions={

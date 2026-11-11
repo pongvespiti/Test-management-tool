@@ -57,6 +57,7 @@ export class SuitesService {
             name: input.name,
             prefix: input.prefix,
             description: input.description ?? null,
+            topic: input.topic ?? null,
             fieldDefs: input.fieldDefs as Prisma.InputJsonValue,
             envTemplate: input.envTemplate,
             sortOrder: (agg._max.sortOrder ?? 0) + 1,
@@ -105,6 +106,7 @@ export class SuitesService {
             ...(input.name !== undefined && { name: input.name }),
             ...(input.prefix !== undefined && { prefix: input.prefix }),
             ...(input.description !== undefined && { description: input.description }),
+            ...(input.topic !== undefined && { topic: input.topic }),
             ...(input.fieldDefs !== undefined && {
               fieldDefs: input.fieldDefs as Prisma.InputJsonValue,
             }),

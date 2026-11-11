@@ -91,6 +91,7 @@ export function toRunDTO(
     environment: envOf(run),
     tester: refOf(users, run.testerId),
     testedDate: dateOnly(run.testedDate),
+    dueDate: dateOnly(run.dueDate),
     judgement: run.judgement,
     judgementNote: run.judgementNote,
     remark: run.remark,

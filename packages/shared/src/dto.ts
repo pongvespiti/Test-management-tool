@@ -135,6 +135,8 @@ export interface SuiteDTO {
   name: string;
   prefix: string;
   description: string | null;
+  /** Topic the suite belongs to (null = none; the suite name stands for it). */
+  topic: string | null;
   fieldDefs: FieldDef[];
   envTemplate: string[];
   caseCount: number;
@@ -381,6 +383,8 @@ export interface RunDTO {
   environment: EnvEntryDTO[];
   tester: UserRef | null;
   testedDate: string | null;
+  /** Date the run should be finished; null = no deadline. */
+  dueDate: string | null;
   judgement: Judgement | null;
   judgementNote: string | null;
   remark: string | null;

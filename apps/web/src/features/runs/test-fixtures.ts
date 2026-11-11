@@ -42,6 +42,7 @@ export function makeRun(overrides: Partial<RunDTO> = {}): RunDTO {
     ],
     tester: alice,
     testedDate: '2026-11-01',
+    dueDate: null,
     judgement: null,
     judgementNote: null,
     remark: null,

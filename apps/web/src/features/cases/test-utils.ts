@@ -98,6 +98,7 @@ export function makeSuite(overrides: Partial<SuiteDTO> = {}): SuiteDTO {
     name: 'Unit operation test',
     prefix: 'UOT',
     description: null,
+    topic: null,
     fieldDefs: [],
     envTemplate: [],
     caseCount: 2,

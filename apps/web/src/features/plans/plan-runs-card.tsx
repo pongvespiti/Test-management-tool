@@ -53,6 +53,7 @@ import { useInvalidateReports } from '@/lib/api/reports';
 import { useDeleteRun, useRuns } from '@/lib/api/runs';
 import { formatDate, pluralize } from '@/lib/format';
 import { notifyError, notifySuccess } from '@/lib/notify';
+import { runDue } from '@/features/runs/due';
 import { routes } from '@/lib/routes';
 import { cn } from '@/lib/utils';
 import { useProject } from '@/providers/project-provider';
@@ -290,6 +291,7 @@ function RunRow({
   onDelete,
 }: RunRowProps) {
   const href = routes.run(projectId, run.id);
+  const due = runDue(run);
   const filledEnv = run.environment.filter((e) => e.value.trim() !== '');
   const passRate = passRateOf(run.counts);
 
@@ -360,6 +362,16 @@ function RunRow({
         <p className="text-xs text-muted-foreground">
           {run.testedDate ? formatDate(run.testedDate) : 'No date'}
         </p>
+        {due && (
+          <p
+            className={
+              due.overdue ? 'text-xs font-medium text-destructive' : 'text-xs text-muted-foreground'
+            }
+          >
+            Due {formatDate(due.date)}
+            {due.overdue && ' · overdue'}
+          </p>
+        )}
       </TableCell>
       <TableCell className="min-w-[190px] py-3 align-top">
         <StackedProgress counts={run.counts} showSummary />

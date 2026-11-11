@@ -91,6 +91,7 @@ describe('new run form model', () => {
       testerId: null,
       buildId: null,
       testedDate: '',
+      dueDate: '',
       environment: [],
       sectionIds: undefined,
       priorities: undefined,

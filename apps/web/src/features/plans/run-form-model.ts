@@ -37,6 +37,7 @@ export interface NewRunValues {
   testerId: number | null;
   buildId: number | null;
   testedDate: string | null;
+  dueDate: string | null;
   sectionIds: string[];
   priorities: CasePriority[];
   tags: string[];
@@ -52,6 +53,7 @@ export function newRunDefaults(): NewRunValues {
     testerId: null,
     buildId: null,
     testedDate: null,
+    dueDate: null,
     sectionIds: [],
     priorities: [],
     tags: [],
@@ -68,6 +70,7 @@ export function newRunBody(v: NewRunValues) {
     testerId: v.testerId,
     buildId: v.buildId,
     testedDate: v.testedDate ?? '',
+    dueDate: v.dueDate ?? '',
     environment: envEntriesOf(v.environment),
     // Empty filters are left out: "no restriction".
     sectionIds: v.sectionIds.length ? v.sectionIds.map(Number) : undefined,
@@ -95,6 +98,7 @@ export interface EditRunValues {
   testerId: number | null;
   buildId: number | null;
   testedDate: string | null;
+  dueDate: string | null;
   environment: EnvRow[];
   judgement: Judgement | null;
   judgementNote: string;
@@ -108,6 +112,7 @@ export function editRunDefaults(run: RunDTO): EditRunValues {
     testerId: run.tester?.id ?? null,
     buildId: run.build?.id ?? null,
     testedDate: run.testedDate,
+    dueDate: run.dueDate,
     environment: envRowsFromEntries(run.environment),
     judgement: run.judgement,
     judgementNote: run.judgementNote ?? '',
@@ -122,6 +127,7 @@ export function editRunBody(v: EditRunValues) {
     testerId: v.testerId,
     buildId: v.buildId,
     testedDate: v.testedDate ?? '',
+    dueDate: v.dueDate ?? '',
     environment: envEntriesOf(v.environment),
     judgement: v.judgement,
     judgementNote: v.judgementNote,

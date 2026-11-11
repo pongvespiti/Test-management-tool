@@ -67,6 +67,7 @@ describe('run dialogs', () => {
       scenario: 'Korea model',
       testerId: 1,
       testedDate: '2026-11-01',
+      dueDate: '',
       judgement: null,
       judgementNote: '',
       remark: '',

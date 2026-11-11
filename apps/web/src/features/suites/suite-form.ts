@@ -26,6 +26,7 @@ export interface SuiteFormValues {
   name: string;
   prefix: string;
   description: string;
+  topic: string;
   fieldDefs: FieldRow[];
   envTemplate: EnvRow[];
 }
@@ -61,6 +62,7 @@ export function toFormValues(suite: SuiteDTO): SuiteFormValues {
     name: suite.name,
     prefix: suite.prefix,
     description: suite.description ?? '',
+    topic: suite.topic ?? '',
     fieldDefs: suite.fieldDefs.map((d) => fieldRow(d)),
     envTemplate: suite.envTemplate.map((label) => ({ label })),
   };
@@ -80,6 +82,7 @@ export function toSuiteBody(values: SuiteFormValues) {
     name: values.name,
     prefix: values.prefix,
     description: values.description,
+    topic: values.topic,
     fieldDefs: values.fieldDefs.map((r) => ({
       key: r.key,
       label: r.label,
