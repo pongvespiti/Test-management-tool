@@ -40,6 +40,7 @@ import { toId } from '@/lib/forms';
 import { notifyError, notifySuccess } from '@/lib/notify';
 import { routes } from '@/lib/routes';
 import { useProject } from '@/providers/project-provider';
+import { DateField } from './form-fields';
 import { templateOptions } from './plan-utils';
 
 export interface PlanFormValues {
@@ -52,6 +53,8 @@ export interface PlanFormValues {
   testMethod: string;
   judgementCriteria: string;
   rawDataPath: string;
+  startDate: string | null;
+  dueDate: string | null;
 }
 
 export function planFormValues(
@@ -67,6 +70,8 @@ export function planFormValues(
     testMethod: plan?.testMethod ?? '',
     judgementCriteria: plan?.judgementCriteria ?? '',
     rawDataPath: plan?.rawDataPath ?? '',
+    startDate: plan?.startDate ?? null,
+    dueDate: plan?.dueDate ?? null,
   };
 }
 
@@ -81,6 +86,8 @@ export function planBody(v: PlanFormValues) {
     testMethod: v.testMethod,
     judgementCriteria: v.judgementCriteria,
     rawDataPath: v.rawDataPath,
+    startDate: v.startDate ?? '',
+    dueDate: v.dueDate ?? '',
   };
 }
 
@@ -175,6 +182,10 @@ export function PlanForm({ projectId, plan, defaultReleaseId = null, onDone }: P
               </FormItem>
             )}
           />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <DateField control={form.control} name="startDate" label="Start date" />
+          <DateField control={form.control} name="dueDate" label="Due date" />
         </div>
         <FormField
           control={form.control}

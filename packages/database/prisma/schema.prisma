@@ -589,6 +589,9 @@ model TestPlan {
   testMethod        String?    @map("test_method")
   judgementCriteria String?    @map("judgement_criteria")
   rawDataPath       String?    @map("raw_data_path")
+  /// Planned first and last day of testing (for the release schedule).
+  startDate         DateTime?  @map("start_date") @db.Date
+  dueDate           DateTime?  @map("due_date") @db.Date
   overallJudgement  Judgement? @map("overall_judgement")
   judgementNote     String?    @map("judgement_note")
   status            PlanStatus @default(draft)

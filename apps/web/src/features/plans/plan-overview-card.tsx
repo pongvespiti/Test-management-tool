@@ -21,6 +21,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { SectionCard } from '@/features/reports/report-ui';
 import { ApiError } from '@/lib/api/client';
 import { useUpdatePlan } from '@/lib/api/plans';
+import { formatDate } from '@/lib/format';
 import { formResolver } from '@/lib/forms';
 import { notifyError, notifySuccess } from '@/lib/notify';
 
@@ -140,6 +141,17 @@ export function PlanOverviewCard({ plan, projectId, editable, lockedReason }: Pr
         </Form>
       ) : (
         <dl className="m-0 grid grid-cols-1 gap-x-4 gap-y-0.5 sm:grid-cols-[minmax(110px,160px)_minmax(0,1fr)] sm:gap-y-3">
+          <Term>Schedule</Term>
+          <Detail>
+            {plan.startDate || plan.dueDate ? (
+              <p className="text-sm">
+                {plan.startDate ? formatDate(plan.startDate) : 'No start date'} –{' '}
+                {plan.dueDate ? formatDate(plan.dueDate) : 'no due date'}
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">Not set</p>
+            )}
+          </Detail>
           <Term>Purpose</Term>
           <Detail>
             <MultilineText value={plan.purpose} empty="Not set" />

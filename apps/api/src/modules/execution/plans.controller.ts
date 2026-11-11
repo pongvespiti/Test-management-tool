@@ -57,7 +57,7 @@ export class PlansController {
 
   @Post()
   @ProjectPermission('writePlans')
-  @ApiErrorCodes('DOC_NO_TAKEN', 'BAD_RELEASE', 'BAD_TEMPLATE')
+  @ApiErrorCodes('DOC_NO_TAKEN', 'BAD_RELEASE', 'BAD_TEMPLATE', 'BAD_DATES')
   create(
     @CurrentProject() ctx: ProjectContext,
     @CurrentUser() me: AuthUser,
@@ -85,7 +85,14 @@ export class PlansController {
 
   @Patch(':planId')
   @ProjectPermission('writePlans')
-  @ApiErrorCodes('PLAN_NOT_FOUND', 'PLAN_LOCKED', 'DOC_NO_TAKEN', 'BAD_RELEASE', 'BAD_TEMPLATE')
+  @ApiErrorCodes(
+    'PLAN_NOT_FOUND',
+    'PLAN_LOCKED',
+    'DOC_NO_TAKEN',
+    'BAD_RELEASE',
+    'BAD_TEMPLATE',
+    'BAD_DATES',
+  )
   update(
     @CurrentProject() ctx: ProjectContext,
     @CurrentUser() me: AuthUser,

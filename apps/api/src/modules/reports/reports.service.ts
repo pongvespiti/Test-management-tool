@@ -13,6 +13,7 @@ import {
   type CompareDTO,
   type CompareSideDTO,
   type ReopenReportDTO,
+  type ScheduleDTO,
   type ReportCompareQuery,
   type ReportSummaryQuery,
   type ReportTrendDTO,
@@ -25,7 +26,7 @@ import {
 import { dimensionsOf } from '../dimensions/dimensions.service.js';
 import { envOf } from '../execution/execution.mapper.js';
 import { notFound } from '../../common/errors/app.exception.js';
-import { loadUserRefs, refOf } from '../../common/users/user-refs.js';
+import { dateOnly, loadUserRefs, refOf } from '../../common/users/user-refs.js';
 import { AppConfig } from '../../config/app-config.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { assertReleaseInProject, getPlanInProject } from '../execution/execution.queries.js';
@@ -565,5 +566,69 @@ export class ReportsService {
       JOIN suites s ON s.id = r.suite_id
       WHERE r.build_id = ${side.id} AND rc.test_case_id IS NOT NULL
       ORDER BY rc.test_case_id, r.created_at DESC, r.id DESC, rc.id DESC`;
+  }
+
+  /** Runs of the release (or the project) with their planned window, topic and tester. */
+  async schedule(projectId: number, releaseId?: number): Promise<ScheduleDTO> {
+    const db = this.prisma.db;
+    await assertReleaseInProject(db, projectId, releaseId);
+    const plan = planWhere({ projectId, releaseId });
+    const [release, runs, grouped] = await Promise.all([
+      releaseId === undefined
+        ? null
+        : db.release.findUniqueOrThrow({
+            where: { id: releaseId },
+            select: { id: true, name: true, startDate: true, endDate: true },
+          }),
+      db.testRun.findMany({
+        where: { plan },
+        orderBy: [{ planId: 'asc' }, { sortOrder: 'asc' }, { id: 'asc' }],
+        select: {
+          id: true,
+          planId: true,
+          code: true,
+          dueDate: true,
+          testerId: true,
+          suite: { select: { name: true, topic: true } },
+          plan: { select: { docNo: true, title: true, startDate: true, dueDate: true } },
+        },
+      }),
+      db.runCase.groupBy({
+        by: ['runId', 'status'],
+        where: { run: { plan } },
+        _count: { _all: true },
+      }),
+    ]);
+    const users = await loadUserRefs(
+      db,
+      runs.map((r) => r.testerId),
+    );
+    const byRun = new Map<number, { status: string; count: number }[]>();
+    for (const g of grouped) {
+      const list = byRun.get(g.runId) ?? [];
+      list.push({ status: g.status, count: g._count._all });
+      byRun.set(g.runId, list);
+    }
+    return {
+      release: release && {
+        id: release.id,
+        name: release.name,
+        startDate: dateOnly(release.startDate),
+        endDate: dateOnly(release.endDate),
+      },
+      items: runs.map((r) => ({
+        runId: r.id,
+        planId: r.planId,
+        planDocNo: r.plan.docNo,
+        planTitle: r.plan.title,
+        code: r.code,
+        suite: r.suite.name,
+        topic: r.suite.topic,
+        tester: refOf(users, r.testerId),
+        start: dateOnly(r.plan.startDate),
+        due: dateOnly(r.dueDate ?? r.plan.dueDate),
+        counts: countsFromRows(byRun.get(r.id) ?? []),
+      })),
+    };
   }
 }

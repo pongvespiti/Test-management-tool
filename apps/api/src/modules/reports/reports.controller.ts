@@ -13,6 +13,7 @@ import {
   type CompareDTO,
   type CompareSideDTO,
   type ReopenReportDTO,
+  type ScheduleDTO,
   type ReportCompareQuery,
   type ReportDefectsQuery,
   type ReportSummaryQuery,
@@ -134,5 +135,16 @@ export class ReportsController {
     @Query({ schema: reportCompareQuerySchema }) q: ReportCompareQuery,
   ): Promise<CompareDTO> {
     return this.reports.compare(ctx.id, q);
+  }
+
+  /** Runs with their planned window (plan start, run or plan due date), topic and tester — for the Gantt. */
+  @Get('schedule')
+  @ProjectPermission('viewReports')
+  @ApiErrorCodes('BAD_RELEASE')
+  schedule(
+    @CurrentProject() ctx: ProjectContext,
+    @Query({ schema: reportCoverageQuerySchema }) q: z.infer<typeof reportCoverageQuerySchema>,
+  ): Promise<ScheduleDTO> {
+    return this.reports.schedule(ctx.id, q.releaseId);
   }
 }

@@ -825,6 +825,14 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     success: 200,
     response: 'CompareDTO',
   },
+  'GET /api/v1/projects/{projectId}/reports/schedule': {
+    tag: 'Reports',
+    summary: 'Runs with their planned window, topic and tester (release Gantt)',
+    notes:
+      'Start is the plan start date; due is the run due date, else the plan due date. Scope: `releaseId` or the whole project.',
+    success: 200,
+    response: 'ScheduleDTO',
+  },
   'GET /api/v1/projects/{projectId}/reports/summary': {
     tag: 'Reports',
     summary: 'Result counts of the runs, filtered and grouped by environment dimensions',

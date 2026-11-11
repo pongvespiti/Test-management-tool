@@ -10,6 +10,7 @@ import {
   type ReopenReportDTO,
   type ReportTrendDTO,
   type SavedViewDTO,
+  type ScheduleDTO,
   type SavedViewInput,
   type SummaryDTO,
   type SummaryFilters,
@@ -174,6 +175,15 @@ export function useCompareReport(projectId: number, base: string | null, target:
     queryKey: qk.report(projectId, 'compare', params),
     queryFn: () => api.get<CompareDTO>(`/projects/${projectId}/reports/compare`, params),
     enabled: base !== null && target !== null,
+    ...keepFrame,
+  });
+}
+
+export function useScheduleReport(projectId: number, scope: { releaseId?: number | null }) {
+  const params = { releaseId: scope.releaseId ?? undefined };
+  return useQuery({
+    queryKey: qk.report(projectId, 'schedule', params),
+    queryFn: () => api.get<ScheduleDTO>(`/projects/${projectId}/reports/schedule`, params),
     ...keepFrame,
   });
 }

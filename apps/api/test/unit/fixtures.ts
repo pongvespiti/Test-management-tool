@@ -179,6 +179,8 @@ export function planRow(overrides: Partial<TestPlan> = {}): TestPlan {
     testMethod: null,
     judgementCriteria: null,
     rawDataPath: null,
+    startDate: null,
+    dueDate: null,
     overallJudgement: null,
     judgementNote: null,
     status: 'draft',

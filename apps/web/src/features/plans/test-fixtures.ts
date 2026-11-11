@@ -47,6 +47,8 @@ export function makePlan(overrides: Partial<PlanDTO> = {}): PlanDTO {
     testMethod: null,
     judgementCriteria: null,
     rawDataPath: 'N:\\TEAM\\raw',
+    startDate: null,
+    dueDate: null,
     overallJudgement: null,
     judgementNote: null,
     suggestedJudgement: 'not_pass',

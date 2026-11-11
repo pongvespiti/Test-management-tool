@@ -204,6 +204,8 @@ export function toPlanDTO(
     testMethod: p.testMethod,
     judgementCriteria: p.judgementCriteria,
     rawDataPath: p.rawDataPath,
+    startDate: dateOnly(p.startDate),
+    dueDate: dateOnly(p.dueDate),
     overallJudgement: p.overallJudgement,
     judgementNote: p.judgementNote,
     suggestedJudgement: suggestJudgement(total),

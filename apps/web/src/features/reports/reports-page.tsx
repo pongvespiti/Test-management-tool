@@ -2,6 +2,7 @@
 
 import {
   Bug,
+  CalendarRange,
   ChartLine,
   Flag,
   GitCompareArrows,
@@ -36,6 +37,7 @@ import {
   type ReportTab,
 } from './report-format';
 import { ReopensTab } from './reopens-tab';
+import { ScheduleTab } from './schedule-tab';
 import { SummaryTab } from './summary-tab';
 import { TraceabilityTab } from './traceability-tab';
 import { TrendTab } from './trend-tab';
@@ -44,6 +46,7 @@ import { WorkloadTab } from './workload-tab';
 const TAB_ITEMS: { value: ReportTab; label: string; icon: ReactNode }[] = [
   { value: 'trend', label: 'Trend', icon: <ChartLine /> },
   { value: 'summary', label: 'Summary', icon: <Grid3x3 /> },
+  { value: 'schedule', label: 'Schedule', icon: <CalendarRange /> },
   { value: 'workload', label: 'Workload', icon: <Users /> },
   { value: 'defects', label: 'Defects', icon: <Bug /> },
   { value: 'reopens', label: 'Reopens', icon: <RotateCcw /> },
@@ -170,6 +173,9 @@ function Reports() {
         </TabsContent>
         <TabsContent value="summary">
           <SummaryTab projectId={projectId} releaseId={releaseId} planId={planId} />
+        </TabsContent>
+        <TabsContent value="schedule">
+          <ScheduleTab projectId={projectId} releaseId={releaseId} />
         </TabsContent>
         <TabsContent value="workload">
           <WorkloadTab projectId={projectId} scope={scope} />

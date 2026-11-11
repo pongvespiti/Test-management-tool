@@ -13,6 +13,7 @@ import { AppConfig } from '../../config/app-config.js';
 import { AppException, conflict, unprocessable } from '../../common/errors/app.exception.js';
 import { isUniqueViolation } from '../../common/errors/prisma-errors.js';
 import type { AuthUser, ProjectContext } from '../../common/types/auth.js';
+import { dateOnly, parseDateOnly } from '../../common/users/user-refs.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { ActivityService } from '../activity/activity.service.js';
 import { purgeCollab } from '../collab/attachments.queries.js';
@@ -38,6 +39,16 @@ function docNoTaken(docNo: string | undefined) {
 }
 
 /** Test plans: CRUD, document numbers, completion lock, matrix and the signed copy. */
+/** Start must not be after due (both optional; empty text counts as not set). */
+export function assertDateOrder(
+  start: string | null | undefined,
+  due: string | null | undefined,
+): void {
+  if (start && due && start > due) {
+    throw unprocessable('BAD_DATES', 'The start date is after the due date');
+  }
+}
+
 @Injectable()
 export class PlansService {
   constructor(
@@ -84,6 +95,7 @@ export class PlansService {
   async create(ctx: ProjectContext, me: AuthUser, input: CreatePlanInput): Promise<PlanDTO> {
     const db = this.prisma.db;
     await assertReleaseInProject(db, ctx.id, input.releaseId);
+    assertDateOrder(input.startDate, input.dueDate);
     const templateId = await this.normalizeTemplateId(ctx.id, input.templateId);
     let planId: number;
     try {
@@ -98,6 +110,8 @@ export class PlansService {
             testMethod: input.testMethod ?? null,
             judgementCriteria: input.judgementCriteria ?? null,
             rawDataPath: input.rawDataPath ?? null,
+            startDate: parseDateOnly(input.startDate) ?? null,
+            dueDate: parseDateOnly(input.dueDate) ?? null,
             templateId: templateId ?? null,
             createdById: me.id,
           },
@@ -145,6 +159,10 @@ export class PlansService {
         );
       }
     }
+    assertDateOrder(
+      input.startDate === undefined ? dateOnly(plan.startDate) : input.startDate,
+      input.dueDate === undefined ? dateOnly(plan.dueDate) : input.dueDate,
+    );
     const templateId = await this.normalizeTemplateId(ctx.id, input.templateId);
     try {
       await db.$transaction(async (tx) => {
@@ -161,6 +179,8 @@ export class PlansService {
               judgementCriteria: input.judgementCriteria,
             }),
             ...(input.rawDataPath !== undefined && { rawDataPath: input.rawDataPath }),
+            ...(input.startDate !== undefined && { startDate: parseDateOnly(input.startDate) }),
+            ...(input.dueDate !== undefined && { dueDate: parseDateOnly(input.dueDate) }),
             ...(templateId !== undefined && { templateId }),
             ...(input.overallJudgement !== undefined && {
               overallJudgement: input.overallJudgement,

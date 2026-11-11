@@ -8,6 +8,7 @@ import {
   createSuite,
   createTestApp,
   createUser,
+  errorCode,
   expectBody,
   login,
   type Client,
@@ -55,6 +56,41 @@ describe('run due date and suite topic', () => {
     );
     expect(cleared.dueDate).toBeNull();
     expect((await lead.patch(`${P}/runs/${run.id}`, { dueDate: '20-11-2026' })).status).toBe(400);
+  });
+
+  it('keeps the planned dates of a plan and refuses a start after the due date', async () => {
+    const created = expectBody<PlanDTO>(
+      await lead.post(`${P}/plans`, {
+        docNo: 'D-2',
+        title: 'Dates',
+        startDate: '2026-11-02',
+        dueDate: '2026-11-30',
+      }),
+      201,
+    );
+    expect(created).toMatchObject({ startDate: '2026-11-02', dueDate: '2026-11-30' });
+    // Moving one side is checked against the stored other side.
+    const late = await lead.patch(`${P}/plans/${created.id}`, { startDate: '2026-12-01' });
+    expect(late.status).toBe(422);
+    expect(errorCode(late)).toBe('BAD_DATES');
+    const moved = expectBody<PlanDTO>(
+      await lead.patch(`${P}/plans/${created.id}`, { startDate: '2026-11-05', dueDate: '' }),
+      200,
+    );
+    expect(moved).toMatchObject({ startDate: '2026-11-05', dueDate: null });
+    expect(
+      errorCode(
+        await lead.post(`${P}/plans`, {
+          docNo: 'D-3',
+          title: 'Bad',
+          startDate: '2026-12-01',
+          dueDate: '2026-11-01',
+        }),
+      ),
+    ).toBe('BAD_DATES');
+    expect(
+      (await lead.post(`${P}/plans`, { docNo: 'D-4', title: 'x', startDate: '1/12/2026' })).status,
+    ).toBe(400);
   });
 
   it('keeps the topic of a suite', async () => {

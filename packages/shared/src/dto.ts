@@ -355,6 +355,9 @@ export interface PlanDTO {
   testMethod: string | null;
   judgementCriteria: string | null;
   rawDataPath: string | null;
+  /** Planned first and last day of testing (YYYY-MM-DD). */
+  startDate: string | null;
+  dueDate: string | null;
   overallJudgement: Judgement | null;
   judgementNote: string | null;
   suggestedJudgement: Judgement | null;
@@ -1243,6 +1246,29 @@ export interface SummaryDTO {
   totals: { counts: StatusCounts; runs: number };
   /** Runs in the scope before the filters. */
   scopeRuns: number;
+}
+
+/** One run on the schedule: when its plan starts, when the run is due, who has it. */
+export interface ScheduleItemDTO {
+  runId: number;
+  planId: number;
+  planDocNo: string;
+  planTitle: string;
+  code: string;
+  suite: string;
+  /** Topic of the suite (null = none). */
+  topic: string | null;
+  tester: UserRef | null;
+  /** First day: the plan's start date. */
+  start: string | null;
+  /** Last day: the run's due date, else the plan's. */
+  due: string | null;
+  counts: StatusCounts;
+}
+
+export interface ScheduleDTO {
+  release: { id: number; name: string; startDate: string | null; endDate: string | null } | null;
+  items: ScheduleItemDTO[];
 }
 
 /** What a case did between the two sides of a comparison. */

@@ -16,6 +16,7 @@ import {
   makeCompare,
   makeCoverage,
   makeReopens,
+  makeSchedule,
   makeTraceability,
   makeDefectReport,
   makeReleaseRows,
@@ -41,6 +42,7 @@ function stubReports(extra: Record<string, unknown> = {}) {
     'GET /projects/3/reports/coverage': makeCoverage(),
     'GET /projects/3/reports/traceability': makeTraceability(),
     'GET /projects/3/reports/reopens': makeReopens(),
+    'GET /projects/3/reports/schedule': makeSchedule(),
     ...extra,
   });
 }
@@ -379,6 +381,50 @@ describe('ReportsPage', () => {
     renderWithProviders(<ReportsPage />, as());
     expect(await screen.findByText('Pick two runs or two builds')).toBeInTheDocument();
     expect(api.find('GET', '/projects/3/reports/compare')).toHaveLength(0);
+  });
+
+  it('draws runs as bars per topic, then per person, and lists runs without dates', async () => {
+    openUrl('/projects/3/reports?tab=schedule&release=5');
+    const api = stubReports();
+    const { user, rerender } = renderWithProviders(<ReportsPage />, as());
+    expect(await screen.findByText('FW 2.4 schedule')).toBeInTheDocument();
+    expect(lastQuery(api, 'schedule')).toBe('releaseId=5');
+
+    const table = screen.getByRole('table', { name: 'Schedule' });
+    const headers = within(table).getAllByRole('rowheader');
+    expect(headers.map((h) => h.textContent)).toEqual([
+      'Adapter operation test',
+      'Unit operation test',
+    ]);
+    expect(within(table).getByRole('link', { name: 'R1 Unit operation test' })).toHaveAttribute(
+      'href',
+      '/projects/3/runs/1',
+    );
+    const unscheduled = screen.getByRole('list', { name: 'Runs without dates' });
+    expect(within(unscheduled).getByRole('link', { name: 'R3' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('radio', { name: 'By person' }));
+    followUrl();
+    rerender(<ReportsPage />);
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole('table', { name: 'Schedule' }))
+          .getAllByRole('rowheader')
+          .map((h) => h.textContent),
+      ).toEqual(['Ann Tester']),
+    );
+  });
+
+  it('asks for dates when nothing is scheduled', async () => {
+    openUrl('/projects/3/reports?tab=schedule');
+    stubReports({
+      'GET /projects/3/reports/schedule': makeSchedule({
+        release: null,
+        items: makeSchedule().items.slice(2),
+      }),
+    });
+    renderWithProviders(<ReportsPage />, as());
+    expect(await screen.findByText('Nothing on the calendar yet')).toBeInTheDocument();
   });
 
   it('explains how to add references when none exist', async () => {

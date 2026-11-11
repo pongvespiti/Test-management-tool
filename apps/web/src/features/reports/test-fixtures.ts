@@ -12,6 +12,7 @@ import type {
   ReopenReportDTO,
   ReportTrendDTO,
   SavedViewDTO,
+  ScheduleDTO,
   SummaryDTO,
   TraceabilityDTO,
   WorkloadRowDTO,
@@ -505,6 +506,32 @@ export function makeCompare(overrides: Partial<CompareDTO> = {}): CompareDTO {
       only_target: 0,
       unchanged: 1,
     },
+    ...overrides,
+  };
+}
+
+export function makeSchedule(overrides: Partial<ScheduleDTO> = {}): ScheduleDTO {
+  const item = (runId: number, over: Partial<ScheduleDTO['items'][number]> = {}) => ({
+    runId,
+    planId: 7,
+    planDocNo: '26TR-TEAM-10-001',
+    planTitle: 'Unit test',
+    code: `R${runId}`,
+    suite: 'Unit operation test',
+    topic: 'Unit operation test',
+    tester: userRef(2, 'Ann Tester'),
+    start: '2026-11-02',
+    due: '2026-11-13',
+    counts: counts({ ok: 2, untested: 2 }),
+    ...over,
+  });
+  return {
+    release: { id: 5, name: 'FW 2.4', startDate: '2026-11-01', endDate: '2026-11-30' },
+    items: [
+      item(1),
+      item(2, { suite: 'Adapter Model A', topic: 'Adapter operation test', due: '2026-11-20' }),
+      item(3, { start: null, due: null, tester: null, topic: null, suite: 'Modbus' }),
+    ],
     ...overrides,
   };
 }

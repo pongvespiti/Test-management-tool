@@ -156,6 +156,8 @@ describe('PlansPage', () => {
       testMethod: '',
       judgementCriteria: '',
       rawDataPath: '',
+      startDate: '',
+      dueDate: '',
     });
   });
 

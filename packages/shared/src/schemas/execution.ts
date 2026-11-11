@@ -40,6 +40,9 @@ export const createPlanSchema = z.object({
   testMethod: optionalText(8000),
   judgementCriteria: optionalText(8000),
   rawDataPath: optionalText(1000),
+  /** Planned first and last day of testing; start must not be after due (422 BAD_DATES). */
+  startDate: optionalDate,
+  dueDate: optionalDate,
   templateId: idSchema.nullable().optional(),
 });
 export type CreatePlanInput = z.infer<typeof createPlanSchema>;

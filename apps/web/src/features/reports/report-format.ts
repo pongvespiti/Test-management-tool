@@ -227,6 +227,7 @@ export function releasePassRateRows(rows: readonly ReleaseComparisonRowDTO[]) {
 export const REPORT_TABS = [
   'trend',
   'summary',
+  'schedule',
   'workload',
   'defects',
   'reopens',
@@ -243,6 +244,7 @@ export const DEFAULT_DAYS = 30;
 export const TAB_SCOPE: Record<ReportTab, { release: boolean; plan: boolean; days: boolean }> = {
   trend: { release: true, plan: true, days: true },
   summary: { release: true, plan: true, days: false },
+  schedule: { release: true, plan: false, days: false },
   workload: { release: true, plan: true, days: false },
   defects: { release: true, plan: false, days: true },
   reopens: { release: true, plan: false, days: false },
@@ -264,6 +266,7 @@ export function parseDays(value: string | null): number {
 /** Start of the note "… filtered by release only". */
 const TAB_SUBJECT: Partial<Record<ReportTab, string>> = {
   defects: 'Defects are',
+  schedule: 'The schedule is',
   reopens: 'Reopen counts are',
   coverage: 'Coverage is',
   traceability: 'Traceability is',
