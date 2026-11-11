@@ -1,6 +1,6 @@
 'use client';
 
-import { Bug, ChartLine, Flag, Grid3x3, Link2, Target, Users } from 'lucide-react';
+import { Bug, ChartLine, Flag, Grid3x3, Link2, RotateCcw, Target, Users } from 'lucide-react';
 import { Suspense, useMemo, type ReactNode } from 'react';
 import { Spinner } from '@/components/common/error-alert';
 import { PageHeader } from '@/components/common/page-header';
@@ -24,6 +24,7 @@ import {
   TAB_SCOPE,
   type ReportTab,
 } from './report-format';
+import { ReopensTab } from './reopens-tab';
 import { SummaryTab } from './summary-tab';
 import { TraceabilityTab } from './traceability-tab';
 import { TrendTab } from './trend-tab';
@@ -34,6 +35,7 @@ const TAB_ITEMS: { value: ReportTab; label: string; icon: ReactNode }[] = [
   { value: 'summary', label: 'Summary', icon: <Grid3x3 /> },
   { value: 'workload', label: 'Workload', icon: <Users /> },
   { value: 'defects', label: 'Defects', icon: <Bug /> },
+  { value: 'reopens', label: 'Reopens', icon: <RotateCcw /> },
   { value: 'releases', label: 'Releases', icon: <Flag /> },
   { value: 'coverage', label: 'Coverage', icon: <Target /> },
   { value: 'traceability', label: 'Traceability', icon: <Link2 /> },
@@ -162,6 +164,9 @@ function Reports() {
         </TabsContent>
         <TabsContent value="defects">
           <DefectsTab projectId={projectId} releaseId={releaseId} days={days} />
+        </TabsContent>
+        <TabsContent value="reopens">
+          <ReopensTab projectId={projectId} releaseId={releaseId} />
         </TabsContent>
         <TabsContent value="releases">
           <ReleasesTab />

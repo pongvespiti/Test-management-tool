@@ -9,6 +9,7 @@ import {
   type CoverageRowDTO,
   type DefectReportDTO,
   type ReleaseComparisonRowDTO,
+  type ReopenReportDTO,
   type ReportDefectsQuery,
   type ReportSummaryQuery,
   type ReportTrendDTO,
@@ -100,5 +101,16 @@ export class ReportsController {
     @Query({ schema: reportSummaryQuerySchema }) q: ReportSummaryQuery,
   ): Promise<SummaryDTO> {
     return this.reports.summary(ctx.id, q);
+  }
+
+  /** Defect reopen counts by release, build, platform and topic, and the defects that keep coming back. */
+  @Get('reopens')
+  @ProjectPermission('viewReports')
+  @ApiErrorCodes('BAD_RELEASE')
+  reopens(
+    @CurrentProject() ctx: ProjectContext,
+    @Query({ schema: reportCoverageQuerySchema }) q: z.infer<typeof reportCoverageQuerySchema>,
+  ): Promise<ReopenReportDTO> {
+    return this.reports.reopens(ctx.id, q.releaseId);
   }
 }

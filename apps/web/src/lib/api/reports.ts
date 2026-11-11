@@ -5,6 +5,7 @@ import {
   type CoverageRowDTO,
   type DefectReportDTO,
   type ReleaseComparisonRowDTO,
+  type ReopenReportDTO,
   type ReportTrendDTO,
   type SavedViewDTO,
   type SavedViewInput,
@@ -143,5 +144,14 @@ export function useDeleteView(projectId: number) {
   return useMutation({
     mutationFn: (viewId: number) => api.delete(`/projects/${projectId}/reports/views/${viewId}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.report(projectId, 'views', {}) }),
+  });
+}
+
+export function useReopenReport(projectId: number, scope: { releaseId?: number | null }) {
+  const params = { releaseId: scope.releaseId ?? undefined };
+  return useQuery({
+    queryKey: qk.report(projectId, 'reopens', params),
+    queryFn: () => api.get<ReopenReportDTO>(`/projects/${projectId}/reports/reopens`, params),
+    ...keepFrame,
   });
 }

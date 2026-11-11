@@ -14,6 +14,7 @@ import { makeProject, renderWithProviders } from '@/test/render';
 import { ReportsPage } from './reports-page';
 import {
   makeCoverage,
+  makeReopens,
   makeTraceability,
   makeDefectReport,
   makeReleaseRows,
@@ -38,6 +39,7 @@ function stubReports(extra: Record<string, unknown> = {}) {
     'GET /projects/3/reports/releases': makeReleaseRows(),
     'GET /projects/3/reports/coverage': makeCoverage(),
     'GET /projects/3/reports/traceability': makeTraceability(),
+    'GET /projects/3/reports/reopens': makeReopens(),
     ...extra,
   });
 }
@@ -290,6 +292,55 @@ describe('ReportsPage', () => {
       URL.createObjectURL = realCreate;
       URL.revokeObjectURL = realRevoke;
     }
+  });
+
+  it('shows reopen counts per place and the defects that keep coming back', async () => {
+    openUrl('/projects/3/reports?tab=reopens&release=5&plan=7');
+    const api = stubReports();
+    renderWithProviders(<ReportsPage />, as());
+    expect(await screen.findByText('Reopened 2 or more times')).toBeInTheDocument();
+    expect(lastQuery(api, 'reopens')).toBe('releaseId=5');
+    expect(tile('Reopened defects')).toHaveTextContent('440% of 10 defects');
+    expect(tile('Times reopened')).toHaveTextContent('7');
+    expect(tile('Reopened 2+ times')).toHaveTextContent('2');
+    expect(tile('Reopens per reopened defect')).toHaveTextContent('1.8');
+    expect(
+      screen.getByText(
+        'Reopen counts are filtered by release only; the plan filter does not apply here.',
+      ),
+    ).toBeInTheDocument();
+
+    const platform = screen.getByRole('region', { name: 'By platform' });
+    expect(within(platform).getByText('Android')).toBeInTheDocument();
+    expect(within(platform).getByText('(3 of 7)')).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: 'By build' })).getByText('(not set)'),
+    ).toBeInTheDocument();
+
+    const rows = within(screen.getByRole('table')).getAllByRole('row');
+    expect(rows[1]).toHaveTextContent('BUG-004 Does not start');
+    expect(rows[1]).toHaveTextContent('3');
+    expect(within(rows[1]!).getByRole('link', { name: 'BUG-004' })).toHaveAttribute(
+      'href',
+      '/projects/3/defects/4',
+    );
+    expect(rows[2]).toHaveTextContent('BUG-009');
+  });
+
+  it('says so when no defect exists for the reopen counts', async () => {
+    openUrl('/projects/3/reports?tab=reopens');
+    stubReports({
+      'GET /projects/3/reports/reopens': makeReopens({
+        totals: { defects: 0, reopenedDefects: 0, reopens: 0, repeatedDefects: 0 },
+        byRelease: [],
+        byBuild: [],
+        byPlatform: [],
+        byTopic: [],
+        repeated: [],
+      }),
+    });
+    renderWithProviders(<ReportsPage />, as());
+    expect(await screen.findByText('No defects in this scope')).toBeInTheDocument();
   });
 
   it('explains how to add references when none exist', async () => {

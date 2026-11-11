@@ -1065,6 +1065,51 @@ export interface DefectReportDTO {
   topCases: { testCaseId: number; displayId: string; title: string; defectCount: number }[];
 }
 
+/** Defects of one release / build / platform / topic and how often they came back. */
+export interface ReopenGroupDTO {
+  /** Name of the release, build, platform or topic; empty when the defects do not say. */
+  value: string;
+  /** All defects in the group. */
+  defects: number;
+  /** Defects reopened at least once. */
+  reopenedDefects: number;
+  /** Times they were reopened. */
+  reopens: number;
+}
+
+export interface ReopenedDefectDTO {
+  id: number;
+  key: string;
+  title: string;
+  status: DefectStatus;
+  severity: DefectSeverity;
+  reopens: number;
+  lastReopenedAt: string;
+  release: string | null;
+  build: string | null;
+  platform: string | null;
+  topic: string | null;
+}
+
+/** Defect reopen counts, counted from the status changes in the activity log. */
+export interface ReopenReportDTO {
+  totals: {
+    defects: number;
+    /** Defects reopened at least once. */
+    reopenedDefects: number;
+    /** Times defects were reopened. */
+    reopens: number;
+    /** Defects reopened two or more times. */
+    repeatedDefects: number;
+  };
+  byRelease: ReopenGroupDTO[];
+  byBuild: ReopenGroupDTO[];
+  byPlatform: ReopenGroupDTO[];
+  byTopic: ReopenGroupDTO[];
+  /** Defects reopened two or more times, most first. */
+  repeated: ReopenedDefectDTO[];
+}
+
 export interface ReleaseComparisonRowDTO {
   release: {
     id: number;

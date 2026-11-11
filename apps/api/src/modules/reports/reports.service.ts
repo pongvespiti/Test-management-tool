@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@tmt/database';
 import {
   defectKey,
+  envKey,
   displayId,
   countsFromRows,
   paramsToFilters,
@@ -9,6 +10,7 @@ import {
   type DefectReportDTO,
   type ReleaseComparisonRowDTO,
   type ReportDefectsQuery,
+  type ReopenReportDTO,
   type ReportSummaryQuery,
   type ReportTrendDTO,
   type ReportTrendQuery,
@@ -32,6 +34,7 @@ import {
   workloadRows,
   type WorkloadAggregate,
 } from './report-compute.js';
+import { reopenReportOf, type ReopenDefect } from './reopens.js';
 import { summaryOf, type SummaryRun } from './summary.js';
 import { traceabilityOf } from './traceability.js';
 import { addDays, dayRange, localDate, startOfLocalDay } from './report-dates.js';
@@ -401,5 +404,64 @@ export class ReportsService {
       filters: paramsToFilters(q.f),
       labelOrder: dimensionsOf(project.envDimensions).map((d) => d.label),
     });
+  }
+
+  /**
+   * How often defects were reopened, counted from the status changes in the activity log, per
+   * release, build (found in), platform and topic (of the first run case a defect is linked to).
+   */
+  async reopens(projectId: number, releaseId?: number): Promise<ReopenReportDTO> {
+    const db = this.prisma.db;
+    await assertReleaseInProject(db, projectId, releaseId);
+    const rows = await db.defect.findMany({
+      where: { projectId, ...(releaseId !== undefined && { releaseId }) },
+      orderBy: { seq: 'asc' },
+      select: {
+        id: true,
+        seq: true,
+        title: true,
+        status: true,
+        severity: true,
+        release: { select: { name: true } },
+        foundInBuild: { select: { name: true } },
+        links: {
+          where: { runCaseId: { not: null } },
+          orderBy: { id: 'asc' },
+          take: 1,
+          select: {
+            runCase: {
+              select: {
+                run: { select: { environment: true, suite: { select: { topic: true } } } },
+              },
+            },
+          },
+        },
+      },
+    });
+    const events = await db.$queryRaw<{ defectId: number; at: Date }[]>`
+      SELECT entity_id AS "defectId", created_at AS "at"
+      FROM activity_log
+      WHERE project_id = ${projectId} AND entity_type = 'defect' AND action = 'transitioned'
+        AND data->>'to' = 'reopened' AND entity_id IS NOT NULL`;
+    const defects: ReopenDefect[] = rows.map((d) => {
+      const run = d.links[0]?.runCase?.run;
+      const platform = run
+        ? envOf(run)
+            .find((e) => envKey(e.label) === envKey('Platform'))
+            ?.value.trim()
+        : undefined;
+      return {
+        id: d.id,
+        key: defectKey(d.seq),
+        title: d.title,
+        status: d.status,
+        severity: d.severity,
+        release: d.release?.name ?? null,
+        build: d.foundInBuild?.name ?? null,
+        platform: platform || null,
+        topic: run?.suite.topic ?? null,
+      };
+    });
+    return reopenReportOf(defects, events);
   }
 }

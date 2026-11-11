@@ -8,6 +8,7 @@ import type {
   DashboardDTO,
   DefectReportDTO,
   ReleaseComparisonRowDTO,
+  ReopenReportDTO,
   ReportTrendDTO,
   SavedViewDTO,
   SummaryDTO,
@@ -394,6 +395,51 @@ export function makeSavedView(overrides: Partial<SavedViewDTO> = {}): SavedViewD
     owner: userRef(1, 'Alice Tester'),
     config: { rows: 'Platform', cols: 'Unit model', filters: {} },
     createdAt: '2026-11-01T00:00:00.000Z',
+    ...overrides,
+  };
+}
+
+export function makeReopens(overrides: Partial<ReopenReportDTO> = {}): ReopenReportDTO {
+  const group = (value: string, defects: number, reopenedDefects: number, reopens: number) => ({
+    value,
+    defects,
+    reopenedDefects,
+    reopens,
+  });
+  return {
+    totals: { defects: 10, reopenedDefects: 4, reopens: 7, repeatedDefects: 2 },
+    byRelease: [group('Step 1', 6, 3, 5), group('Step 2', 4, 1, 2)],
+    byBuild: [group('B2', 5, 3, 5), group('', 5, 1, 2)],
+    byPlatform: [group('Android', 7, 3, 6), group('iOS', 3, 1, 1)],
+    byTopic: [group('Unit operation test', 8, 4, 7), group('', 2, 0, 0)],
+    repeated: [
+      {
+        id: 4,
+        key: 'BUG-004',
+        title: 'Does not start',
+        status: 'reopened',
+        severity: 'major',
+        reopens: 3,
+        lastReopenedAt: '2026-11-09T08:00:00.000Z',
+        release: 'Step 1',
+        build: 'B2',
+        platform: 'Android',
+        topic: 'Unit operation test',
+      },
+      {
+        id: 9,
+        key: 'BUG-009',
+        title: 'Timer drifts',
+        status: 'resolved',
+        severity: 'minor',
+        reopens: 2,
+        lastReopenedAt: '2026-11-05T08:00:00.000Z',
+        release: 'Step 1',
+        build: null,
+        platform: null,
+        topic: null,
+      },
+    ],
     ...overrides,
   };
 }

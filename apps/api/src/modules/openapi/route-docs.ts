@@ -803,6 +803,14 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     success: 200,
     response: 'TraceabilityDTO',
   },
+  'GET /api/v1/projects/{projectId}/reports/reopens': {
+    tag: 'Reports',
+    summary: 'Defect reopen counts by release, build, platform and topic',
+    notes:
+      'Counted from the status changes to Reopened in the activity log; scope: `releaseId` or the whole project.',
+    success: 200,
+    response: 'ReopenReportDTO',
+  },
   'GET /api/v1/projects/{projectId}/reports/summary': {
     tag: 'Reports',
     summary: 'Result counts of the runs, filtered and grouped by environment dimensions',

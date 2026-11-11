@@ -229,6 +229,7 @@ export const REPORT_TABS = [
   'summary',
   'workload',
   'defects',
+  'reopens',
   'releases',
   'coverage',
   'traceability',
@@ -243,6 +244,7 @@ export const TAB_SCOPE: Record<ReportTab, { release: boolean; plan: boolean; day
   summary: { release: true, plan: true, days: false },
   workload: { release: true, plan: true, days: false },
   defects: { release: true, plan: false, days: true },
+  reopens: { release: true, plan: false, days: false },
   releases: { release: false, plan: false, days: false },
   coverage: { release: true, plan: false, days: false },
   traceability: { release: true, plan: false, days: false },
@@ -257,12 +259,20 @@ export function parseDays(value: string | null): number {
   return (REPORT_DAYS as readonly number[]).includes(n) ? n : DEFAULT_DAYS;
 }
 
+/** Start of the note "… filtered by release only". */
+const TAB_SUBJECT: Partial<Record<ReportTab, string>> = {
+  defects: 'Defects are',
+  reopens: 'Reopen counts are',
+  coverage: 'Coverage is',
+  traceability: 'Traceability is',
+};
+
 /** Explains a filter the tab ignores, or what the tab counts. */
 export function scopeNote(tab: ReportTab, planSelected: boolean): string | null {
   if (tab === 'releases')
     return 'Compares every release of the project — the scope filters do not apply.';
   if (planSelected && !TAB_SCOPE[tab].plan)
-    return `${tab === 'defects' ? 'Defects are' : tab === 'coverage' ? 'Coverage is' : 'Traceability is'} filtered by release only; the plan filter does not apply here.`;
+    return `${TAB_SUBJECT[tab] ?? 'This tab is'} filtered by release only; the plan filter does not apply here.`;
   if (tab === 'workload')
     return 'Run cases of plans that are not completed, per effective assignee.';
   return null;
