@@ -7,6 +7,7 @@ import {
   Flag,
   Folders,
   Layers,
+  ListTree,
   LayoutDashboard,
   ListChecks,
   ListTodo,
@@ -79,6 +80,11 @@ export function projectNav(projectId: number, showTeam = false): NavSection[] {
       items: [
         { label: 'Releases', href: routes.releases(projectId), icon: Flag },
         { label: 'Members', href: routes.members(projectId), icon: Users },
+        {
+          label: 'Environment lists',
+          href: routes.settingsEnvLists(projectId),
+          icon: ListTree,
+        },
         {
           label: 'Report templates',
           href: routes.settingsTemplates(projectId),

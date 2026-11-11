@@ -804,6 +804,27 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     response: 'TraceabilityDTO',
   },
 
+  // ---- Environment lists
+  'GET /api/v1/projects/{projectId}/env-dimensions': {
+    tag: 'Runs',
+    summary: 'Lists of values behind the run environment labels',
+    success: 200,
+    response: 'EnvDimensionsDTO',
+  },
+  'PUT /api/v1/projects/{projectId}/env-dimensions': {
+    tag: 'Runs',
+    summary:
+      'Replace the environment lists (a list may depend on another, e.g. OS version on Platform)',
+    success: 200,
+    response: 'EnvDimensionsDTO',
+  },
+  'POST /api/v1/projects/{projectId}/env-dimensions/normalize-runs': {
+    tag: 'Runs',
+    summary: 'Respell the environment of every run to the lists and add the values found in runs',
+    success: 200,
+    response: 'NormalizeRunsResultDTO',
+  },
+
   // ---- Report templates
   'GET /api/v1/projects/{projectId}/templates': {
     tag: 'Report templates',

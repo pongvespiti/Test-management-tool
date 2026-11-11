@@ -8,6 +8,8 @@ export const qk = {
   users: ['users'] as const,
   userLookup: (q: string) => ['users', 'lookup', q] as const,
 
+  envDimensions: (projectId: number) => ['env-dimensions', projectId] as const,
+
   projects: ['projects'] as const,
   project: (projectId: number) => ['projects', projectId] as const,
   members: (projectId: number) => ['members', projectId] as const,

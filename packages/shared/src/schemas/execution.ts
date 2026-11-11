@@ -23,6 +23,7 @@ import {
   queryBool,
   requiredLine,
 } from './common';
+import { envKey } from '../logic/env-dimensions';
 import { tagSchema } from './library';
 
 export const envEntrySchema = z.object({
@@ -325,3 +326,50 @@ export type ReportDefectsQuery = z.infer<typeof reportDefectsQuerySchema>;
 export const reportCoverageQuerySchema = z.object({
   releaseId: idSchema.optional(),
 });
+
+// ---------------------------------------------------------------- environment dimensions
+
+const dimensionValueSchema = z.object({
+  value: requiredLine(200),
+  parent: z.string().trim().max(200).nullable().default(null),
+});
+
+/** `PUT …/env-dimensions` — the whole set of lists of the project. */
+export const envDimensionsSchema = z
+  .object({
+    dimensions: z
+      .array(
+        z.object({
+          label: requiredLine(100),
+          parent: z.string().trim().max(100).nullable().default(null),
+          values: z.array(dimensionValueSchema).max(500),
+        }),
+      )
+      .max(30),
+  })
+  .superRefine((input, ctx) => {
+    const labels = new Map<string, number>();
+    input.dimensions.forEach((d, i) => {
+      const key = envKey(d.label);
+      if (labels.has(key)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['dimensions', i, 'label'],
+          message: 'Duplicate list',
+        });
+      }
+      labels.set(key, i);
+    });
+    input.dimensions.forEach((d, i) => {
+      if (d.parent === null) return;
+      const parent = input.dimensions[labels.get(envKey(d.parent)) ?? -1];
+      if (!parent || envKey(parent.label) === envKey(d.label) || parent.parent !== null) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['dimensions', i, 'parent'],
+          message: 'Depends on a list that exists and has no parent itself',
+        });
+      }
+    });
+  });
+export type EnvDimensionsInput = z.infer<typeof envDimensionsSchema>;

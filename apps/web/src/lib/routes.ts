@@ -65,6 +65,7 @@ export const routes = {
   settingsGeneral: (projectId: Id) => `${project(projectId)}/settings/general`,
   settingsSuites: (projectId: Id, query?: { suite?: Id | null }) =>
     `${project(projectId)}/settings/suites${toQueryString({ suite: query?.suite ?? undefined })}`,
+  settingsEnvLists: (projectId: Id) => `${project(projectId)}/settings/environment`,
   settingsTemplates: (projectId: Id) => `${project(projectId)}/settings/templates`,
   settingsIntegrations: (projectId: Id) => `${project(projectId)}/settings/integrations`,
 } as const;

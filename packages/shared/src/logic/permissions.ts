@@ -29,6 +29,7 @@ export const PERMISSIONS = {
   manageBuilds: 'tester',
   manageMembers: 'lead',
   manageTemplates: 'lead',
+  manageDimensions: 'lead',
   reviewCases: 'lead',
   writeSharedSteps: 'tester',
   importAutomation: 'tester',

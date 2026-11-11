@@ -1,3 +1,4 @@
+import type { DimensionsService } from '../dimensions/dimensions.service.js';
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { Prisma } from '@tmt/database';
 import {
@@ -36,6 +37,10 @@ describe('RunsService', () => {
       mock.prisma,
       activity as unknown as ActivityService,
       storage as unknown as StorageService,
+      // No lists defined: the environment is saved as typed.
+      {
+        canonicalize: async (_tx: unknown, _id: number, e: unknown) => e,
+      } as unknown as DimensionsService,
     );
     // Queries behind the returned RunDTO and the plan lock.
     mock.db.suite.findMany.mockResolvedValue([suiteRow()]);

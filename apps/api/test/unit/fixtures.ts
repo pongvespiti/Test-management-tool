@@ -72,6 +72,7 @@ export function projectRow(overrides: Partial<Project> = {}): Project {
     isArchived: false,
     requireCaseReview: false,
     nextDefectSeq: 1,
+    envDimensions: [],
     createdById: 1,
     createdAt: T0,
     updatedAt: T0,

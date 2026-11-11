@@ -1,9 +1,13 @@
 'use client';
 
+import { envKey, valuesFor } from '@tmt/shared';
 import { Plus, Trash2 } from 'lucide-react';
+import { useId } from 'react';
 import { IconButton } from '@/components/common/icon-button';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useEnvDimensions } from '@/lib/api/env-dimensions';
+import { useOptionalProject } from '@/providers/project-provider';
 import { emptyEnvRow, MAX_ENV_ROWS, type EnvRow } from './env-rows';
 
 interface EnvEditorProps {
@@ -22,8 +26,27 @@ export function EnvEditor({ value, onChange, errorOf, emptyText }: EnvEditorProp
   const update = (index: number, patch: Partial<EnvRow>) =>
     onChange(value.map((r, i) => (i === index ? { ...r, ...patch } : r)));
 
+  // The project's lists suggest labels and values (a value list may depend on another row).
+  const listId = useId();
+  const project = useOptionalProject();
+  const lists = useEnvDimensions(project?.projectId ?? null).data?.dimensions ?? [];
+  const suggestionsFor = (row: EnvRow): string[] => {
+    const dim = lists.find((d) => envKey(d.label) === envKey(row.label));
+    const parentRow = dim?.parent
+      ? value.find((r) => envKey(r.label) === envKey(dim.parent!))
+      : undefined;
+    return valuesFor(dim, parentRow?.value.trim() || null);
+  };
+
   return (
     <div className="flex flex-col gap-2">
+      {lists.length > 0 && (
+        <datalist id={`${listId}-labels`}>
+          {lists.map((d) => (
+            <option key={d.label} value={d.label} />
+          ))}
+        </datalist>
+      )}
       {value.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           {emptyText ??
@@ -47,6 +70,7 @@ export function EnvEditor({ value, onChange, errorOf, emptyText }: EnvEditorProp
                 placeholder="Item"
                 value={row.label}
                 aria-invalid={labelError ? true : undefined}
+                list={lists.length > 0 ? `${listId}-labels` : undefined}
                 onChange={(e) => update(index, { label: e.currentTarget.value })}
               />
               {labelError && <p className="mt-1 text-xs text-destructive">{labelError}</p>}
@@ -57,8 +81,16 @@ export function EnvEditor({ value, onChange, errorOf, emptyText }: EnvEditorProp
                 placeholder="Value"
                 value={row.value}
                 aria-invalid={valueError ? true : undefined}
+                list={suggestionsFor(row).length > 0 ? `${listId}-${row.uid}` : undefined}
                 onChange={(e) => update(index, { value: e.currentTarget.value })}
               />
+              {suggestionsFor(row).length > 0 && (
+                <datalist id={`${listId}-${row.uid}`}>
+                  {suggestionsFor(row).map((v) => (
+                    <option key={v} value={v} />
+                  ))}
+                </datalist>
+              )}
               {valueError && <p className="mt-1 text-xs text-destructive">{valueError}</p>}
             </div>
             <IconButton

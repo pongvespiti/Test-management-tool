@@ -7,6 +7,7 @@ import type { AuthUser, ProjectContext } from '../../common/types/auth.js';
 import { assertActiveUser, parseDateOnly } from '../../common/users/user-refs.js';
 import { PrismaService, type Db } from '../../prisma/prisma.service.js';
 import { ActivityService } from '../activity/activity.service.js';
+import { DimensionsService } from '../dimensions/dimensions.service.js';
 import { purgeCollab } from '../collab/attachments.queries.js';
 import { envTemplateOf } from '../library/library.mapper.js';
 import { StorageService } from '../storage/storage.service.js';
@@ -42,6 +43,7 @@ export class RunsService {
     private readonly prisma: PrismaService,
     private readonly activity: ActivityService,
     private readonly storage: StorageService,
+    private readonly dimensions: DimensionsService,
   ) {}
 
   async listForPlan(projectId: number, planId: number): Promise<RunDTO[]> {
@@ -87,13 +89,14 @@ export class RunsService {
     try {
       const run = await db.$transaction(async (tx) => {
         await lockEditablePlan(tx, plan.id);
+        const listed = await this.dimensions.canonicalize(tx, ctx.id, environment);
         const r = await tx.testRun.create({
           data: {
             planId: plan.id,
             suiteId: suite.id,
             code: input.code,
             scenario: input.scenario ?? null,
-            environment,
+            environment: envInput(listed),
             testerId: input.testerId ?? null,
             buildId: input.buildId ?? null,
             testedDate: parseDateOnly(input.testedDate) ?? null,
@@ -135,12 +138,16 @@ export class RunsService {
     try {
       const updated = await db.$transaction(async (tx) => {
         await lockEditablePlan(tx, plan.id);
+        const environment =
+          input.environment !== undefined
+            ? envInput(await this.dimensions.canonicalize(tx, ctx.id, input.environment))
+            : undefined;
         const r = await tx.testRun.update({
           where: { id: run.id },
           data: {
             ...(input.code !== undefined && { code: input.code }),
             ...(input.scenario !== undefined && { scenario: input.scenario }),
-            ...(input.environment !== undefined && { environment: input.environment }),
+            ...(environment !== undefined && { environment }),
             ...(input.testerId !== undefined && { testerId: input.testerId }),
             ...(input.buildId !== undefined && { buildId: input.buildId }),
             ...(input.testedDate !== undefined && {
@@ -217,13 +224,18 @@ export class RunsService {
     try {
       const created = await db.$transaction(async (tx) => {
         await lockEditablePlan(tx, plan.id);
+        const listed = await this.dimensions.canonicalize(
+          tx,
+          ctx.id,
+          input.environment ?? envOf(run),
+        );
         const r = await tx.testRun.create({
           data: {
             planId: plan.id,
             suiteId: run.suiteId,
             code: input.code,
             scenario: input.scenario !== undefined ? input.scenario : run.scenario,
-            environment: envInput(input.environment ?? envOf(run)),
+            environment: envInput(listed),
             testerId: input.testerId !== undefined ? input.testerId : run.testerId,
             buildId: input.buildId !== undefined ? input.buildId : run.buildId,
             sortOrder: await nextRunSortOrder(tx, plan.id),

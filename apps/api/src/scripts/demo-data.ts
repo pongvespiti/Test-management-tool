@@ -61,14 +61,6 @@ export const DEMO_BUILDS = [
   { release: 1, name: '1.1.0(1.0.0)', notes: 'First build of the next step', builtDate: null },
 ] as const;
 
-/** Build each demo run was tested on (by run index). */
-export const DEMO_RUN_BUILDS: readonly string[] = [
-  '1.0.0(1.0.0)',
-  '1.0.0(2.0.0)',
-  '1.0.0(2.0.0)',
-  '1.0.0(2.0.0)',
-];
-
 export const DEMO_SHARED_STEP = {
   name: 'Sign in to the app',
   description: 'Used by every case that starts from the home screen',
@@ -108,7 +100,7 @@ export const DEMO_SUITES: readonly DemoSuite[] = [
     name: 'Unit operation test',
     topic: 'Unit operation test',
     prefix: 'UO',
-    envTemplate: ['Unit', 'Firmware'],
+    envTemplate: ['Unit model', 'FW version'],
     sections: {
       Power: [
         ['Power on from standby', 'Normal', 'critical'],
@@ -134,7 +126,7 @@ export const DEMO_SUITES: readonly DemoSuite[] = [
     name: 'Modbus system test',
     topic: 'Modbus system test',
     prefix: 'MB',
-    envTemplate: ['Unit', 'Firmware', 'Modbus master'],
+    envTemplate: ['Unit model', 'FW version', 'Modbus master'],
     sections: {
       'Read registers': [
         ['Read operating mode register', 'Normal', 'critical'],
@@ -151,14 +143,30 @@ export const DEMO_SUITES: readonly DemoSuite[] = [
     name: 'Adapter operation test – Model A',
     topic: 'Adapter operation test',
     prefix: 'AO',
-    envTemplate: ['Unit', 'Firmware', 'Router'],
+    envTemplate: [
+      'Platform',
+      'OS ver',
+      'Mobile model',
+      'App version',
+      'Unit model',
+      'FW version',
+      'Router',
+    ],
     sections: ADAPTER_SECTIONS,
   },
   {
     name: 'Adapter operation test – Model B',
     topic: 'Adapter operation test',
     prefix: 'AP',
-    envTemplate: ['Unit', 'Firmware', 'Router'],
+    envTemplate: [
+      'Platform',
+      'OS ver',
+      'Mobile model',
+      'App version',
+      'Unit model',
+      'FW version',
+      'Router',
+    ],
     sections: ADAPTER_SECTIONS,
   },
 ];
@@ -181,25 +189,164 @@ export const DEMO_PLAN = {
   judgementCriteria: 'All critical and high priority cases are OK',
 } as const;
 
-/** Environment values of the run of each suite, in suite order. */
-export const DEMO_RUN_ENVIRONMENTS: readonly Record<string, string>[] = [
-  { Unit: 'Bench unit A', Firmware: '1.0.0-rc1' },
-  { Unit: 'Bench unit A', Firmware: '1.0.0-rc1', 'Modbus master': 'PLC simulator' },
-  { Unit: 'Bench unit B', Firmware: '1.0.0-rc1', Router: 'AX3000' },
-  { Unit: 'Bench unit C', Firmware: '1.0.0-rc1', Router: 'AX3000' },
-];
+/** Lists behind the environment labels (Platform → OS ver / Mobile model depend on each other). */
+export const DEMO_ENV_LISTS = [
+  {
+    label: 'Platform',
+    parent: null,
+    values: [
+      { value: 'Android', parent: null },
+      { value: 'iOS', parent: null },
+    ],
+  },
+  {
+    label: 'OS ver',
+    parent: 'Platform',
+    values: [
+      { value: '14', parent: 'Android' },
+      { value: '15', parent: 'Android' },
+      { value: '17', parent: 'iOS' },
+      { value: '18', parent: 'iOS' },
+    ],
+  },
+  {
+    label: 'Mobile model',
+    parent: 'Platform',
+    values: [
+      { value: 'Phone A', parent: 'Android' },
+      { value: 'Phone B', parent: 'Android' },
+      { value: 'Phone C', parent: 'iOS' },
+    ],
+  },
+  { label: 'App version', parent: null, values: [] },
+  { label: 'Unit model', parent: null, values: [] },
+  { label: 'FW version', parent: null, values: [] },
+  { label: 'ADP&FW', parent: null, values: [] },
+  { label: 'Router', parent: null, values: [] },
+] as const;
 
-/**
- * Who holds the run of each suite: the tester, no one (still to hand out) or the lead, and its due
- * date in days from the seed day. Model B is handed out through the topics API, like the Team page does.
- */
-export const DEMO_RUN_HOLDERS: readonly ('tester' | 'none' | 'lead')[] = [
-  'tester',
-  'none',
-  'tester',
-  'lead',
+export interface DemoRun {
+  /** Index in DEMO_SUITES. */
+  suite: number;
+  code: string;
+  /** Environment of the run: label → value (new values join the lists when the run is saved). */
+  environment: Record<string, string>;
+  /** Build name in DEMO_BUILDS. */
+  build: string;
+  /**
+   * Who holds the run: the tester, no one (still to hand out) or the lead. The lead's suites are
+   * handed out through the topics API, like the Team page does it.
+   */
+  holder: 'tester' | 'none' | 'lead';
+  /** Due date in days from the seed day. */
+  dueInDays: number;
+}
+
+const APP = { 'App version': '1.0.0' };
+const ADAPTER_UNIT_A = { 'Unit model': 'Model A', 'FW version': '1.0.0-rc1', Router: 'AX3000' };
+const ADAPTER_UNIT_B = { 'Unit model': 'Model B', 'FW version': '1.0.0-rc2', Router: 'AX3000' };
+
+/** Eight runs: several configurations of the same suite give the summary something to group by. */
+export const DEMO_RUNS: readonly DemoRun[] = [
+  {
+    suite: 0,
+    code: 'RUN-1',
+    environment: { 'Unit model': 'Model A', 'FW version': '1.0.0-rc1' },
+    build: '1.0.0(1.0.0)',
+    holder: 'tester',
+    dueInDays: 10,
+  },
+  {
+    suite: 0,
+    code: 'RUN-2',
+    environment: { 'Unit model': 'Model B', 'FW version': '1.0.0-rc2' },
+    build: '1.0.0(2.0.0)',
+    holder: 'tester',
+    dueInDays: 10,
+  },
+  {
+    suite: 1,
+    code: 'RUN-3',
+    environment: {
+      'Unit model': 'Model A',
+      'FW version': '1.0.0-rc1',
+      'Modbus master': 'PLC simulator',
+    },
+    build: '1.0.0(2.0.0)',
+    holder: 'none',
+    dueInDays: 12,
+  },
+  {
+    suite: 2,
+    code: 'RUN-4',
+    environment: {
+      Platform: 'Android',
+      'OS ver': '15',
+      'Mobile model': 'Phone A',
+      ...APP,
+      ...ADAPTER_UNIT_A,
+    },
+    build: '1.0.0(2.0.0)',
+    holder: 'tester',
+    dueInDays: 8,
+  },
+  {
+    suite: 2,
+    code: 'RUN-5',
+    environment: {
+      Platform: 'iOS',
+      'OS ver': '18',
+      'Mobile model': 'Phone C',
+      ...APP,
+      ...ADAPTER_UNIT_A,
+    },
+    build: '1.0.0(2.0.0)',
+    holder: 'tester',
+    dueInDays: 8,
+  },
+  {
+    suite: 2,
+    code: 'RUN-6',
+    environment: {
+      Platform: 'Android',
+      'OS ver': '14',
+      'Mobile model': 'Phone B',
+      ...APP,
+      ...ADAPTER_UNIT_A,
+    },
+    build: '1.0.0(2.0.0)',
+    holder: 'tester',
+    dueInDays: 8,
+  },
+  {
+    suite: 3,
+    code: 'RUN-7',
+    environment: {
+      Platform: 'Android',
+      'OS ver': '15',
+      'Mobile model': 'Phone A',
+      ...APP,
+      ...ADAPTER_UNIT_B,
+    },
+    build: '1.0.0(2.0.0)',
+    holder: 'lead',
+    dueInDays: 14,
+  },
+  {
+    suite: 3,
+    code: 'RUN-8',
+    environment: {
+      Platform: 'iOS',
+      'OS ver': '17',
+      'Mobile model': 'Phone C',
+      ...APP,
+      ...ADAPTER_UNIT_B,
+    },
+    build: '1.0.0(2.0.0)',
+    holder: 'lead',
+    dueInDays: 14,
+  },
 ];
-export const DEMO_RUN_DUE_IN_DAYS: readonly number[] = [10, 12, 8, 14];
 
 /** Repeating result pattern applied to the run cases (`untested` ones are left alone). */
 export const DEMO_RESULT_PATTERN: readonly ResultStatus[] = [

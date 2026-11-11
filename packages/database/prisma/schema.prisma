@@ -289,6 +289,8 @@ model Project {
   requireCaseReview Boolean  @default(false) @map("require_case_review")
   /// Next defect number (`BUG-<n>`), incremented atomically.
   nextDefectSeq     Int      @default(1) @map("next_defect_seq")
+  /// Lists of values behind the run environment labels: `{ label, parent, values: { value, parent }[] }[]`.
+  envDimensions     Json     @default("[]") @map("env_dimensions")
   createdById       Int?     @map("created_by_id")
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)

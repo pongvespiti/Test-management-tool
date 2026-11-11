@@ -37,10 +37,8 @@ import {
   DEMO_PROJECT,
   DEMO_RELEASES,
   DEMO_RESULT_PATTERN,
-  DEMO_RUN_BUILDS,
-  DEMO_RUN_DUE_IN_DAYS,
-  DEMO_RUN_ENVIRONMENTS,
-  DEMO_RUN_HOLDERS,
+  DEMO_ENV_LISTS,
+  DEMO_RUNS,
   DEMO_SHARED_STEP,
   DEMO_STEPS_CASE,
   DEMO_SUITES,
@@ -184,29 +182,21 @@ async function seedProjectContent(
     releaseId: activeRelease.id,
   });
 
+  await call('PUT', `${projectPath}/env-dimensions`, { dimensions: DEMO_ENV_LISTS });
+
   let firstNg: number | null = null;
-  for (const [index, suite] of suites.entries()) {
-    const environment = Object.entries(DEMO_RUN_ENVIRONMENTS[index] ?? {}).map(
-      ([label, value]) => ({ label, value }),
-    );
+  for (const [index, demo] of DEMO_RUNS.entries()) {
+    const suite = suites[demo.suite]!;
     const run = await call('POST', `${projectPath}/plans/${plan.id}/runs`, {
       suiteId: suite.id,
-      code: `RUN-${index + 1}`,
-      scenario: DEMO_SUITES[index]!.name,
-      environment,
-      // Model B is handed out below, like the Team page does it.
-      ...(DEMO_RUN_HOLDERS[index] === 'tester' && { testerId }),
-      dueDate: dayFromToday(DEMO_RUN_DUE_IN_DAYS[index] ?? 14),
-      buildId: buildId(DEMO_RUN_BUILDS[index]),
+      code: demo.code,
+      scenario: DEMO_SUITES[demo.suite]!.name,
+      environment: Object.entries(demo.environment).map(([label, value]) => ({ label, value })),
+      // The lead's suites are handed out below, like the Team page does it.
+      ...(demo.holder === 'tester' && { testerId }),
+      dueDate: dayFromToday(demo.dueInDays),
+      buildId: buildId(demo.build),
     });
-    if (DEMO_RUN_HOLDERS[index] === 'lead') {
-      await call('POST', `${projectPath}/topics/assign`, {
-        releaseId: activeRelease.id,
-        suiteIds: [suite.id],
-        testerId: leadId,
-        dueDate: dayFromToday(DEMO_RUN_DUE_IN_DAYS[index] ?? 14),
-      });
-    }
     const runCases = await call<Id[]>('GET', `${projectPath}/runs/${run.id}/cases`);
     for (const [position, runCase] of runCases.entries()) {
       const status = DEMO_RESULT_PATTERN[(position + index * 3) % DEMO_RESULT_PATTERN.length]!;
@@ -217,6 +207,20 @@ async function seedProjectContent(
       });
       if (status === 'ng' && firstNg === null) firstNg = runCase.id;
     }
+  }
+  // Suites held by the lead are handed out once for all their runs (what the Team page does).
+  for (const suiteIndex of new Set(
+    DEMO_RUNS.filter((r) => r.holder === 'lead').map((r) => r.suite),
+  )) {
+    const due = Math.min(
+      ...DEMO_RUNS.filter((r) => r.suite === suiteIndex).map((r) => r.dueInDays),
+    );
+    await call('POST', `${projectPath}/topics/assign`, {
+      releaseId: activeRelease.id,
+      suiteIds: [suites[suiteIndex]!.id],
+      testerId: leadId,
+      dueDate: dayFromToday(due),
+    });
   }
 
   for (const {

@@ -2,6 +2,7 @@
  * Response shapes of the REST API (`/api/v1`). Plain types only — the server maps DB rows to these,
  * the web app consumes them. Dates are ISO-8601 strings; date-only values are `YYYY-MM-DD`.
  */
+import type { EnvDimension } from './logic/env-dimensions';
 import type {
   AttachmentEntityType,
   CasePriority,
@@ -1097,6 +1098,18 @@ export interface CoverageRowDTO {
   failed: number;
   /** No run case in scope. */
   neverRun: number;
+}
+
+/** Lists of values behind the environment labels of the project's runs. */
+export interface EnvDimensionsDTO {
+  dimensions: EnvDimension[];
+}
+
+export interface NormalizeRunsResultDTO {
+  /** Runs whose environment was respelled. */
+  updatedRuns: number;
+  /** Values added to the lists. */
+  addedValues: number;
 }
 
 /** A library case under a reference, with its latest result in scope. */
