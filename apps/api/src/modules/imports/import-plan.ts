@@ -17,6 +17,7 @@ import {
 } from '@tmt/excel';
 import {
   roleAtLeast,
+  normalizeReferences,
   type CaseStatus,
   type FieldDef,
   type ImportLayout,
@@ -364,7 +365,7 @@ export function previewOf(plan: ImportPlan): ImportPreviewDTO {
       priority: c.parsed.priority,
       tags: c.parsed.tags,
       estimateMinutes: c.parsed.estimateMinutes,
-      references: c.parsed.references,
+      references: normalizeReferences(c.parsed.references),
       precondition: c.parsed.precondition,
       procedure: c.parsed.procedure,
       expected: c.parsed.expected,

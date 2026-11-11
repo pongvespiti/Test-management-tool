@@ -5,6 +5,7 @@ import type {
   DefectReportDTO,
   ReleaseComparisonRowDTO,
   ReportTrendDTO,
+  TraceabilityDTO,
   WorkloadRowDTO,
 } from '@tmt/shared';
 import { api } from './client';
@@ -78,4 +79,13 @@ export function useCoverageReport(projectId: number, scope: { releaseId?: number
 export function useInvalidateReports(projectId: number) {
   const qc = useQueryClient();
   return () => void qc.invalidateQueries({ queryKey: qk.reports(projectId) });
+}
+
+export function useTraceabilityReport(projectId: number, scope: { releaseId?: number | null }) {
+  const params = { releaseId: scope.releaseId ?? undefined };
+  return useQuery({
+    queryKey: qk.report(projectId, 'traceability', params),
+    queryFn: () => api.get<TraceabilityDTO>(`/projects/${projectId}/reports/traceability`, params),
+    ...keepFrame,
+  });
 }

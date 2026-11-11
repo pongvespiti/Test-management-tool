@@ -224,7 +224,14 @@ export function releasePassRateRows(rows: readonly ReleaseComparisonRowDTO[]) {
 
 // ------------------------------------------------------------------ reports page state
 
-export const REPORT_TABS = ['trend', 'workload', 'defects', 'releases', 'coverage'] as const;
+export const REPORT_TABS = [
+  'trend',
+  'workload',
+  'defects',
+  'releases',
+  'coverage',
+  'traceability',
+] as const;
 export type ReportTab = (typeof REPORT_TABS)[number];
 export const REPORT_DAYS = [7, 14, 30, 90] as const;
 export const DEFAULT_DAYS = 30;
@@ -236,6 +243,7 @@ export const TAB_SCOPE: Record<ReportTab, { release: boolean; plan: boolean; day
   defects: { release: true, plan: false, days: true },
   releases: { release: false, plan: false, days: false },
   coverage: { release: true, plan: false, days: false },
+  traceability: { release: true, plan: false, days: false },
 };
 
 export function parseTab(value: string | null): ReportTab {
@@ -252,9 +260,7 @@ export function scopeNote(tab: ReportTab, planSelected: boolean): string | null 
   if (tab === 'releases')
     return 'Compares every release of the project — the scope filters do not apply.';
   if (planSelected && !TAB_SCOPE[tab].plan)
-    return tab === 'defects'
-      ? 'Defects are filtered by release only; the plan filter does not apply here.'
-      : 'Coverage is filtered by release only; the plan filter does not apply here.';
+    return `${tab === 'defects' ? 'Defects are' : tab === 'coverage' ? 'Coverage is' : 'Traceability is'} filtered by release only; the plan filter does not apply here.`;
   if (tab === 'workload')
     return 'Run cases of plans that are not completed, per effective assignee.';
   return null;

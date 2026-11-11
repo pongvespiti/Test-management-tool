@@ -1,5 +1,10 @@
 import type { Prisma, Suite, TestCase } from '@tmt/database';
-import { normalizeText, type CreateCaseInput, type PlainStepDTO } from '@tmt/shared';
+import {
+  normalizeReferences,
+  normalizeText,
+  type CreateCaseInput,
+  type PlainStepDTO,
+} from '@tmt/shared';
 import { notFound } from '../../common/errors/app.exception.js';
 import type { Db } from '../../prisma/prisma.service.js';
 import { normalizeSteps } from './case-rules.js';
@@ -114,7 +119,7 @@ export async function insertCase(
       priority: input.priority,
       tags: input.tags,
       estimateMinutes: input.estimateMinutes ?? null,
-      references: input.references ?? null,
+      references: normalizeReferences(input.references),
       template: input.template,
       steps: normalizeSteps(input.steps ?? []) as unknown as Prisma.InputJsonValue,
       precondition: normalizeText(input.precondition),

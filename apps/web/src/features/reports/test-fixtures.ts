@@ -9,6 +9,7 @@ import type {
   DefectReportDTO,
   ReleaseComparisonRowDTO,
   ReportTrendDTO,
+  TraceabilityDTO,
   WorkloadRowDTO,
 } from '@tmt/shared';
 import { userRef } from '@/features/cases/test-utils';
@@ -282,6 +283,55 @@ export function makeDashboard(overrides: Partial<DashboardDTO> = {}): DashboardD
         updatedAt: '2026-10-20T00:00:00.000Z',
       },
     ],
+    ...overrides,
+  };
+}
+
+export function makeTraceability(overrides: Partial<TraceabilityDTO> = {}): TraceabilityDTO {
+  return {
+    rows: [
+      {
+        reference: 'REQ-1',
+        cases: [
+          {
+            id: 11,
+            displayId: 'UO-001',
+            title: 'Power on',
+            suite: { id: 1, name: 'Unit operation test' },
+            status: 'ng',
+          },
+          {
+            id: 12,
+            displayId: 'UO-002',
+            title: 'Power off',
+            suite: { id: 1, name: 'Unit operation test' },
+            status: 'ok',
+          },
+        ],
+        counts: { total: 2, passed: 1, failed: 1, notExecuted: 0, neverRun: 0 },
+        defects: [
+          { id: 4, key: 'BUG-004', title: 'Does not start', status: 'open', severity: 'major' },
+        ],
+        openDefects: 1,
+      },
+      {
+        reference: 'PROJ-7',
+        cases: [
+          {
+            id: 13,
+            displayId: 'UO-003',
+            title: 'Timer',
+            suite: { id: 1, name: 'Unit operation test' },
+            status: 'ok',
+          },
+        ],
+        counts: { total: 1, passed: 1, failed: 0, notExecuted: 0, neverRun: 0 },
+        defects: [],
+        openDefects: 0,
+      },
+    ],
+    casesWithoutReference: 3,
+    totalCases: 6,
     ...overrides,
   };
 }

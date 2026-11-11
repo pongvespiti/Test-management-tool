@@ -797,6 +797,12 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     success: 200,
     response: 'CoverageRowDTO[]',
   },
+  'GET /api/v1/projects/{projectId}/reports/traceability': {
+    tag: 'Reports',
+    summary: 'Traceability: cases grouped by reference with latest results and defects',
+    success: 200,
+    response: 'TraceabilityDTO',
+  },
 
   // ---- Report templates
   'GET /api/v1/projects/{projectId}/templates': {

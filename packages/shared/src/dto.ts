@@ -1099,6 +1099,51 @@ export interface CoverageRowDTO {
   neverRun: number;
 }
 
+/** A library case under a reference, with its latest result in scope. */
+export interface TraceCaseDTO {
+  id: number;
+  displayId: string;
+  title: string;
+  suite: { id: number; name: string };
+  /** Latest result in scope; null = never run. */
+  status: ResultStatus | null;
+}
+
+export interface TraceDefectDTO {
+  id: number;
+  key: string;
+  title: string;
+  status: DefectStatus;
+  severity: DefectSeverity;
+}
+
+/** One requirement / Jira key / spec reference with the cases that cite it. */
+export interface TraceabilityRowDTO {
+  reference: string;
+  cases: TraceCaseDTO[];
+  counts: {
+    total: number;
+    /** Latest result OK / OK w/ cond. */
+    passed: number;
+    /** Latest result NG / Blocked. */
+    failed: number;
+    /** Latest result Untested / N/T / N/A. */
+    notExecuted: number;
+    /** No run case in scope. */
+    neverRun: number;
+  };
+  /** Defects linked to any of the cases. */
+  defects: TraceDefectDTO[];
+  openDefects: number;
+}
+
+export interface TraceabilityDTO {
+  rows: TraceabilityRowDTO[];
+  /** Live cases that cite no reference. */
+  casesWithoutReference: number;
+  totalCases: number;
+}
+
 // ---------------------------------------------------------------- API tokens & integrations
 
 export interface ApiTokenDTO {

@@ -15,3 +15,4 @@ export * from './logic/text';
 export * from './logic/doc-no';
 export * from './logic/permissions';
 export * from './logic/steps';
+export * from './logic/references';

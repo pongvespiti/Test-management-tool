@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from '@jest/globals';
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import type { ProjectRole } from '@tmt/shared';
 import { screen, waitFor, within } from '@testing-library/react';
 import {
@@ -14,6 +14,7 @@ import { makeProject, renderWithProviders } from '@/test/render';
 import { ReportsPage } from './reports-page';
 import {
   makeCoverage,
+  makeTraceability,
   makeDefectReport,
   makeReleaseRows,
   makeTrend,
@@ -36,6 +37,7 @@ function stubReports(extra: Record<string, unknown> = {}) {
     'GET /projects/3/reports/defects': makeDefectReport(),
     'GET /projects/3/reports/releases': makeReleaseRows(),
     'GET /projects/3/reports/coverage': makeCoverage(),
+    'GET /projects/3/reports/traceability': makeTraceability(),
     ...extra,
   });
 }
@@ -247,6 +249,60 @@ describe('ReportsPage', () => {
       'Unit operation testUOT201575%12925Critical:2High:8Medium:6Low:4',
     );
     await waitFor(() => expect(document.querySelectorAll('svg.recharts-surface')).toHaveLength(1));
+  });
+
+  it('lists references with their cases and defects and exports them', async () => {
+    openUrl('/projects/3/reports?tab=traceability&release=5');
+    const api = stubReports();
+    const realCreate = URL.createObjectURL;
+    const realRevoke = URL.revokeObjectURL;
+    URL.createObjectURL = jest.fn(() => 'blob:csv');
+    URL.revokeObjectURL = jest.fn();
+    jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    try {
+      const { user } = renderWithProviders(<ReportsPage />, as());
+      expect(
+        await screen.findByText('Reference → cases → latest result → defects'),
+      ).toBeInTheDocument();
+      expect(lastQuery(api, 'traceability')).toBe('releaseId=5');
+      expect(tile('References')).toHaveTextContent('2');
+      expect(tile('Need attention')).toHaveTextContent('1');
+      expect(tile('Cases without reference')).toHaveTextContent('3');
+
+      await user.click(screen.getByRole('button', { name: 'Show cases of REQ-1' }));
+      const cases = screen.getByRole('list', { name: 'Cases of REQ-1' });
+      expect(within(cases).getByRole('link', { name: 'UO-001' })).toHaveAttribute(
+        'href',
+        '/projects/3/cases?case=11',
+      );
+      expect(
+        within(screen.getByRole('list', { name: 'Defects of REQ-1' })).getByRole('link', {
+          name: 'BUG-004',
+        }),
+      ).toHaveAttribute('href', '/projects/3/defects/4');
+
+      await user.click(screen.getByRole('radio', { name: 'Needs attention' }));
+      expect(screen.queryByText('PROJ-7')).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: /Export CSV/ }));
+      expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
+    } finally {
+      URL.createObjectURL = realCreate;
+      URL.revokeObjectURL = realRevoke;
+    }
+  });
+
+  it('explains how to add references when none exist', async () => {
+    openUrl('/projects/3/reports?tab=traceability');
+    stubReports({
+      'GET /projects/3/reports/traceability': makeTraceability({
+        rows: [],
+        casesWithoutReference: 0,
+        totalCases: 0,
+      }),
+    });
+    renderWithProviders(<ReportsPage />, as());
+    expect(await screen.findByText('No references yet')).toBeInTheDocument();
   });
 
   it('says when the scope has no run cases and reports failures', async () => {

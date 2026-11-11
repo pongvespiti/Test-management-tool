@@ -11,6 +11,7 @@ import {
   type ReportDefectsQuery,
   type ReportTrendDTO,
   type ReportTrendQuery,
+  type TraceabilityDTO,
   type WorkloadRowDTO,
 } from '@tmt/shared';
 import type { z } from 'zod';
@@ -74,5 +75,16 @@ export class ReportsController {
     @Query({ schema: reportCoverageQuerySchema }) q: z.infer<typeof reportCoverageQuerySchema>,
   ): Promise<CoverageRowDTO[]> {
     return this.reports.coverage(ctx.id, q.releaseId);
+  }
+
+  /** Library cases grouped by the references in their text, with latest results and defects. */
+  @Get('traceability')
+  @ProjectPermission('viewReports')
+  @ApiErrorCodes('BAD_RELEASE')
+  traceability(
+    @CurrentProject() ctx: ProjectContext,
+    @Query({ schema: reportCoverageQuerySchema }) q: z.infer<typeof reportCoverageQuerySchema>,
+  ): Promise<TraceabilityDTO> {
+    return this.reports.traceability(ctx.id, q.releaseId);
   }
 }

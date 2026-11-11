@@ -1,6 +1,6 @@
 'use client';
 
-import { Bug, ChartLine, Flag, Target, Users } from 'lucide-react';
+import { Bug, ChartLine, Flag, Link2, Target, Users } from 'lucide-react';
 import { Suspense, useMemo, type ReactNode } from 'react';
 import { Spinner } from '@/components/common/error-alert';
 import { PageHeader } from '@/components/common/page-header';
@@ -24,6 +24,7 @@ import {
   TAB_SCOPE,
   type ReportTab,
 } from './report-format';
+import { TraceabilityTab } from './traceability-tab';
 import { TrendTab } from './trend-tab';
 import { WorkloadTab } from './workload-tab';
 
@@ -33,6 +34,7 @@ const TAB_ITEMS: { value: ReportTab; label: string; icon: ReactNode }[] = [
   { value: 'defects', label: 'Defects', icon: <Bug /> },
   { value: 'releases', label: 'Releases', icon: <Flag /> },
   { value: 'coverage', label: 'Coverage', icon: <Target /> },
+  { value: 'traceability', label: 'Traceability', icon: <Link2 /> },
 ];
 
 /** Underlined tabs as in the approved mockup (instead of the default pill tabs). */
@@ -161,6 +163,9 @@ function Reports() {
         </TabsContent>
         <TabsContent value="coverage">
           <CoverageTab projectId={projectId} releaseId={releaseId} />
+        </TabsContent>
+        <TabsContent value="traceability">
+          <TraceabilityTab projectId={projectId} releaseId={releaseId} />
         </TabsContent>
       </Tabs>
     </>
