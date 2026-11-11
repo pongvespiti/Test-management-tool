@@ -4,13 +4,16 @@ import {
   reportCoverageQuerySchema,
   reportDefectsQuerySchema,
   reportScopeSchema,
+  reportSummaryQuerySchema,
   reportTrendQuerySchema,
   type CoverageRowDTO,
   type DefectReportDTO,
   type ReleaseComparisonRowDTO,
   type ReportDefectsQuery,
+  type ReportSummaryQuery,
   type ReportTrendDTO,
   type ReportTrendQuery,
+  type SummaryDTO,
   type TraceabilityDTO,
   type WorkloadRowDTO,
 } from '@tmt/shared';
@@ -86,5 +89,16 @@ export class ReportsController {
     @Query({ schema: reportCoverageQuerySchema }) q: z.infer<typeof reportCoverageQuerySchema>,
   ): Promise<TraceabilityDTO> {
     return this.reports.traceability(ctx.id, q.releaseId);
+  }
+
+  /** Result counts of the runs, filtered and grouped by environment dimensions, topic, release, build. */
+  @Get('summary')
+  @ProjectPermission('viewReports')
+  @ApiErrorCodes('PLAN_NOT_FOUND', 'BAD_RELEASE')
+  summary(
+    @CurrentProject() ctx: ProjectContext,
+    @Query({ schema: reportSummaryQuerySchema }) q: ReportSummaryQuery,
+  ): Promise<SummaryDTO> {
+    return this.reports.summary(ctx.id, q);
   }
 }

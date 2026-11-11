@@ -3,16 +3,22 @@ import { Prisma } from '@tmt/database';
 import {
   defectKey,
   displayId,
+  countsFromRows,
+  paramsToFilters,
   type CoverageRowDTO,
   type DefectReportDTO,
   type ReleaseComparisonRowDTO,
   type ReportDefectsQuery,
+  type ReportSummaryQuery,
   type ReportTrendDTO,
   type ReportTrendQuery,
   type ResultStatus,
+  type SummaryDTO,
   type TraceabilityDTO,
   type WorkloadRowDTO,
 } from '@tmt/shared';
+import { dimensionsOf } from '../dimensions/dimensions.service.js';
+import { envOf } from '../execution/execution.mapper.js';
 import { loadUserRefs, refOf } from '../../common/users/user-refs.js';
 import { AppConfig } from '../../config/app-config.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
@@ -26,6 +32,7 @@ import {
   workloadRows,
   type WorkloadAggregate,
 } from './report-compute.js';
+import { summaryOf, type SummaryRun } from './summary.js';
 import { traceabilityOf } from './traceability.js';
 import { addDays, dayRange, localDate, startOfLocalDay } from './report-dates.js';
 
@@ -341,5 +348,58 @@ export class ReportsService {
       defects,
       defectKey,
     );
+  }
+
+  /**
+   * Result counts of the runs in scope, filtered and grouped by environment dimensions (Platform,
+   * OS ver, Unit model …) and the built-ins topic / release / build. One run is one environment, so
+   * every run case counts once, in the cell of its run.
+   */
+  async summary(projectId: number, q: ReportSummaryQuery): Promise<SummaryDTO> {
+    const db = this.prisma.db;
+    const plan = planWhere(await this.resolveScope(projectId, q));
+    const [runs, grouped, project] = await Promise.all([
+      db.testRun.findMany({
+        where: { plan },
+        orderBy: { id: 'asc' },
+        select: {
+          id: true,
+          planId: true,
+          code: true,
+          environment: true,
+          suite: { select: { topic: true } },
+          plan: { select: { release: { select: { name: true } } } },
+          build: { select: { name: true } },
+        },
+      }),
+      db.runCase.groupBy({
+        by: ['runId', 'status'],
+        where: { run: { plan } },
+        _count: { _all: true },
+      }),
+      db.project.findUniqueOrThrow({ where: { id: projectId }, select: { envDimensions: true } }),
+    ]);
+    const countsByRun = new Map<number, { status: string; count: number }[]>();
+    for (const g of grouped) {
+      const list = countsByRun.get(g.runId) ?? [];
+      list.push({ status: g.status, count: g._count._all });
+      countsByRun.set(g.runId, list);
+    }
+    const rows: SummaryRun[] = runs.map((r) => ({
+      id: r.id,
+      planId: r.planId,
+      code: r.code,
+      environment: envOf(r),
+      topic: r.suite.topic,
+      release: r.plan.release?.name ?? null,
+      build: r.build?.name ?? null,
+      counts: countsFromRows(countsByRun.get(r.id) ?? []),
+    }));
+    return summaryOf(rows, {
+      rows: q.rows ?? null,
+      cols: q.cols ?? null,
+      filters: paramsToFilters(q.f),
+      labelOrder: dimensionsOf(project.envDimensions).map((d) => d.label),
+    });
   }
 }

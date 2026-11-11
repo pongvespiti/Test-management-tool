@@ -1,12 +1,17 @@
 /** Owner: W3 (reports page, dashboard charts). */
-import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
-import type {
-  CoverageRowDTO,
-  DefectReportDTO,
-  ReleaseComparisonRowDTO,
-  ReportTrendDTO,
-  TraceabilityDTO,
-  WorkloadRowDTO,
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  filtersToParams,
+  type CoverageRowDTO,
+  type DefectReportDTO,
+  type ReleaseComparisonRowDTO,
+  type ReportTrendDTO,
+  type SavedViewDTO,
+  type SavedViewInput,
+  type SummaryDTO,
+  type SummaryFilters,
+  type TraceabilityDTO,
+  type WorkloadRowDTO,
 } from '@tmt/shared';
 import { api } from './client';
 import { qk } from './keys';
@@ -87,5 +92,56 @@ export function useTraceabilityReport(projectId: number, scope: { releaseId?: nu
     queryKey: qk.report(projectId, 'traceability', params),
     queryFn: () => api.get<TraceabilityDTO>(`/projects/${projectId}/reports/traceability`, params),
     ...keepFrame,
+  });
+}
+
+/** What the summary shows: a dimension down the rows and across, and the values kept. */
+export interface SummaryView {
+  rows: string | null;
+  cols: string | null;
+  filters: SummaryFilters;
+}
+
+/** Query string of the summary: `f` is repeated (`f=Platform=Android&f=Platform=iOS`). */
+export function summaryQuery(scope: ReportScope, view: SummaryView): string {
+  const params = new URLSearchParams();
+  for (const [k, v] of Object.entries(reportScopeParams(scope))) params.set(k, String(v));
+  if (view.rows) params.set('rows', view.rows);
+  if (view.cols) params.set('cols', view.cols);
+  for (const f of filtersToParams(view.filters)) params.append('f', f);
+  return params.toString();
+}
+
+export function useSummaryReport(projectId: number, scope: ReportScope, view: SummaryView) {
+  const qs = summaryQuery(scope, view);
+  return useQuery({
+    queryKey: qk.report(projectId, 'summary', { qs }),
+    queryFn: () =>
+      api.get<SummaryDTO>(`/projects/${projectId}/reports/summary${qs ? `?${qs}` : ''}`),
+    ...keepFrame,
+  });
+}
+
+export function useSavedViews(projectId: number) {
+  return useQuery({
+    queryKey: qk.report(projectId, 'views', {}),
+    queryFn: () => api.get<SavedViewDTO[]>(`/projects/${projectId}/reports/views`),
+  });
+}
+
+export function useSaveView(projectId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: SavedViewInput) =>
+      api.post<SavedViewDTO>(`/projects/${projectId}/reports/views`, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.report(projectId, 'views', {}) }),
+  });
+}
+
+export function useDeleteView(projectId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (viewId: number) => api.delete(`/projects/${projectId}/reports/views/${viewId}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.report(projectId, 'views', {}) }),
   });
 }

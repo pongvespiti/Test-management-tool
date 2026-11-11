@@ -234,6 +234,7 @@ model User {
   imports             Import[]
   activities          ActivityLog[]
   integrationsUpdated ProjectIntegration[]
+  savedViews          SavedView[]
 
   @@map("users")
 }
@@ -308,6 +309,7 @@ model Project {
   imports         Import[]
   activities      ActivityLog[]
   integrations    ProjectIntegration[]
+  savedViews      SavedView[]
 
   @@map("projects")
 }
@@ -870,4 +872,24 @@ model ProjectIntegration {
 
   @@unique([projectId, kind])
   @@map("project_integrations")
+}
+
+/// A named way of looking at the summary report (rows, columns, filters), private or shared.
+model SavedView {
+  id        Int      @id @default(autoincrement())
+  projectId Int      @map("project_id")
+  userId    Int?     @map("user_id")
+  name      String
+  shared    Boolean  @default(false)
+  /// `{ rows, cols, filters }` of the summary report.
+  config    Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([projectId, userId, name])
+  @@index([projectId])
+  @@map("saved_views")
 }

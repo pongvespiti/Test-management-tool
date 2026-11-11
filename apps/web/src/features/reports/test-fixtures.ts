@@ -9,6 +9,8 @@ import type {
   DefectReportDTO,
   ReleaseComparisonRowDTO,
   ReportTrendDTO,
+  SavedViewDTO,
+  SummaryDTO,
   TraceabilityDTO,
   WorkloadRowDTO,
 } from '@tmt/shared';
@@ -332,6 +334,66 @@ export function makeTraceability(overrides: Partial<TraceabilityDTO> = {}): Trac
     ],
     casesWithoutReference: 3,
     totalCases: 6,
+    ...overrides,
+  };
+}
+
+/** Three runs: Android × unit A / B and iOS × unit A, grouped by Platform × Unit model. */
+export function makeSummary(overrides: Partial<SummaryDTO> = {}): SummaryDTO {
+  const run = (id: number) => ({ id, planId: 7, code: `R${id}` });
+  return {
+    dimensions: [
+      {
+        key: 'Platform',
+        label: 'Platform',
+        builtin: false,
+        options: [
+          { value: 'Android', runs: 2 },
+          { value: 'iOS', runs: 1 },
+        ],
+      },
+      {
+        key: 'Unit model',
+        label: 'Unit model',
+        builtin: false,
+        options: [
+          { value: 'A', runs: 2 },
+          { value: 'B', runs: 1 },
+        ],
+      },
+      {
+        key: '@topic',
+        label: 'Topic',
+        builtin: true,
+        options: [{ value: 'Unit operation test', runs: 3 }],
+      },
+    ],
+    rows: null,
+    cols: null,
+    rowValues: [''],
+    colValues: [''],
+    cells: [
+      {
+        row: '',
+        col: '',
+        counts: counts({ ok: 12, ng: 2, blocked: 1, untested: 1 }),
+        runs: [run(1), run(2), run(3)],
+      },
+    ],
+    totals: { counts: counts({ ok: 12, ng: 2, blocked: 1, untested: 1 }), runs: 3 },
+    scopeRuns: 3,
+    ...overrides,
+  };
+}
+
+export function makeSavedView(overrides: Partial<SavedViewDTO> = {}): SavedViewDTO {
+  return {
+    id: 21,
+    name: 'Android by unit',
+    shared: false,
+    owner: userRef(1, 'Alice Tester'),
+    config: { rows: 'Platform', cols: 'Unit model', filters: {} },
+    createdAt: '2026-11-01T00:00:00.000Z',
     ...overrides,
   };
 }

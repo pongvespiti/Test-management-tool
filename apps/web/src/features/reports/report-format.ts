@@ -226,6 +226,7 @@ export function releasePassRateRows(rows: readonly ReleaseComparisonRowDTO[]) {
 
 export const REPORT_TABS = [
   'trend',
+  'summary',
   'workload',
   'defects',
   'releases',
@@ -239,6 +240,7 @@ export const DEFAULT_DAYS = 30;
 /** Which scope filters a tab honours (api.md § Reports). */
 export const TAB_SCOPE: Record<ReportTab, { release: boolean; plan: boolean; days: boolean }> = {
   trend: { release: true, plan: true, days: true },
+  summary: { release: true, plan: true, days: false },
   workload: { release: true, plan: true, days: false },
   defects: { release: true, plan: false, days: true },
   releases: { release: false, plan: false, days: false },

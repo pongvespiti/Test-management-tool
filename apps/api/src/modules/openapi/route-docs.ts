@@ -803,6 +803,32 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     success: 200,
     response: 'TraceabilityDTO',
   },
+  'GET /api/v1/projects/{projectId}/reports/summary': {
+    tag: 'Reports',
+    summary: 'Result counts of the runs, filtered and grouped by environment dimensions',
+    notes:
+      'Scope: `planId` (wins) or `releaseId` or the whole project. `rows` / `cols` pick a dimension (an environment label, or `@topic`, `@release`, `@build`); each `f` is `key=value`, several values of one key mean any of them.',
+    success: 200,
+    response: 'SummaryDTO',
+  },
+  'GET /api/v1/projects/{projectId}/reports/views': {
+    tag: 'Reports',
+    summary: 'Saved summary views: your own and the shared ones',
+    success: 200,
+    response: 'SavedViewDTO[]',
+  },
+  'POST /api/v1/projects/{projectId}/reports/views': {
+    tag: 'Reports',
+    summary: 'Save a summary view (rows, columns, filters), private or shared',
+    success: 201,
+    response: 'SavedViewDTO',
+  },
+  'DELETE /api/v1/projects/{projectId}/reports/views/{viewId}': {
+    tag: 'Reports',
+    summary: 'Delete a saved view (owner or lead)',
+    success: 204,
+    response: 'void',
+  },
 
   // ---- Environment lists
   'GET /api/v1/projects/{projectId}/env-dimensions': {

@@ -1,6 +1,6 @@
 'use client';
 
-import { Bug, ChartLine, Flag, Link2, Target, Users } from 'lucide-react';
+import { Bug, ChartLine, Flag, Grid3x3, Link2, Target, Users } from 'lucide-react';
 import { Suspense, useMemo, type ReactNode } from 'react';
 import { Spinner } from '@/components/common/error-alert';
 import { PageHeader } from '@/components/common/page-header';
@@ -24,12 +24,14 @@ import {
   TAB_SCOPE,
   type ReportTab,
 } from './report-format';
+import { SummaryTab } from './summary-tab';
 import { TraceabilityTab } from './traceability-tab';
 import { TrendTab } from './trend-tab';
 import { WorkloadTab } from './workload-tab';
 
 const TAB_ITEMS: { value: ReportTab; label: string; icon: ReactNode }[] = [
   { value: 'trend', label: 'Trend', icon: <ChartLine /> },
+  { value: 'summary', label: 'Summary', icon: <Grid3x3 /> },
   { value: 'workload', label: 'Workload', icon: <Users /> },
   { value: 'defects', label: 'Defects', icon: <Bug /> },
   { value: 'releases', label: 'Releases', icon: <Flag /> },
@@ -90,7 +92,7 @@ function Reports() {
     <>
       <PageHeader
         title="Reports"
-        subtitle={`${project.name} · execution trend, workload, defects, releases and coverage`}
+        subtitle={`${project.name} · trend, summary by environment, workload, defects, releases, coverage and traceability`}
       />
       <Tabs
         value={tab}
@@ -151,6 +153,9 @@ function Reports() {
 
         <TabsContent value="trend">
           <TrendTab projectId={projectId} scope={scope} days={days} />
+        </TabsContent>
+        <TabsContent value="summary">
+          <SummaryTab projectId={projectId} releaseId={releaseId} planId={planId} />
         </TabsContent>
         <TabsContent value="workload">
           <WorkloadTab projectId={projectId} scope={scope} />

@@ -251,13 +251,20 @@ export async function setDisplayName(t: TestApp, userId: number, displayName: st
 export async function createSuite(
   t: TestApp,
   projectId: number,
-  input: { name: string; prefix: string; envTemplate?: string[]; fieldDefs?: FieldDef[] },
+  input: {
+    name: string;
+    prefix: string;
+    topic?: string;
+    envTemplate?: string[];
+    fieldDefs?: FieldDef[];
+  },
 ): Promise<Suite> {
   return t.prisma.db.suite.create({
     data: {
       projectId,
       name: input.name,
       prefix: input.prefix,
+      topic: input.topic ?? null,
       envTemplate: input.envTemplate ?? [],
       fieldDefs: (input.fieldDefs ?? []) as unknown as Prisma.InputJsonValue,
     },

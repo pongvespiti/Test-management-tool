@@ -1157,6 +1157,59 @@ export interface TraceabilityDTO {
   totalCases: number;
 }
 
+/** One value of a summary dimension and the runs that carry it. */
+export interface SummaryOptionDTO {
+  /** Empty text = the dimension is not set on those runs. */
+  value: string;
+  runs: number;
+}
+
+/** A dimension the summary can filter or group by (environment label or built-in). */
+export interface SummaryDimensionDTO {
+  /** Environment label, or `@topic` / `@release` / `@build`. */
+  key: string;
+  label: string;
+  builtin: boolean;
+  /** Values seen in the scope, given the filters on the other dimensions. */
+  options: SummaryOptionDTO[];
+}
+
+export interface SummaryRunRefDTO {
+  id: number;
+  planId: number;
+  code: string;
+}
+
+export interface SummaryCellDTO {
+  /** Value on the row dimension ('' = not set or no row dimension). */
+  row: string;
+  col: string;
+  counts: StatusCounts;
+  runs: SummaryRunRefDTO[];
+}
+
+export interface SummaryDTO {
+  dimensions: SummaryDimensionDTO[];
+  rows: string | null;
+  cols: string | null;
+  rowValues: string[];
+  colValues: string[];
+  cells: SummaryCellDTO[];
+  totals: { counts: StatusCounts; runs: number };
+  /** Runs in the scope before the filters. */
+  scopeRuns: number;
+}
+
+export interface SavedViewDTO {
+  id: number;
+  name: string;
+  /** Shared views are visible to everyone in the project. */
+  shared: boolean;
+  owner: UserRef | null;
+  config: { rows: string | null; cols: string | null; filters: Record<string, string[]> };
+  createdAt: string;
+}
+
 // ---------------------------------------------------------------- API tokens & integrations
 
 export interface ApiTokenDTO {
