@@ -11,6 +11,7 @@ import { QueryState, Spinner } from '@/components/common/error-alert';
 import { SegmentedControl } from '@/components/common/list-controls';
 import { MonoId } from '@/components/common/mono-id';
 import { PageHeader } from '@/components/common/page-header';
+import { UserSelect } from '@/components/common/user-select';
 import { StackedProgress } from '@/components/common/stacked-progress';
 import { Button } from '@/components/ui/button';
 import {
@@ -60,7 +61,16 @@ function MyWork() {
   const range: MyWorkRange = params.get('range') === 'week' ? 'week' : 'day';
   const dateParam = params.get('date');
   const date = dateParam && DATE_PARAM.test(dateParam) ? dateParam : null;
-  const query = useMyWork(projectId, range, date);
+  const userParam = Number(params.get('user'));
+  const userId = Number.isInteger(userParam) && userParam > 0 ? userParam : null;
+  const query = useMyWork(projectId, range, date, userId);
+  const pickUser = (next: number | null) =>
+    setParams((prev) => {
+      const out = new URLSearchParams(prev);
+      if (next) out.set('user', String(next));
+      else out.delete('user');
+      return out;
+    });
 
   const go = (next: { range?: MyWorkRange; date?: string | null }) =>
     setParams((prev) => {
@@ -89,13 +99,32 @@ function MyWork() {
       <PageHeader
         eyebrow={project.name}
         title="My work"
-        subtitle="Test cases waiting for you, and what you tested in a day or a week."
+        subtitle="Test cases waiting for you or a team member, and what was tested in a day or a week."
       />
       <div className="flex flex-col gap-6">
+        <div className="flex flex-wrap items-center gap-3">
+          <label htmlFor="my-work-person" className="text-sm font-medium">
+            Person
+          </label>
+          <div className="w-72">
+            <UserSelect
+              id="my-work-person"
+              projectId={projectId}
+              value={userId}
+              onChange={pickUser}
+              placeholder="Me"
+            />
+          </div>
+          {userId !== null && (
+            <p className="text-sm text-muted-foreground">
+              Showing the work of another member (read-only view).
+            </p>
+          )}
+        </div>
         <QueryState query={query}>
           {data && (
             <>
-              <Waiting data={data} projectId={projectId} />
+              <Waiting data={data} projectId={projectId} other={userId !== null} />
               <section aria-label="Period" className="flex flex-wrap items-center gap-3">
                 <SegmentedControl
                   aria-label="Period length"
@@ -132,7 +161,7 @@ function MyWork() {
                 </Button>
               </section>
               <Refreshing active={query.isFetching}>
-                <Done data={data} />
+                <Done data={data} other={userId !== null} />
               </Refreshing>
             </>
           )}
@@ -142,12 +171,25 @@ function MyWork() {
   );
 }
 
-function Waiting({ data, projectId }: { data: MyWorkDTO; projectId: number }) {
+function Waiting({
+  data,
+  projectId,
+  other,
+}: {
+  data: MyWorkDTO;
+  projectId: number;
+  other: boolean;
+}) {
   const { assigned } = data;
+  const name = data.user.displayName;
   return (
     <SectionCard
-      title="Waiting for me"
-      subtitle="Cases assigned to you, or in your runs and not assigned to anyone, in plans that are not completed."
+      title={other ? `Waiting for ${name}` : 'Waiting for me'}
+      subtitle={
+        other
+          ? `Cases assigned to ${name}, or in their runs and not assigned to anyone, in plans that are not completed.`
+          : 'Cases assigned to you, or in your runs and not assigned to anyone, in plans that are not completed.'
+      }
       flush
       actions={
         assigned.total > 0 && (
@@ -163,8 +205,8 @@ function Waiting({ data, projectId }: { data: MyWorkDTO; projectId: number }) {
         <EmptyState
           compact
           icon={<ListTodo className="size-6" strokeWidth={1.6} />}
-          title="Nothing is waiting for you"
-          description="Cases show up here when a run is yours or a case is assigned to you."
+          title={other ? `Nothing is waiting for ${name}` : 'Nothing is waiting for you'}
+          description="Cases show up here when a run is theirs or a case is assigned to them."
         />
       ) : (
         <>
@@ -229,7 +271,7 @@ function WaitingRow({ item, projectId }: { item: MyWorkItemDTO; projectId: numbe
   );
 }
 
-function Done({ data }: { data: MyWorkDTO }) {
+function Done({ data, other }: { data: MyWorkDTO; other: boolean }) {
   const { summary } = data;
   const { counts } = summary;
   return (
@@ -246,7 +288,7 @@ function Done({ data }: { data: MyWorkDTO }) {
             compact
             icon={<ListTodo className="size-6" strokeWidth={1.6} />}
             title="No results recorded in this period"
-            description="Results you record on a run appear here."
+            description="Results recorded on a run appear here."
           />
         </SectionCard>
       ) : (
@@ -308,7 +350,7 @@ function Done({ data }: { data: MyWorkDTO }) {
       )}
       {summary.defects.length > 0 && (
         <SectionCard
-          title="Defects I reported"
+          title={other ? `Defects ${data.user.displayName} reported` : 'Defects I reported'}
           subtitle={pluralize(summary.defects.length, 'defect')}
           flush
         >

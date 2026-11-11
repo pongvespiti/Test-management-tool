@@ -162,4 +162,19 @@ describe('MyWorkPage', () => {
     expect(text).toContain('Tested 2 cases: 1 OK · 1 NG');
     expect(text).toContain('BUG-4 Times out [Major]');
   });
+
+  it('shows the work of the member named in the URL', async () => {
+    openUrl('/projects/3/my-work?user=8');
+    const api = mockApi({
+      'GET /projects/3/members': [],
+      'GET /projects/3/my-work': makeMyWork({
+        user: { id: 8, username: 'ann', displayName: 'Ann' },
+      }),
+    });
+    renderWithProviders(<MyWorkPage />, { project: makeProject({ myRole: 'lead' }) });
+    expect(await screen.findByRole('region', { name: 'Waiting for Ann' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Defects Ann reported' })).toBeInTheDocument();
+    expect(screen.getByText(/work of another member/)).toBeInTheDocument();
+    expect(api.find('GET', '/projects/3/my-work').at(-1)!.query.get('userId')).toBe('8');
+  });
 });

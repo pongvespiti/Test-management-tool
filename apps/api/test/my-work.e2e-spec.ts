@@ -193,6 +193,21 @@ describe('my work', () => {
     expect((await tom.get(`${P}/my-work?date=22-10-2026`)).status).toBe(400);
   });
 
+  it('lets a lead or a viewer open the work of another member', async () => {
+    const own = await mine(tom);
+    for (const client of [lead, viewer]) {
+      const seen = await mine(client, `?userId=${tomId}`);
+      expect(seen.user.id).toBe(tomId);
+      expect(seen.assigned).toEqual(own.assigned);
+      expect(seen.summary).toEqual(own.summary);
+    }
+    expect((await mine(lead, `?userId=${annId}&range=week`)).user.id).toBe(annId);
+    const stranger = await createUser(t.prisma, 'stranger');
+    const res = await lead.get(`${P}/my-work?userId=${stranger.id}`);
+    expect(res.status).toBe(422);
+    expect(res.body).toMatchObject({ error: { code: 'BAD_USER' } });
+  });
+
   it('drops cases of completed plans', async () => {
     expectBody(await tom.post(`${P}/plans/${plan.id}/complete`), 200);
     expect((await mine(tom)).assigned.total).toBe(0);

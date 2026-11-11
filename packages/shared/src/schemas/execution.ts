@@ -252,7 +252,7 @@ export const dashboardQuerySchema = z.object({
   releaseId: idSchema.optional(),
 });
 
-/** "My work": the day or the Monday-to-Sunday week that contains `date` (default: today). */
+/** "My work" (mine or of another member): the day or the Monday-to-Sunday week that contains `date` (default: today). */
 export const MY_WORK_RANGES = ['day', 'week'] as const;
 export type MyWorkRange = (typeof MY_WORK_RANGES)[number];
 export const myWorkQuerySchema = z.object({
@@ -261,6 +261,8 @@ export const myWorkQuerySchema = z.object({
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a date as YYYY-MM-DD')
     .optional(),
+  /** Another member of the project (default: the signed-in user). */
+  userId: idSchema.optional(),
 });
 export type MyWorkQuery = z.infer<typeof myWorkQuerySchema>;
 

@@ -746,7 +746,7 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     tag: 'Reports',
     summary: 'Run cases waiting for me and my results of a day or week',
     notes:
-      'Waiting = assigned to me (else the run tester is me) in not-completed plans. `range` day|week (Monday–Sunday) around `date` (REPORT_TIMEZONE).',
+      'Waiting = assigned to me (else the run tester is me) in not-completed plans. `range` day|week (Monday–Sunday) around `date` (REPORT_TIMEZONE). `userId` = another member of the project (422 BAD_USER).',
     success: 200,
     response: 'MyWorkDTO',
   },

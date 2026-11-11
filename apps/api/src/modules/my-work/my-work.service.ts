@@ -6,7 +6,9 @@ import {
   type MyWorkQuery,
   type NamedRef,
   type ResultStatus,
+  type UserRef,
 } from '@tmt/shared';
+import { unprocessable } from '../../common/errors/app.exception.js';
 import type { AuthUser } from '../../common/types/auth.js';
 import { toUserRef } from '../../common/users/user-refs.js';
 import { AppConfig } from '../../config/app-config.js';
@@ -32,7 +34,7 @@ interface ResultAggregateRow {
   buildId: number | null;
 }
 
-/** What is waiting for the signed-in user, and what they did in a day / week. */
+/** What is waiting for a person (default: the signed-in user), and what they did in a day / week. */
 @Injectable()
 export class MyWorkService {
   constructor(
@@ -44,12 +46,13 @@ export class MyWorkService {
     const tz = this.config.reportTimezone;
     const { from, to } = periodOf(q.range, q.date ?? localDate(now, tz));
     const days = daysBetween(from, to);
+    const user = await this.person(projectId, me, q.userId);
     const [assigned, summary] = await Promise.all([
-      this.assigned(projectId, me.id),
-      this.summary(projectId, me.id, from, to, days, tz),
+      this.assigned(projectId, user.id),
+      this.summary(projectId, user.id, from, to, days, tz),
     ]);
     return {
-      user: toUserRef(me),
+      user,
       timezone: tz,
       range: q.range,
       from,
@@ -57,6 +60,17 @@ export class MyWorkService {
       assigned,
       summary,
     };
+  }
+
+  /** The signed-in user, or the project member asked for (422 BAD_USER when not a member). */
+  private async person(projectId: number, me: AuthUser, userId?: number): Promise<UserRef> {
+    if (userId === undefined || userId === me.id) return toUserRef(me);
+    const member = await this.prisma.db.projectMember.findUnique({
+      where: { projectId_userId: { projectId, userId } },
+      select: { user: { select: { id: true, username: true, displayName: true } } },
+    });
+    if (!member) throw unprocessable('BAD_USER', 'The person is not a member of this project');
+    return toUserRef(member.user);
   }
 
   /** Run cases of not-completed plans that are mine: assigned to me, else the run's tester is me. */

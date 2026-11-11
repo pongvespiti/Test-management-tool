@@ -55,7 +55,8 @@ export const routes = {
     `${project(projectId)}/import${toQueryString({ suite: query?.suite ?? undefined })}`,
   defects: (projectId: Id) => `${project(projectId)}/defects`,
   defect: (projectId: Id, defectId: Id) => `${project(projectId)}/defects/${defectId}`,
-  myWork: (projectId: Id) => `${project(projectId)}/my-work`,
+  myWork: (projectId: Id, query?: { user?: Id | null }) =>
+    `${project(projectId)}/my-work${toQueryString({ user: query?.user ?? undefined })}`,
   reports: (projectId: Id) => `${project(projectId)}/reports`,
   releases: (projectId: Id) => `${project(projectId)}/releases`,
   members: (projectId: Id) => `${project(projectId)}/members`,

@@ -155,4 +155,26 @@ describe('MyWorkService', () => {
       reporterId: 5,
     });
   });
+
+  it('shows the work of another member, and refuses people outside the project', async () => {
+    mock.db.projectMember.findUnique.mockResolvedValue({
+      user: { id: 8, username: 'ann', displayName: 'Ann' },
+    } as never);
+    const r = await service.get(10, me, { range: 'day', userId: 8 }, NOW);
+    expect(r.user).toEqual({ id: 8, username: 'ann', displayName: 'Ann' });
+    expect(mock.db.projectMember.findUnique.mock.calls[0]![0]!.where).toEqual({
+      projectId_userId: { projectId: 10, userId: 8 },
+    });
+    expect(mock.db.runCase.findMany.mock.calls[0]![0]!.where!.OR).toEqual([
+      { assigneeId: 8 },
+      { assigneeId: null, run: { testerId: 8 } },
+    ]);
+    expect(rawValues(mock)).toContain(8);
+    expect(mock.db.defect.findMany.mock.calls[0]![0]!.where).toMatchObject({ reporterId: 8 });
+
+    mock.db.projectMember.findUnique.mockResolvedValue(null);
+    await expect(service.get(10, me, { range: 'day', userId: 9 }, NOW)).rejects.toMatchObject({
+      code: 'BAD_USER',
+    });
+  });
 });

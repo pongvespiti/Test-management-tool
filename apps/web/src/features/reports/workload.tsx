@@ -12,7 +12,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import Link from 'next/link';
 import { formatNumber } from '@/lib/format';
+import { routes } from '@/lib/routes';
+import { useProject } from '@/providers/project-provider';
 import { RESULT_TONES } from '@/lib/status';
 import { cn } from '@/lib/utils';
 import {
@@ -58,6 +61,7 @@ export function WorkloadTable({
   /** Dashboard version: person, untested, remaining estimate, last 7 days. */
   compact?: boolean;
 }) {
+  const { projectId } = useProject();
   const sorted = sortWorkload(rows);
   const right = cn(TH, 'text-right');
   return (
@@ -81,9 +85,17 @@ export function WorkloadTable({
         {sorted.map((r) => (
           <TableRow key={r.user?.id ?? 'unassigned'}>
             <TableCell className="pl-5 whitespace-nowrap">
-              <p className={cn('text-sm', r.user ? 'font-medium' : 'text-muted-foreground')}>
-                {personName(r.user)}
-              </p>
+              {r.user ? (
+                <Link
+                  href={routes.myWork(projectId, { user: r.user.id })}
+                  className="text-sm font-medium text-primary hover:underline"
+                  title="Open this person's waiting cases and day / week summary"
+                >
+                  {personName(r.user)}
+                </Link>
+              ) : (
+                <p className="text-sm text-muted-foreground">{personName(r.user)}</p>
+              )}
               {compact && (
                 <p className="text-xs text-muted-foreground">
                   {formatNumber(r.executed)} of {formatNumber(r.runCases)} executed
