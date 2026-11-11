@@ -61,7 +61,7 @@ export const DEMO_BUILDS = [
 ] as const;
 
 /** Build each demo run was tested on (by run index). */
-export const DEMO_RUN_BUILDS: readonly string[] = ['1.0.0(1.0.0)', '1.0.0(2.0.0)'];
+export const DEMO_RUN_BUILDS: readonly string[] = ['1.0.0(1.0.0)', '1.0.0(2.0.0)', '1.0.0(2.0.0)'];
 
 export const DEMO_SHARED_STEP = {
   name: 'Sign in to the app',
@@ -84,20 +84,21 @@ export interface DemoSuite {
 
 export const DEMO_SUITES: readonly DemoSuite[] = [
   {
-    name: 'Remote control',
-    prefix: 'RC',
+    name: 'Unit operation test',
+    prefix: 'UO',
     envTemplate: ['Unit', 'Firmware'],
     sections: {
-      'Power & modes': [
+      Power: [
         ['Power on from standby', 'Normal', 'critical'],
-        ['Switch Cool → Heat → Dry → Fan', 'Normal', 'high'],
-        ['Mode change while defrosting', 'Abnormal', 'medium'],
         ['Power off during compressor start', 'Abnormal', 'high'],
       ],
-      'Temperature setting': [
+      Mode: [
+        ['Switch Cool → Heat → Dry → Fan', 'Normal', 'high'],
+        ['Mode change while defrosting', 'Abnormal', 'medium'],
+      ],
+      Temperature: [
         ['Set 16 °C – lower limit', 'Normal', 'high'],
         ['Set 32 °C – upper limit', 'Normal', 'high'],
-        ['Press + at upper limit', 'Abnormal', 'medium'],
         ['0.5 °C step in Auto mode', 'Normal', 'low'],
       ],
       Timer: [
@@ -108,8 +109,24 @@ export const DEMO_SUITES: readonly DemoSuite[] = [
     },
   },
   {
-    name: 'Wi-Fi adapter',
-    prefix: 'WF',
+    name: 'Modbus system test',
+    prefix: 'MB',
+    envTemplate: ['Unit', 'Firmware', 'Modbus master'],
+    sections: {
+      'Read registers': [
+        ['Read operating mode register', 'Normal', 'critical'],
+        ['Read room temperature register', 'Normal', 'high'],
+      ],
+      'Write setpoint': [
+        ['Write setpoint 25 °C', 'Normal', 'high'],
+        ['Write setpoint out of range', 'Abnormal', 'medium'],
+      ],
+      'Error handling': [['Timeout when the unit is off', 'Abnormal', 'high']],
+    },
+  },
+  {
+    name: 'Adapter operation test',
+    prefix: 'AO',
     envTemplate: ['Unit', 'Firmware', 'Router'],
     sections: {
       Pairing: [
@@ -126,7 +143,7 @@ export const DEMO_SUITES: readonly DemoSuite[] = [
   },
 ];
 
-/** A step-by-step case (with the shared steps) added to the first section of the last suite. */
+/** A step-by-step case (with the shared steps) added to the first section of the last suite (Adapter operation test). */
 export const DEMO_STEPS_CASE = {
   title: 'Unit appears in the app after pairing',
   priority: 'high' as CasePriority,
@@ -139,7 +156,7 @@ export const DEMO_STEPS_CASE = {
 export const DEMO_PLAN = {
   docNo: '26TR-DEMO-01-001',
   title: 'v1.0 system test',
-  purpose: 'Confirm remote control and Wi-Fi functions before release v1.0',
+  purpose: 'Confirm unit operation, Modbus and Wi-Fi adapter functions before release v1.0',
   testMethod: 'Manual test on the bench unit',
   judgementCriteria: 'All critical and high priority cases are OK',
 } as const;
@@ -147,6 +164,7 @@ export const DEMO_PLAN = {
 /** Environment values of the run of each suite, in suite order. */
 export const DEMO_RUN_ENVIRONMENTS: readonly Record<string, string>[] = [
   { Unit: 'Bench unit A', Firmware: '1.0.0-rc1' },
+  { Unit: 'Bench unit A', Firmware: '1.0.0-rc1', 'Modbus master': 'PLC simulator' },
   { Unit: 'Bench unit B', Firmware: '1.0.0-rc1', Router: 'AX3000' },
 ];
 
