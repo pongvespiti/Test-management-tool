@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { ConfirmHost } from '@/components/common/confirm-host';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { LocaleProvider } from '@/lib/i18n';
 import { AuthProvider } from './auth-provider';
 import { QueryProvider } from './query-provider';
 
@@ -11,13 +12,15 @@ import { QueryProvider } from './query-provider';
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <QueryProvider>
-      <AuthProvider>
-        <TooltipProvider>
-          {children}
-          <Toaster />
-          <ConfirmHost />
-        </TooltipProvider>
-      </AuthProvider>
+      <LocaleProvider>
+        <AuthProvider>
+          <TooltipProvider>
+            {children}
+            <Toaster />
+            <ConfirmHost />
+          </TooltipProvider>
+        </AuthProvider>
+      </LocaleProvider>
     </QueryProvider>
   );
 }

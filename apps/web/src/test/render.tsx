@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import type { ReactElement, ReactNode } from 'react';
 import { ConfirmHost } from '@/components/common/confirm-host';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { LocaleProvider } from '@/lib/i18n';
 import { AuthContext, type AuthContextValue } from '@/providers/auth-provider';
 import { ProjectProvider } from '@/providers/project-provider';
 
@@ -86,14 +87,16 @@ export function renderWithProviders(
   function Wrapper({ children }: { children: ReactNode }) {
     return (
       <QueryClientProvider client={queryClient}>
-        <AuthContext.Provider value={authValue}>
-          <ProjectProvider project={project}>
-            <TooltipProvider>
-              {children}
-              <ConfirmHost />
-            </TooltipProvider>
-          </ProjectProvider>
-        </AuthContext.Provider>
+        <LocaleProvider>
+          <AuthContext.Provider value={authValue}>
+            <ProjectProvider project={project}>
+              <TooltipProvider>
+                {children}
+                <ConfirmHost />
+              </TooltipProvider>
+            </ProjectProvider>
+          </AuthContext.Provider>
+        </LocaleProvider>
       </QueryClientProvider>
     );
   }

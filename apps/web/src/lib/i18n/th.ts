@@ -1,0 +1,47 @@
+/**
+ * Thai wording of the side menu and the page titles (English is the source text). Only the text
+ * listed here is translated; anything else — names typed by people, long help text — stays as is.
+ */
+export const TH: Readonly<Record<string, string>> = {
+  // Menu groups
+  Testing: 'การทดสอบ',
+  Library: 'คลังเทสต์',
+  Project: 'โปรเจกต์',
+  Workspace: 'พื้นที่ทำงาน',
+  Admin: 'ผู้ดูแลระบบ',
+  // Menu items and page titles
+  Dashboard: 'แดชบอร์ด',
+  'My work': 'งานของฉัน',
+  Team: 'ทีม',
+  'Test plans': 'แผนการทดสอบ',
+  'Test plan': 'แผนการทดสอบ',
+  'Test run': 'รอบการทดสอบ',
+  'Run report': 'รายงานรอบการทดสอบ',
+  Exploratory: 'การทดสอบเชิงสำรวจ',
+  'Exploratory sessions': 'การทดสอบเชิงสำรวจ',
+  Session: 'เซสชัน',
+  Defects: 'ข้อบกพร่อง',
+  Defect: 'ข้อบกพร่อง',
+  Devices: 'อุปกรณ์ทดสอบ',
+  Reports: 'รายงาน',
+  'Test cases': 'เทสต์เคส',
+  Requirements: 'ข้อกำหนด',
+  Reviews: 'รีวิวเทสต์เคส',
+  'Shared steps': 'ขั้นตอนที่ใช้ร่วมกัน',
+  'Import from Excel': 'นำเข้าจาก Excel',
+  'Import test cases from Excel': 'นำเข้าเทสต์เคสจาก Excel',
+  'Suites & fields': 'ชุดทดสอบและฟิลด์',
+  Releases: 'รุ่นที่ปล่อย',
+  Members: 'สมาชิก',
+  'Environment lists': 'รายการสภาพแวดล้อม',
+  'Report templates': 'เทมเพลตรายงาน',
+  Integrations: 'การเชื่อมต่อ',
+  Settings: 'ตั้งค่า',
+  'Project settings': 'ตั้งค่าโปรเจกต์',
+  Projects: 'โปรเจกต์',
+  Users: 'ผู้ใช้',
+  Notifications: 'การแจ้งเตือน',
+  'API tokens': 'โทเคน API',
+  'REST API': 'REST API',
+  'Not found': 'ไม่พบหน้านี้',
+};

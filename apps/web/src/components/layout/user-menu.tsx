@@ -1,6 +1,6 @@
 'use client';
 
-import { Braces, KeyRound, LogOut, Ticket, Users } from 'lucide-react';
+import { Braces, Check, KeyRound, Languages, LogOut, Ticket, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -13,12 +13,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { initials } from '@/lib/format';
+import { LOCALES, LOCALE_LABELS, useLocale } from '@/lib/i18n';
 import { routes } from '@/lib/routes';
 import { useAuth } from '@/providers/auth-provider';
 
 export function UserMenu() {
   const { user, isAdmin, logout } = useAuth();
   const router = useRouter();
+  const { locale, setLocale } = useLocale();
   if (!user) return null;
 
   return (
@@ -68,6 +70,22 @@ export function UserMenu() {
             REST API docs
           </Link>
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="flex items-center gap-2 text-xs font-normal text-muted-foreground">
+          <Languages className="size-4" aria-hidden />
+          Menu language
+        </DropdownMenuLabel>
+        {LOCALES.map((l) => (
+          <DropdownMenuItem
+            key={l}
+            role="menuitemradio"
+            aria-checked={l === locale}
+            onSelect={() => setLocale(l)}
+          >
+            <span className="flex-1">{LOCALE_LABELS[l]}</span>
+            {l === locale && <Check aria-hidden />}
+          </DropdownMenuItem>
+        ))}
         <DropdownMenuSeparator />
         <DropdownMenuItem
           variant="destructive"

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers/auth-provider';
 import { useOptionalProject } from '@/providers/project-provider';
@@ -17,10 +18,11 @@ function SidebarSection({
   pathname: string;
   onNavigate?: () => void;
 }) {
+  const t = useT();
   return (
     <div>
       <div className="px-3 pt-4 pb-1.5 text-[11px] font-bold tracking-[0.06em] text-muted-foreground uppercase">
-        {section.title}
+        {t(section.title)}
       </div>
       <ul className="flex flex-col gap-0.5">
         {section.items.map((item) => {
@@ -40,7 +42,7 @@ function SidebarSection({
                 )}
               >
                 <Icon aria-hidden className="size-5 shrink-0" strokeWidth={1.8} />
-                <span className="truncate">{item.label}</span>
+                <span className="truncate">{t(item.label)}</span>
               </Link>
             </li>
           );

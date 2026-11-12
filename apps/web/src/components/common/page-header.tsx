@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import { Fragment, type ReactNode } from 'react';
 import {
@@ -8,6 +10,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
+import { useT } from '@/lib/i18n';
 
 export interface Crumb {
   label: ReactNode;
@@ -33,6 +36,7 @@ export function PageHeader({
   breadcrumbs,
   badges,
 }: PageHeaderProps) {
+  const t = useT();
   return (
     <header className="mb-6 flex flex-col gap-3">
       {breadcrumbs && breadcrumbs.length > 0 && (
@@ -65,7 +69,9 @@ export function PageHeader({
               {badges}
             </div>
           )}
-          <h1 className="text-2xl leading-8 font-semibold [overflow-wrap:anywhere]">{title}</h1>
+          <h1 className="text-2xl leading-8 font-semibold [overflow-wrap:anywhere]">
+            {typeof title === 'string' ? t(title) : title}
+          </h1>
           {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
         </div>
         {actions && <div className="flex flex-wrap items-center gap-2.5">{actions}</div>}
