@@ -67,8 +67,9 @@ Swagger UI is at <http://localhost:4000/api/docs>; browse the database with `pnp
 
 The demo project shows every area: a release with builds and dates, a plan with start and due dates,
 runs with environments and results, defects (one reopened twice), requirements with linked cases
-(one without a case yet), exploratory sessions in each state and a shared summary view. Look at
-Reports (Summary, Schedule, Reopens, Compare, Traceability), Requirements and Exploratory.
+(one without a case yet and one reworded after its cases were linked, so it asks for a review),
+exploratory sessions in each state, test devices (one in repair) and a shared summary view. Look at
+Reports (Summary, Schedule, Reopens, Compare, Traceability), Requirements, Exploratory and Devices.
 
 ## Docker (one server)
 
@@ -79,7 +80,8 @@ docker compose logs api | grep -i password   # first administrator password (if 
 docker compose exec api node dist/scripts/seed.js   # optional demo data
 ```
 
-See [docs/deployment.md](docs/deployment.md) for HTTPS, backups and upgrades.
+See [docs/deployment.md](docs/deployment.md) for HTTPS, backups (`scripts/backup.sh`,
+`scripts/restore.sh`) and upgrades.
 
 ## Everyday commands
 

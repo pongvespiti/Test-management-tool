@@ -62,6 +62,8 @@ from the others.
 | `modules/dashboard`                                | release overview, results per build, release readiness, waiting-for-retest queue                          |
 | `modules/topics`                                   | progress by topic → suite → run in a release (whole team or one person), handing suites to a person       |
 | `modules/my-work`                                  | cases waiting for the signed-in user and a day/week summary of their results                              |
+| `modules/notifications`                            | in-app notifications: assignment, due soon / overdue, retest, changed requirement                         |
+| `modules/devices`                                  | test device registry (units, phones, routers) with check-out / return                                     |
 | `modules/collab`                                   | comments, attachments                                                                                     |
 | `modules/integrations`                             | Jira settings and client                                                                                  |
 | `modules/automation`                               | JUnit XML upload for CI                                                                                   |
@@ -187,6 +189,25 @@ Reports added later, all computed on request (no stored aggregates):
 - **Exploratory sessions** (`exploratory_sessions`, notes, linked defects) are unscripted, time-boxed
   testing with a charter; they belong to a release and optionally a build and can cite requirements
   in their references.
+- **Requirement changes.** When the title or description of a requirement changes (edit, Excel
+  re-import, Jira refresh) it is flagged `needsReview` (`text_changed_at` later than `reviewed_at`)
+  until someone confirms the cases are still right; the testers of open runs that contain those
+  cases are notified. A change of the source document alone does not flag.
+- **Notifications** (`notifications`) are per user and project, created by the events above plus
+  run assignment, a topic handed out and a defect set to resolved (retest). Due dates have no
+  scheduler: due soon (2 days) and overdue are noticed when the user lists notifications, once per
+  run and due date (`dedupe_key`). In-app only; there is no e-mail.
+- **Devices** (`devices`) are the physical units, phones and routers of a project. A device is held
+  exactly when it is `in_use` (database check constraint); taking one is a conditional update, so
+  two people cannot both get it; the holder or a lead returns it; a held device cannot be sent to
+  repair.
+- **Report template tables.** Besides `runs`, `cases` and `envList`, any sheet of a template can
+  repeat rows for `${table:requirements.*}` (requirements that the plan's case rows test, by link
+  or by citing the key, with their results and open defects), `${table:dimensions.*}` (results by
+  environment label value and build) and `${table:sessions.*}` (exploratory sessions of the plan's
+  release). They are built from the run snapshots and the project's requirements and sessions.
+- **Language.** The side menu and page titles can be shown in Thai (account menu); the wording
+  lives in `apps/web/src/lib/i18n/th.ts`, text that is not listed stays as it is.
 
 A run may name a build of its plan's release (422 `BAD_BUILD` otherwise). Defects take a
 "found in" and a "fixed in" build; a defect reported from a result starts with the build of that
