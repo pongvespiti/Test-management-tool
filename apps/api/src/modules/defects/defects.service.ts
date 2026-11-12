@@ -27,6 +27,7 @@ import {
   buildDefectListItems,
   getDefectInProject,
 } from './defects.queries.js';
+import { notifyUsers } from '../notifications/notify.js';
 
 /**
  * Reserves the next defect number of the project (atomic increment of `next_defect_seq`).
@@ -182,7 +183,24 @@ export class DefectsService {
         summary: `${defectKey(d.seq)}: ${DEFECT_STATUS_LABELS[from]} → ${DEFECT_STATUS_LABELS[body.to]}`,
         data: { from, to: body.to },
       });
-      return tx.defect.findUniqueOrThrow({ where: { id: d.id } });
+      const after = await tx.defect.findUniqueOrThrow({ where: { id: d.id } });
+      if (body.to === 'resolved') {
+        // The reporter (and the assignee) can now retest the fix.
+        await notifyUsers(
+          tx,
+          [after.reporterId, after.assigneeId].map((userId) => ({
+            userId,
+            projectId: ctx.id,
+            kind: 'retest' as const,
+            title: `${defectKey(d.seq)} is resolved — ready for retest`,
+            body: d.title,
+            link: `/projects/${ctx.id}/defects/${d.id}`,
+            dedupeKey: `retest:${d.id}:${now.getTime()}`,
+          })),
+          me.id,
+        );
+      }
+      return after;
     });
     return buildDefectDTO(db, updated);
   }

@@ -20,6 +20,7 @@ import type {
   JiraAuthType,
   Judgement,
   MatrixGroupBy,
+  NotificationKind,
   PlanStatus,
   ProjectRole,
   ReleaseStatus,
@@ -1517,4 +1518,23 @@ export interface JiraTestResultDTO {
 /** What any member may know about the project's integrations (no secrets, no auth details). */
 export interface IntegrationsStatusDTO {
   jira: { enabled: boolean; baseUrl: string; projectKey: string } | null;
+}
+
+// ---------------------------------------------------------------- notifications
+
+export interface NotificationDTO {
+  id: number;
+  kind: NotificationKind;
+  title: string;
+  body: string | null;
+  /** Path inside the web app. */
+  link: string;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface NotificationListDTO {
+  items: NotificationDTO[];
+  /** Unread in the project, not only in `items`. */
+  unread: number;
 }

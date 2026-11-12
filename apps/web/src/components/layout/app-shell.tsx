@@ -10,6 +10,7 @@ import { routes } from '@/lib/routes';
 import { AppSidebar } from './app-sidebar';
 import { GlobalSearch } from './global-search';
 import { Logo } from './logo';
+import { NotificationBell } from './notification-bell';
 import { ProjectSwitcher } from './project-switcher';
 import { UserMenu } from './user-menu';
 
@@ -48,6 +49,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Suspense>
           </div>
           <div className="ml-auto flex items-center gap-2">
+            <NotificationBell />
             <UserMenu />
           </div>
         </div>

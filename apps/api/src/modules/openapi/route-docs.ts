@@ -29,6 +29,7 @@ export const API_TAGS = [
       'Requirements table: typed in, Excel import, read-only Jira import, links to cases.',
   },
   { name: 'Sessions', description: 'Exploratory sessions: charter, time box, notes and defects.' },
+  { name: 'Notifications', description: 'In-app notifications of the signed-in user.' },
   { name: 'Collaboration', description: 'Comments, attachments and activity.' },
   { name: 'Reports', description: 'Dashboard and reports.' },
   { name: 'Report templates', description: 'Controlled Excel report templates.' },
@@ -902,6 +903,24 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     summary: 'Replace the cases linked to a requirement',
     success: 200,
     response: 'RequirementDTO',
+  },
+  'GET /api/v1/projects/{projectId}/notifications': {
+    tag: 'Notifications',
+    summary: 'My notifications in the project (newest first) with the unread count',
+    success: 200,
+    response: 'NotificationListDTO',
+  },
+  'POST /api/v1/projects/{projectId}/notifications/read-all': {
+    tag: 'Notifications',
+    summary: 'Mark all my notifications as read',
+    success: 204,
+    response: 'void',
+  },
+  'POST /api/v1/projects/{projectId}/notifications/{notificationId}/read': {
+    tag: 'Notifications',
+    summary: 'Mark one notification as read',
+    success: 204,
+    response: 'void',
   },
   'GET /api/v1/projects/{projectId}/sessions': {
     tag: 'Sessions',

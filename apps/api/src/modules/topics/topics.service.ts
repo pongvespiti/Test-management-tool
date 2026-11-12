@@ -24,6 +24,7 @@ import { pickRelease } from '../dashboard/dashboard.service.js';
 import { assertAssignee } from '../execution/run-changes.service.js';
 import { localDate } from '../reports/report-dates.js';
 import { earliest, isOverdue, stateOf, sumCounts } from './topics.compute.js';
+import { notifyUsers } from '../notifications/notify.js';
 
 interface RunAggregate {
   counts: StatusCounts;
@@ -267,6 +268,21 @@ export class TopicsService {
           data: { testerId: input.testerId, releaseId: release.id },
         });
       }
+      // One notification for the whole handout (not one per run).
+      await notifyUsers(
+        tx,
+        [
+          {
+            userId: input.testerId,
+            projectId: ctx.id,
+            kind: 'assigned',
+            title: `${open.length} ${open.length === 1 ? 'run' : 'runs'} handed to you in ${release.name}`,
+            body: [...new Set(open.map((r) => r.code))].slice(0, 8).join(', '),
+            link: `/projects/${ctx.id}/my-work`,
+          },
+        ],
+        me.id,
+      );
     });
     return {
       updatedRuns: open.length,

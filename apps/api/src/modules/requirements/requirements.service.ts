@@ -28,6 +28,7 @@ import { ImportUploadStore, type UploadMeta } from '../imports/import-uploads.se
 import { browseUrl, JiraError, type JiraIssueDetail } from '../integrations/jira-client.js';
 import { jiraFailure } from '../integrations/jira-issues.service.js';
 import { JiraSettingsService } from '../integrations/jira-settings.service.js';
+import { notifyUsers } from '../notifications/notify.js';
 import { LONG_TX } from '../library/library.errors.js';
 import {
   MAX_DESCRIPTION,
@@ -177,6 +178,11 @@ export class RequirementsService {
     ) {
       throw keyTaken(input.key);
     }
+    const textChanged = textDiffers(current, {
+      title: input.title ?? current.title,
+      description:
+        input.description !== undefined ? (input.description ?? null) : current.description,
+    });
     try {
       await db.$transaction(async (tx) => {
         const r = await tx.requirement.update({
@@ -186,11 +192,7 @@ export class RequirementsService {
             ...(input.title !== undefined && { title: input.title }),
             ...(input.description !== undefined && { description: input.description ?? null }),
             ...(input.sourceRef !== undefined && { sourceRef: input.sourceRef ?? null }),
-            ...(textDiffers(current, {
-              title: input.title ?? current.title,
-              description:
-                input.description !== undefined ? (input.description ?? null) : current.description,
-            }) && { textChangedAt: new Date() }),
+            ...(textChanged && { textChangedAt: new Date() }),
           },
         });
         await this.log(tx, ctx, me, id, 'updated', `Edited requirement ${r.key}`);
@@ -198,6 +200,9 @@ export class RequirementsService {
     } catch (e) {
       if (isUniqueViolation(e)) throw keyTaken(input.key ?? current.key);
       throw e;
+    }
+    if (textChanged) {
+      await this.notifyTextChange(ctx, me, [{ id, key: input.key ?? current.key }]);
     }
     return this.get(ctx.id, id);
   }
@@ -324,8 +329,9 @@ export class RequirementsService {
     body: RequirementImportInput,
   ): Promise<RequirementImportResultDTO> {
     const { meta, wb } = await this.uploaded(ctx, me, body.uploadId);
+    const changed: { id: number; key: string }[] = [];
     try {
-      return await this.prisma.db.$transaction(async (tx) => {
+      const result = await this.prisma.db.$transaction(async (tx) => {
         const { plan, ids } = await this.planImport(tx, ctx, me, body, { meta, wb });
         let created = 0;
         let updated = 0;
@@ -349,15 +355,17 @@ export class RequirementsService {
               where: { id },
               select: { title: true, description: true },
             });
+            const textChanged = textDiffers(before, r);
             await tx.requirement.update({
               where: { id },
               data: {
                 title: r.title,
                 description: r.description,
                 sourceRef: r.sourceRef,
-                ...(textDiffers(before, r) && { textChangedAt: new Date() }),
+                ...(textChanged && { textChangedAt: new Date() }),
               },
             });
+            if (textChanged) changed.push({ id, key: r.key });
             updated += 1;
           }
         }
@@ -374,6 +382,8 @@ export class RequirementsService {
         );
         return { created, updated, skipped, invalid };
       }, LONG_TX);
+      await this.notifyTextChange(ctx, me, changed);
+      return result;
     } catch (e) {
       // Another import added one of the keys between the plan and the insert.
       if (isUniqueViolation(e))
@@ -424,7 +434,8 @@ export class RequirementsService {
     baseUrl: string,
     issues: JiraIssueDetail[],
   ): Promise<{ created: number; updated: number }> {
-    return this.prisma.db.$transaction(async (tx) => {
+    const changed: { id: number; key: string }[] = [];
+    const result = await this.prisma.db.$transaction(async (tx) => {
       const existing = await tx.requirement.findMany({
         where: { projectId: ctx.id },
         select: { id: true, key: true, title: true, description: true },
@@ -452,10 +463,12 @@ export class RequirementsService {
           byKey.set(keyOf(key), r.id);
           created += 1;
         } else {
+          const textChanged = textDiffers(before.get(id)!, data);
           await tx.requirement.update({
             where: { id },
-            data: { ...data, ...(textDiffers(before.get(id)!, data) && { textChangedAt: now }) },
+            data: { ...data, ...(textChanged && { textChangedAt: now }) },
           });
+          if (textChanged) changed.push({ id, key });
           updated += 1;
         }
       }
@@ -470,9 +483,56 @@ export class RequirementsService {
       );
       return { created, updated };
     }, LONG_TX);
+    await this.notifyTextChange(ctx, me, changed);
+    return result;
   }
 
   // ------------------------------------------------------------------ helpers
+
+  /**
+   * Tells the testers whose open runs contain cases of a requirement whose text just changed
+   * (cases linked in the table or citing the key), so they check the cases before testing.
+   */
+  private async notifyTextChange(
+    ctx: ProjectContext,
+    me: AuthUser,
+    changed: readonly { id: number; key: string }[],
+  ): Promise<void> {
+    if (changed.length === 0) return;
+    const db = this.prisma.db;
+    try {
+      const { linked, cited, live } = await this.caseLinks(db, ctx.id);
+      const stamp = Date.now();
+      for (const r of changed) {
+        const caseIds = [...viaOfCases(linked.get(r.id), cited.get(keyOf(r.key)), live).keys()];
+        if (caseIds.length === 0) continue;
+        const runs = await db.testRun.findMany({
+          where: {
+            testerId: { not: null },
+            plan: { projectId: ctx.id, status: { not: 'completed' } },
+            runCases: { some: { testCaseId: { in: caseIds } } },
+          },
+          select: { testerId: true },
+        });
+        const testers = [...new Set(runs.map((x) => x.testerId))];
+        await notifyUsers(
+          db,
+          testers.map((userId) => ({
+            userId,
+            projectId: ctx.id,
+            kind: 'requirement_changed' as const,
+            title: `${r.key} changed — check its cases`,
+            body: `${caseIds.length} ${caseIds.length === 1 ? 'case' : 'cases'} test it`,
+            link: `/projects/${ctx.id}/requirements`,
+            dedupeKey: `reqchg:${r.id}:${stamp}`,
+          })),
+          me.id,
+        );
+      }
+    } catch {
+      // a notification must never fail the change
+    }
+  }
 
   private async row(db: Db, projectId: number, id: number): Promise<Row> {
     const r = await db.requirement.findFirst({ where: { id, projectId } });

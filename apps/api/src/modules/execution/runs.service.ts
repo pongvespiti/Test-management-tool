@@ -23,6 +23,7 @@ import {
   nextRunSortOrder,
 } from './execution.queries.js';
 import { copyRunSnapshot, insertRunCases, snapshotCases } from './snapshot.js';
+import { notifyUsers } from '../notifications/notify.js';
 
 /** Unique index of `(plan_id, code)`. */
 export const RUN_CODE_KEY = 'test_runs_plan_id_code_key';
@@ -115,6 +116,20 @@ export class RunsService {
           action: 'created',
           summary: `Created run ${r.code} in ${plan.docNo} with ${snapshot.length} cases from ${suite.name}`,
         });
+        await notifyUsers(
+          tx,
+          [
+            {
+              userId: r.testerId,
+              projectId: ctx.id,
+              kind: 'assigned',
+              title: `Run ${r.code} · ${suite.name} was given to you`,
+              body: plan.docNo,
+              link: `/projects/${ctx.id}/runs/${r.id}`,
+            },
+          ],
+          me.id,
+        );
         return r;
       }, BULK_TX);
       return await this.dto(run, plan);
@@ -169,6 +184,22 @@ export class RunsService {
           summary: `Updated run ${r.code} in ${plan.docNo}`,
           data: input,
         });
+        if (input.testerId !== undefined && input.testerId !== run.testerId) {
+          await notifyUsers(
+            tx,
+            [
+              {
+                userId: r.testerId,
+                projectId: ctx.id,
+                kind: 'assigned',
+                title: `Run ${r.code} was given to you`,
+                body: plan.docNo,
+                link: `/projects/${ctx.id}/runs/${r.id}`,
+              },
+            ],
+            me.id,
+          );
+        }
         return r;
       });
       return await this.dto(updated, plan);

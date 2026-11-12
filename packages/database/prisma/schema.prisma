@@ -84,6 +84,16 @@ enum CaseTemplate {
   @@map("case_template")
 }
 
+enum NotificationKind {
+  assigned
+  due_soon
+  overdue
+  retest
+  requirement_changed
+
+  @@map("notification_kind")
+}
+
 enum PlanStatus {
   draft
   in_progress
@@ -263,6 +273,7 @@ model User {
   sessionsOwned        ExploratorySession[] @relation("SessionOwner")
   sessionsCreated      ExploratorySession[] @relation("SessionCreatedBy")
   requirementsCreated  Requirement[]        @relation("RequirementCreatedBy")
+  notifications        Notification[]
   requirementsReviewed Requirement[]        @relation("RequirementReviewedBy")
   sessionNotes         ExploratoryNote[]
 
@@ -343,6 +354,7 @@ model Project {
   savedViews      SavedView[]
   sessions        ExploratorySession[]
   requirements    Requirement[]
+  notifications   Notification[]
 
   @@map("projects")
 }
@@ -1046,4 +1058,27 @@ model RequirementCase {
   @@id([requirementId, testCaseId])
   @@index([testCaseId])
   @@map("requirement_cases")
+}
+
+/// In-app notification for one user (assignment, due date, retest, changed requirement).
+model Notification {
+  id        Int              @id @default(autoincrement())
+  userId    Int              @map("user_id")
+  projectId Int              @map("project_id")
+  kind      NotificationKind
+  title     String
+  body      String?
+  /// Path inside the web app that opens what the notification is about.
+  link      String
+  /// Same key for the same event: the notification is created once per user.
+  dedupeKey String?          @map("dedupe_key")
+  readAt    DateTime?        @map("read_at") @db.Timestamptz(6)
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dedupeKey])
+  @@index([userId, readAt, createdAt])
+  @@map("notifications")
 }

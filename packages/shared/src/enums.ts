@@ -156,3 +156,13 @@ export const IMPORT_LAYOUTS = [
   'generic',
 ] as const;
 export type ImportLayout = (typeof IMPORT_LAYOUTS)[number];
+
+/** Why a notification was created. */
+export const NOTIFICATION_KINDS = [
+  'assigned',
+  'due_soon',
+  'overdue',
+  'retest',
+  'requirement_changed',
+] as const;
+export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];

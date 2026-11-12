@@ -5,6 +5,7 @@ import type {
   DefectSeverity,
   DefectStatus,
   Judgement,
+  NotificationKind,
   PlanStatus,
   ProjectRole,
   ReleaseStatus,
@@ -132,4 +133,12 @@ export const RESULT_SOURCE_LABELS: Record<ResultSource, string> = {
   bulk: 'Bulk update',
   junit: 'JUnit import',
   api: 'API',
+};
+
+export const NOTIFICATION_KIND_LABELS: Record<NotificationKind, string> = {
+  assigned: 'Assigned to you',
+  due_soon: 'Due soon',
+  overdue: 'Overdue',
+  retest: 'Ready for retest',
+  requirement_changed: 'Requirement changed',
 };

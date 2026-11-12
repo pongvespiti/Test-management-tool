@@ -21,3 +21,4 @@ export * from './topics';
 export * from './env-dimensions';
 export * from './sessions';
 export * from './requirements';
+export * from './notifications';

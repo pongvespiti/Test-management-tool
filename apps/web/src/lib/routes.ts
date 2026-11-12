@@ -60,6 +60,7 @@ export const routes = {
   myWork: (projectId: Id, query?: { user?: Id | null }) =>
     `${project(projectId)}/my-work${toQueryString({ user: query?.user ?? undefined })}`,
   requirements: (projectId: Id) => `${project(projectId)}/requirements`,
+  notifications: (projectId: Id) => `${project(projectId)}/notifications`,
   sessions: (projectId: Id) => `${project(projectId)}/sessions`,
   session: (projectId: Id, sessionId: Id) => `${project(projectId)}/sessions/${sessionId}`,
   reports: (projectId: Id) => `${project(projectId)}/reports`,

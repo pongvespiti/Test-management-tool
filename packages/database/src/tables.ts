@@ -29,6 +29,7 @@ export const ALL_TABLES = [
   'project_members',
   'projects',
   'sessions',
+  'notifications',
   'users',
 ] as const;
 
