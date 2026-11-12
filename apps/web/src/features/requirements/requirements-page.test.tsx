@@ -174,6 +174,27 @@ describe('Requirements page', () => {
     expect(api.find('GET', '/projects/3/requirements/21')).toHaveLength(1);
   });
 
+  it('marks a changed requirement and lets a tester confirm its cases', async () => {
+    const changed = makeRequirement({
+      needsReview: true,
+      textChangedAt: '2026-11-11T09:00:00.000Z',
+    });
+    const api = stub({
+      'GET /projects/3/requirements': [makeRequirementItem({ needsReview: true })],
+      'GET /projects/3/requirements/21': changed,
+      'POST /projects/3/requirements/21/review': makeRequirement(),
+    });
+    const { user } = renderWithProviders(<RequirementsPage />, as());
+    expect(await screen.findByText('Review')).toBeInTheDocument();
+    await user.click(screen.getByText('REQ-1'));
+    const dialog = await screen.findByRole('dialog');
+    expect(await within(dialog).findByRole('status')).toHaveTextContent(/Check that the 2 cases/);
+    await user.click(within(dialog).getByRole('button', { name: 'Cases are still correct' }));
+    await waitFor(() =>
+      expect(api.find('POST', '/projects/3/requirements/21/review')).toHaveLength(1),
+    );
+  });
+
   it('hides every change from viewers', async () => {
     stub({}, true);
     renderWithProviders(<RequirementsPage />, as('viewer'));

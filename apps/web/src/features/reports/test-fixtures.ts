@@ -303,6 +303,7 @@ export function makeTraceability(overrides: Partial<TraceabilityDTO> = {}): Trac
           source: 'manual',
           externalUrl: null,
           externalStatus: null,
+          needsReview: false,
         },
         cases: [
           {

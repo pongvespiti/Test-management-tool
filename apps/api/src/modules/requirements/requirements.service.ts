@@ -49,6 +49,16 @@ const liveCases = (projectId: number): Prisma.TestCaseWhereInput => ({
 /** Issues per Jira search when refreshing (keeps the JQL short). */
 const JIRA_BATCH = 50;
 
+/** The text changed and nobody confirmed the cases since. */
+export const needsReview = (r: Pick<Row, 'textChangedAt' | 'reviewedAt'>): boolean =>
+  r.textChangedAt !== null && (r.reviewedAt === null || r.reviewedAt < r.textChangedAt);
+
+/** Title or description differs (blank and missing description are the same). */
+export const textDiffers = (
+  a: { title: string; description: string | null },
+  b: { title: string; description: string | null },
+): boolean => a.title !== b.title || (a.description ?? '') !== (b.description ?? '');
+
 const toListItem = (r: Row, caseCount: number): RequirementListItemDTO => ({
   id: r.id,
   key: r.key,
@@ -59,6 +69,8 @@ const toListItem = (r: Row, caseCount: number): RequirementListItemDTO => ({
   externalStatus: r.externalStatus,
   syncedAt: r.syncedAt ? r.syncedAt.toISOString() : null,
   caseCount,
+  needsReview: needsReview(r),
+  textChangedAt: r.textChangedAt ? r.textChangedAt.toISOString() : null,
   updatedAt: r.updatedAt.toISOString(),
 });
 
@@ -174,6 +186,11 @@ export class RequirementsService {
             ...(input.title !== undefined && { title: input.title }),
             ...(input.description !== undefined && { description: input.description ?? null }),
             ...(input.sourceRef !== undefined && { sourceRef: input.sourceRef ?? null }),
+            ...(textDiffers(current, {
+              title: input.title ?? current.title,
+              description:
+                input.description !== undefined ? (input.description ?? null) : current.description,
+            }) && { textChangedAt: new Date() }),
           },
         });
         await this.log(tx, ctx, me, id, 'updated', `Edited requirement ${r.key}`);
@@ -182,6 +199,27 @@ export class RequirementsService {
       if (isUniqueViolation(e)) throw keyTaken(input.key ?? current.key);
       throw e;
     }
+    return this.get(ctx.id, id);
+  }
+
+  /** Confirms that the cases still fit the changed text. */
+  async markReviewed(ctx: ProjectContext, me: AuthUser, id: number): Promise<RequirementDTO> {
+    const db = this.prisma.db;
+    const r = await this.row(db, ctx.id, id);
+    await db.$transaction(async (tx) => {
+      await tx.requirement.update({
+        where: { id },
+        data: { reviewedAt: new Date(), reviewedById: me.id },
+      });
+      await this.log(
+        tx,
+        ctx,
+        me,
+        id,
+        'reviewed',
+        `Confirmed the cases of ${r.key} after its text changed`,
+      );
+    });
     return this.get(ctx.id, id);
   }
 
@@ -306,9 +344,19 @@ export class RequirementsService {
             });
             created += 1;
           } else if (r.action === 'update') {
+            const id = ids.get(keyOf(r.key))!;
+            const before = await tx.requirement.findUniqueOrThrow({
+              where: { id },
+              select: { title: true, description: true },
+            });
             await tx.requirement.update({
-              where: { id: ids.get(keyOf(r.key))! },
-              data: { title: r.title, description: r.description, sourceRef: r.sourceRef },
+              where: { id },
+              data: {
+                title: r.title,
+                description: r.description,
+                sourceRef: r.sourceRef,
+                ...(textDiffers(before, r) && { textChangedAt: new Date() }),
+              },
             });
             updated += 1;
           }
@@ -379,9 +427,10 @@ export class RequirementsService {
     return this.prisma.db.$transaction(async (tx) => {
       const existing = await tx.requirement.findMany({
         where: { projectId: ctx.id },
-        select: { id: true, key: true },
+        select: { id: true, key: true, title: true, description: true },
       });
       const byKey = new Map(existing.map((r) => [keyOf(r.key), r.id]));
+      const before = new Map(existing.map((r) => [r.id, r]));
       const now = new Date();
       let created = 0;
       let updated = 0;
@@ -403,7 +452,10 @@ export class RequirementsService {
           byKey.set(keyOf(key), r.id);
           created += 1;
         } else {
-          await tx.requirement.update({ where: { id }, data });
+          await tx.requirement.update({
+            where: { id },
+            data: { ...data, ...(textDiffers(before.get(id)!, data) && { textChangedAt: now }) },
+          });
           updated += 1;
         }
       }

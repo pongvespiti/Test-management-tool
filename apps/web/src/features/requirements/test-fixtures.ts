@@ -16,6 +16,8 @@ export function makeRequirementItem(
     externalStatus: null,
     syncedAt: null,
     caseCount: 2,
+    needsReview: false,
+    textChangedAt: null,
     updatedAt: T0,
     ...overrides,
   };

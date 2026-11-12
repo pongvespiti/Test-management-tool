@@ -127,6 +127,11 @@ function ReferenceRow({ row, projectId }: { row: TraceabilityRowDTO; projectId: 
           <>
             <span className="min-w-0 max-w-72 truncate text-sm">{row.requirement.title}</span>
             <RequirementSourceBadge source={row.requirement.source} />
+            {row.requirement.needsReview && (
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900">
+                Review
+              </span>
+            )}
             {row.requirement.externalStatus && (
               <span className="text-sm text-muted-foreground">
                 {row.requirement.externalStatus}

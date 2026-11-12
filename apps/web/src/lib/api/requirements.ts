@@ -86,6 +86,16 @@ export function useDeleteRequirement(projectId: number) {
   });
 }
 
+/** Confirms the cases still fit after the requirement text changed. */
+export function useReviewRequirement(projectId: number) {
+  const { store } = useRefresh(projectId);
+  return useMutation({
+    mutationFn: (requirementId: number) =>
+      api.post<RequirementDTO>(`${base(projectId)}/${requirementId}/review`),
+    onSuccess: store,
+  });
+}
+
 /** Replaces the cases linked to a requirement. */
 export function useSetRequirementCases(projectId: number) {
   const { store } = useRefresh(projectId);

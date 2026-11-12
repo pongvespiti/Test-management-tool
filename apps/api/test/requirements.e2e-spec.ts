@@ -212,6 +212,28 @@ describe('requirements CRUD', () => {
       200,
     );
     expect(edited.title).toBe('Unit powers on within 2 s');
+    // A text change asks for a review of the cases; a viewer cannot confirm it, a tester can.
+    expect(edited.needsReview).toBe(true);
+    expect(edited.textChangedAt).not.toBeNull();
+    expect((await viewer.post(`${P}/requirements/${req1.id}/review`)).status).toBe(403);
+    const reviewed = expectBody<RequirementDTO>(
+      await tester.post(`${P}/requirements/${req1.id}/review`),
+      200,
+    );
+    expect(reviewed.needsReview).toBe(false);
+    // Editing only the source document is not a text change.
+    const sameText = expectBody<RequirementDTO>(
+      await tester.patch(`${P}/requirements/${req1.id}`, { sourceRef: 'Spec v4' }),
+      200,
+    );
+    expect(sameText.needsReview).toBe(false);
+    const again = expectBody<RequirementDTO>(
+      await tester.patch(`${P}/requirements/${req1.id}`, { description: 'Changed' }),
+      200,
+    );
+    expect(again.needsReview).toBe(true);
+    expect((await list(viewer)).find((r) => r.id === req1.id)?.needsReview).toBe(true);
+    await tester.post(`${P}/requirements/${req1.id}/review`);
     expect(await list(viewer, '?q=2 s')).toHaveLength(1);
     expect(await list(viewer, '?q=nothing')).toHaveLength(0);
     expect(await list(viewer, '?source=jira')).toHaveLength(0);

@@ -160,6 +160,19 @@ export class RequirementsController {
     return this.requirements.remove(ctx, me, requirementId);
   }
 
+  /** Confirms the cases still fit after the requirement text changed. */
+  @Post(':requirementId/review')
+  @HttpCode(200)
+  @ProjectPermission('writeRequirements')
+  @ApiErrorCodes('REQUIREMENT_NOT_FOUND')
+  review(
+    @CurrentProject() ctx: ProjectContext,
+    @CurrentUser() me: AuthUser,
+    @Param('requirementId', ID) requirementId: number,
+  ): Promise<RequirementDTO> {
+    return this.requirements.markReviewed(ctx, me, requirementId);
+  }
+
   /** Replaces the cases linked to the requirement. */
   @Put(':requirementId/cases')
   @ProjectPermission('writeRequirements')

@@ -7,6 +7,7 @@ export type TraceFilter = 'all' | 'attention';
 export function needsAttention(row: TraceabilityDTO['rows'][number]): boolean {
   return (
     row.counts.total === 0 ||
+    row.requirement?.needsReview === true ||
     row.counts.failed > 0 ||
     row.openDefects > 0 ||
     row.counts.neverRun > 0

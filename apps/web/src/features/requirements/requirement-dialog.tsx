@@ -18,7 +18,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useModalTarget } from '@/hooks/use-modal-target';
-import { useDeleteRequirement, useRequirement } from '@/lib/api/requirements';
+import { useDeleteRequirement, useRequirement, useReviewRequirement } from '@/lib/api/requirements';
 import { formatRelative } from '@/lib/format';
 import { notifyError, notifySuccess } from '@/lib/notify';
 import { routes } from '@/lib/routes';
@@ -46,10 +46,21 @@ export function RequirementDialog({
   const [deleted, setDeleted] = useState(false);
   const query = useRequirement(projectId, deleted ? null : requirementId);
   const remove = useDeleteRequirement(projectId);
+  const review = useReviewRequirement(projectId);
   const editor = useModalTarget<'edit'>();
   const linker = useModalTarget<'link'>();
   const r = query.data;
   const canWrite = can('writeRequirements');
+
+  const confirmReview = async () => {
+    if (!r) return;
+    try {
+      await review.mutateAsync(r.id);
+      notifySuccess(`${r.key} marked as reviewed.`);
+    } catch (err) {
+      notifyError(err, 'Could not mark the requirement as reviewed');
+    }
+  };
 
   const del = () =>
     r &&
@@ -80,6 +91,29 @@ export function RequirementDialog({
           <QueryState query={query}>
             {r && (
               <div className="flex flex-col gap-4">
+                {r.needsReview && (
+                  <div
+                    role="status"
+                    className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+                  >
+                    <span className="min-w-0 flex-1">
+                      The text changed {r.textChangedAt ? formatRelative(r.textChangedAt) : ''}.
+                      {r.cases.length > 0
+                        ? ` Check that the ${r.cases.length} ${r.cases.length === 1 ? 'case' : 'cases'} below still test it.`
+                        : ' No case tests it yet.'}
+                    </span>
+                    {canWrite && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        loading={review.isPending}
+                        onClick={() => void confirmReview()}
+                      >
+                        Cases are still correct
+                      </Button>
+                    )}
+                  </div>
+                )}
                 <div className="flex flex-wrap items-center gap-3 text-sm">
                   <RequirementSourceBadge source={r.source} />
                   {r.externalStatus && (

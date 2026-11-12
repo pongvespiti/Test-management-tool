@@ -431,6 +431,8 @@ export interface DemoRequirement {
   linked: readonly DemoCaseRef[];
   /** Cases that only write the key in their References field. */
   cited?: readonly DemoCaseRef[];
+  /** Edited after the cases were linked: the requirement then asks for a review of its cases. */
+  reworded?: string;
 }
 
 /** Requirements typed in by hand; one of them has no case yet, which the traceability report flags. */
@@ -452,6 +454,7 @@ export const DEMO_REQUIREMENTS: readonly DemoRequirement[] = [
       [1, 'Write setpoint 25 °C'],
       [1, 'Write setpoint out of range'],
     ],
+    reworded: 'Modbus master can read and write the setpoint and the operating mode',
   },
   {
     key: 'REQ-003',

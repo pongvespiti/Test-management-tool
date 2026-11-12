@@ -1179,6 +1179,10 @@ export interface RequirementListItemDTO {
   syncedAt: string | null;
   /** Cases linked in the table or citing the key. */
   caseCount: number;
+  /** The title or description changed after the cases were last confirmed to fit. */
+  needsReview: boolean;
+  /** When the text last changed (null = never since it was created). */
+  textChangedAt: string | null;
   updatedAt: string;
 }
 
@@ -1258,6 +1262,7 @@ export interface TraceRequirementDTO {
   source: RequirementSource;
   externalUrl: string | null;
   externalStatus: string | null;
+  needsReview: boolean;
 }
 
 /** A library case under a reference, with its latest result in scope. */

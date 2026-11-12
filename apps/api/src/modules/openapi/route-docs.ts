@@ -891,6 +891,12 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     success: 204,
     response: 'void',
   },
+  'POST /api/v1/projects/{projectId}/requirements/{requirementId}/review': {
+    tag: 'Requirements',
+    summary: 'Confirm that the cases still fit after the requirement text changed',
+    success: 200,
+    response: 'RequirementDTO',
+  },
   'PUT /api/v1/projects/{projectId}/requirements/{requirementId}/cases': {
     tag: 'Requirements',
     summary: 'Replace the cases linked to a requirement',

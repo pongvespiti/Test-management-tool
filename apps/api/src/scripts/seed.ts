@@ -149,12 +149,15 @@ async function seedRequirements(
 ): Promise<void> {
   const caseId = ([suite, title]: readonly [number, string]) => suites[suite]!.cases.get(title)!;
   for (const requirement of DEMO_REQUIREMENTS) {
-    const { linked, cited = [], ...fields } = requirement;
+    const { linked, cited = [], reworded, ...fields } = requirement;
     const created = await call('POST', `${projectPath}/requirements`, fields);
     if (linked.length > 0) {
       await call('PUT', `${projectPath}/requirements/${created.id}/cases`, {
         caseIds: linked.map(caseId),
       });
+    }
+    if (reworded) {
+      await call('PATCH', `${projectPath}/requirements/${created.id}`, { title: reworded });
     }
     for (const ref of cited) {
       await call('PATCH', `${projectPath}/cases/${caseId(ref)}`, { references: requirement.key });

@@ -3,6 +3,7 @@ import { Prisma } from '@tmt/database';
 import { defectKey, type ResultStatus, type TraceabilityDTO } from '@tmt/shared';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { assertReleaseInProject } from '../execution/execution.queries.js';
+import { needsReview } from '../requirements/requirements.service.js';
 import { traceabilityOf } from './traceability.js';
 
 type TraceDefectStatus = TraceabilityDTO['rows'][number]['defects'][number]['status'];
@@ -44,6 +45,8 @@ export class TraceabilityService {
         source: true,
         externalUrl: true,
         externalStatus: true,
+        textChangedAt: true,
+        reviewedAt: true,
         cases: { select: { testCaseId: true } },
       },
     });
@@ -93,6 +96,7 @@ export class TraceabilityService {
         source: r.source,
         externalUrl: r.externalUrl,
         externalStatus: r.externalStatus,
+        needsReview: needsReview(r),
         linkedCaseIds: new Set(r.cases.map((c) => c.testCaseId)),
       })),
     );

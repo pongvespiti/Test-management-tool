@@ -55,6 +55,7 @@ describe('traceabilityOf', () => {
       source: 'manual' as const,
       externalUrl: null,
       externalStatus: null,
+      needsReview: false,
       linkedCaseIds: new Set(linked),
     });
 

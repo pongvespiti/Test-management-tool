@@ -43,6 +43,7 @@ export interface TraceRequirementRow {
   source: RequirementSource;
   externalUrl: string | null;
   externalStatus: string | null;
+  needsReview: boolean;
   linkedCaseIds: ReadonlySet<number>;
 }
 
@@ -102,6 +103,7 @@ export function traceabilityOf(
       source: r.source,
       externalUrl: r.externalUrl,
       externalStatus: r.externalStatus,
+      needsReview: r.needsReview,
     };
     for (const id of r.linkedCaseIds) {
       if (!caseById.has(id)) continue;

@@ -315,6 +315,7 @@ describe('ReportsPage', () => {
               source: 'jira',
               externalUrl: null,
               externalStatus: 'Open',
+              needsReview: false,
             },
             cases: [],
             counts: { total: 0, passed: 0, failed: 0, notExecuted: 0, neverRun: 0 },
