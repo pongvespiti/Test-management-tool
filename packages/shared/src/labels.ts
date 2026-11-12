@@ -146,7 +146,7 @@ export const NOTIFICATION_KIND_LABELS: Record<NotificationKind, string> = {
 };
 
 export const DEVICE_KIND_LABELS: Record<DeviceKind, string> = {
-  unit: 'Air conditioner unit',
+  unit: 'AC unit',
   phone: 'Phone',
   router: 'Router',
   other: 'Other',
