@@ -26,6 +26,9 @@ const placeholders = {
   runs: ['${table:runs.code}'],
   run: ['${run.code}', '${env.unit_model}'],
   cases: ['${table:cases.title}'],
+  requirements: ['${table:requirements.key}', '${table:requirements.status}'],
+  dimensions: ['${table:dimensions.value}'],
+  sessions: ['${table:sessions.key}'],
 };
 
 const check = (overrides: Partial<TemplateCheckDTO> = {}): TemplateCheckDTO => ({
@@ -81,6 +84,18 @@ describe('TemplatesPage', () => {
     expect(screen.getByText('Document number of the test plan')).toBeInTheDocument();
     await user.click(screen.getByRole('tab', { name: /Run sheet/ }));
     expect(await screen.findByText('Environment “Unit model”')).toBeInTheDocument();
+    // Tables that work on every sheet have their own tabs, with the number of placeholders.
+    await user.click(screen.getByRole('tab', { name: /Requirements/ }));
+    expect(
+      await screen.findByText('Passing, Failing, In progress or Not covered'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Copy ${table:requirements.key}' }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: /Exploratory/ }));
+    expect(await screen.findByText('Session key (EXP-1)')).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: /By environment/ }));
+    expect(await screen.findByText('The value of that label')).toBeInTheDocument();
   });
 
   it('checks a template: missing run sheet and a misspelt placeholder', async () => {

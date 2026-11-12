@@ -1,8 +1,15 @@
-import { RESULT_LABELS, RESULT_STATUSES, slugKey, type SuiteDTO } from '@tmt/shared';
+import {
+  RESULT_LABELS,
+  RESULT_STATUSES,
+  slugKey,
+  type ResultStatus,
+  type SuiteDTO,
+} from '@tmt/shared';
 import type { TemplatePlaceholders } from '@/lib/api/templates';
 
 /** Where a placeholder works (same groups as `GET templates/placeholders`). */
-export type PlaceholderGroup = 'workbook' | 'runs' | 'run' | 'cases';
+export type PlaceholderGroup =
+  'workbook' | 'runs' | 'run' | 'cases' | 'requirements' | 'dimensions' | 'sessions';
 
 export const PLACEHOLDER_GROUPS: {
   key: PlaceholderGroup;
@@ -28,6 +35,21 @@ export const PLACEHOLDER_GROUPS: {
     key: 'cases',
     label: 'Case rows',
     hint: 'Put these in one row of the run sheet — the row is repeated once per test case of the run.',
+  },
+  {
+    key: 'requirements',
+    label: 'Requirements',
+    hint: 'Put these in one row of any sheet — the row is repeated once per requirement that the plan’s cases test, with the results of those cases.',
+  },
+  {
+    key: 'dimensions',
+    label: 'By environment',
+    hint: 'Put these in one row of any sheet — the row is repeated once per value of an environment label (and per build) with the results of the runs that carry it.',
+  },
+  {
+    key: 'sessions',
+    label: 'Exploratory',
+    hint: 'Put these in one row of any sheet — the row is repeated once per exploratory session of the plan’s release.',
   },
 ];
 
@@ -80,6 +102,49 @@ const CASE: Record<string, string> = {
   estimate: 'Estimate in minutes',
 };
 
+const COUNTS: Record<string, string> = Object.fromEntries(
+  [...RESULT_STATUSES, 'total'].map((s) => [
+    s,
+    s === 'total'
+      ? 'Number of case rows'
+      : `Number of “${RESULT_LABELS[s as ResultStatus]}” results`,
+  ]),
+);
+
+const REQUIREMENT: Record<string, string> = {
+  key: 'Requirement ID',
+  title: 'Requirement title',
+  source: 'Where it came from (Excel, Jira, Typed in)',
+  jiraStatus: 'Status of the Jira issue',
+  status: 'Passing, Failing, In progress or Not covered',
+  review: '“Review” while the text changed and the cases were not checked again',
+  cases: 'Case rows of the plan that test it',
+  defects: 'Open defects raised on those case rows',
+  ...COUNTS,
+};
+
+const DIMENSION: Record<string, string> = {
+  dimension: 'Environment label (Platform, Unit model …) or Build',
+  value: 'The value of that label',
+  runs: 'Number of runs that carry the value',
+  ...COUNTS,
+};
+
+const SESSION: Record<string, string> = {
+  key: 'Session key (EXP-1)',
+  title: 'Session title',
+  status: 'Planned, In progress or Completed',
+  owner: 'Owner',
+  build: 'Build under test',
+  timeBox: 'Time box in minutes',
+  started: 'Start date',
+  ended: 'End date',
+  notes: 'Number of notes',
+  defects: 'Number of defects found',
+  references: 'References explored',
+  summary: 'Debrief summary',
+};
+
 /** Labels of custom fields and environment entries, to explain `cf_*` / `env_*` placeholders. */
 export interface PlaceholderNames {
   fields: Map<string, string>;
@@ -114,6 +179,9 @@ export function groupOf(placeholder: string): PlaceholderGroup {
   const inner = innerOf(placeholder);
   if (inner.startsWith('table:runs.')) return 'runs';
   if (inner.startsWith('table:cases.')) return 'cases';
+  if (inner.startsWith('table:requirements.')) return 'requirements';
+  if (inner.startsWith('table:dimensions.')) return 'dimensions';
+  if (inner.startsWith('table:sessions.')) return 'sessions';
   if (inner.startsWith('run.') || inner.startsWith('env.') || inner.startsWith('table:envList.'))
     return 'run';
   return 'workbook';
@@ -141,6 +209,12 @@ export function describePlaceholder(placeholder: string, names: PlaceholderNames
     if (f.startsWith('g_')) return 'Result of one summary group (OK / NG …) in this run';
     return RUN[f] ?? null;
   }
+  m = /^table:requirements\.(\w+)$/.exec(inner);
+  if (m) return REQUIREMENT[m[1]!] ?? null;
+  m = /^table:dimensions\.(\w+)$/.exec(inner);
+  if (m) return DIMENSION[m[1]!] ?? null;
+  m = /^table:sessions\.(\w+)$/.exec(inner);
+  if (m) return SESSION[m[1]!] ?? null;
   m = /^table:cases\.(\w+)$/.exec(inner);
   if (m) {
     const f = m[1]!;
@@ -174,9 +248,15 @@ export function suggestPlaceholder(
   reference: TemplatePlaceholders | undefined,
 ): string | null {
   if (!reference) return null;
-  const all = [...reference.workbook, ...reference.runs, ...reference.run, ...reference.cases].map(
-    innerOf,
-  );
+  const all = [
+    ...reference.workbook,
+    ...reference.runs,
+    ...reference.run,
+    ...reference.cases,
+    ...reference.requirements,
+    ...reference.dimensions,
+    ...reference.sessions,
+  ].map(innerOf);
   const target = unknown.toLowerCase();
   let best: { inner: string; d: number } | null = null;
   for (const inner of all) {

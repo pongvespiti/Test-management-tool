@@ -98,7 +98,38 @@ describe('plan report data', () => {
           sortOrder: 1,
         },
       ] as never)
-      .mockResolvedValueOnce([runCaseRow({ status: 'ng', summaryGroup: 'Power' })]);
+      .mockResolvedValueOnce([
+        runCaseRow({ id: 31, testCaseId: 7, status: 'ng', summaryGroup: 'Power' }),
+      ]);
+    db.requirement.findMany.mockResolvedValue([
+      {
+        id: 1,
+        key: 'REQ-1',
+        title: 'Power on',
+        source: 'jira',
+        externalStatus: 'Done',
+        textChangedAt: new Date('2026-10-20T00:00:00Z'),
+        reviewedAt: null,
+      },
+      { id: 2, key: 'REQ-2', title: 'Untested', source: 'manual', textChangedAt: null },
+    ] as never);
+    db.requirementCase.findMany.mockResolvedValue([{ requirementId: 1, testCaseId: 7 }] as never);
+    db.defectLink.findMany.mockResolvedValue([{ runCaseId: 31, defect: { seq: 4 } }] as never);
+    db.exploratorySession.findMany.mockResolvedValue([
+      {
+        seq: 2,
+        title: 'Charter',
+        status: 'completed',
+        owner: { displayName: 'Tom' },
+        build: null,
+        timeBoxMinutes: 60,
+        startedAt: new Date('2026-10-21T18:00:00Z'),
+        endedAt: new Date('2026-10-21T19:00:00Z'),
+        references: 'REQ-1',
+        summary: null,
+        _count: { notes: 3, defects: 1 },
+      },
+    ] as never);
     const data = await buildPlanReportData(db, {
       project: { name: 'ACS project', key: 'ACS' },
       plan: planRow({
@@ -126,6 +157,51 @@ describe('plan report data', () => {
     });
     expect(data.runs[0]!.envList.map((e) => e.label)).toEqual(['Platform', 'Unit model']);
     expect(data.runs[0]!.cases).toHaveLength(1);
+    expect(data.requirements).toEqual([
+      expect.objectContaining({
+        key: 'REQ-1',
+        source: 'Jira',
+        jiraStatus: 'Done',
+        status: 'Failing',
+        review: 'Review',
+        cases: 1,
+        defects: 'BUG-4',
+      }),
+    ]);
+    expect(data.dimensions).toEqual([
+      expect.objectContaining({ dimension: 'Platform', value: 'Android 16', runs: 1 }),
+      expect.objectContaining({ dimension: 'Unit model', value: 'ACU18', runs: 1 }),
+    ]);
+    expect(data.sessions).toEqual([
+      {
+        key: 'EXP-2',
+        title: 'Charter',
+        status: 'Completed',
+        owner: 'Tom',
+        build: null,
+        timeBox: 60,
+        started: '2026-10-22',
+        ended: '2026-10-22',
+        notes: 3,
+        defects: 1,
+        references: 'REQ-1',
+        summary: null,
+      },
+    ]);
+  });
+
+  it('has no sessions for a plan without a release and no requirements without case rows', async () => {
+    const { db } = createPrismaMock();
+    db.testRun.findMany.mockResolvedValue([]);
+    const data = await buildPlanReportData(db, {
+      project: { name: 'P', key: 'P' },
+      plan: planRow({ releaseId: null }),
+      timezone: 'Asia/Bangkok',
+    });
+    expect(data.sessions).toEqual([]);
+    expect(data.requirements).toEqual([]);
+    expect(data.dimensions).toEqual([]);
+    expect(db.exploratorySession.findMany).not.toHaveBeenCalled();
   });
 
   it('collects fields, environment labels and groups of one suite or all live suites', async () => {

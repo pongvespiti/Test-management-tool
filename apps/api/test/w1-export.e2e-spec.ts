@@ -384,7 +384,15 @@ describe('template check and placeholders', () => {
       runs: string[];
       run: string[];
       cases: string[];
+      requirements: string[];
+      dimensions: string[];
+      sessions: string[];
     }>(await viewer.get(`${P}/templates/placeholders`), 200);
+    expect(ref.requirements).toEqual(
+      expect.arrayContaining(['${table:requirements.key}', '${table:requirements.status}']),
+    );
+    expect(ref.dimensions).toContain('${table:dimensions.value}');
+    expect(ref.sessions).toContain('${table:sessions.key}');
     expect(ref.workbook).toContain('${plan.docNo}');
     expect(ref.runs).toEqual(
       expect.arrayContaining([
@@ -404,5 +412,69 @@ describe('template check and placeholders', () => {
       ]),
     );
     expect((await outsider.get(`${P}/templates/placeholders`)).status).toBe(404);
+  });
+});
+
+describe('requirement, dimension and session tables', () => {
+  let tables: TemplateDTO;
+
+  beforeAll(async () => {
+    const req = await tester.post(`${P}/requirements`, { key: 'REQ-1', title: 'Unit powers on' });
+    expect(req.status).toBe(201);
+    expect(
+      (await tester.post(`${P}/requirements`, { key: 'REQ-9', title: 'Not in this plan' })).status,
+    ).toBe(201);
+    const releases = expectBody<ReleaseDTO[]>(await viewer.get(`${P}/releases`), 200);
+    const session = await tester.post(`${P}/sessions`, {
+      title: 'Explore pairing',
+      releaseId: releases[0]!.id,
+      timeBoxMinutes: 45,
+    });
+    expect(session.status).toBe(201);
+    tables = await uploadTemplate(
+      { name: 'Tables', runSheet: 'Run' },
+      await xlsx((wb) => {
+        const sum = wb.addWorksheet('Sum');
+        ['key', 'status', 'cases', 'ng', 'untested', 'review'].forEach((f, i) => {
+          sum.getCell(2, i + 1).value = `\${table:requirements.${f}}`;
+        });
+        sum.getCell(4, 1).value = 'End of requirements';
+        ['dimension', 'value', 'runs', 'ng'].forEach((f, i) => {
+          sum.getCell(6, i + 1).value = `\${table:dimensions.${f}}`;
+        });
+        ['key', 'title', 'status', 'timeBox', 'notes'].forEach((f, i) => {
+          sum.getCell(8, i + 1).value = `\${table:sessions.${f}}`;
+        });
+        const run = wb.addWorksheet('Run');
+        run.getCell('A1').value = '${run.code}';
+        run.getCell('A2').value = '${table:requirements.key}';
+      }),
+    );
+  });
+
+  it('fills the tables from the plan: tested requirements only, results by value, release sessions', async () => {
+    const check = expectBody<TemplateCheckDTO>(
+      await viewer.get(`${P}/templates/${tables.id}/check`),
+      200,
+    );
+    expect(check.unknown).toEqual([]);
+    const wb = await exportBook(`${P}/plans/${plan.id}/export.xlsx?templateId=${tables.id}`);
+    const sum = wb.getWorksheet('Sum')!;
+    const row = (r: number) => (sum.getRow(r).values as unknown[]).slice(1);
+    // REQ-1 is cited by PW-1 in both runs: one NG and one untested row. REQ-9 is left out.
+    expect(row(2)).toEqual(['REQ-1', 'Failing', 2, 1, 1]);
+    expect(sum.getCell('A4').value).toBe('End of requirements');
+    expect(row(6)).toEqual(['Platform', 'Android 16', 1, 1]);
+    expect(row(7)).toEqual(['Unit model', 'ACU18', 1, 1]);
+    expect(row(8)).toEqual(['Unit model', 'ACU25', 1, 0]);
+    expect(row(10)).toEqual([
+      expect.stringMatching(/^EXP-\d+$/),
+      'Explore pairing',
+      'Planned',
+      45,
+      0,
+    ]);
+    const run = wb.getWorksheet('KR_01')!;
+    expect([run.getCell('A1').value, run.getCell('A2').value]).toEqual(['KR_01', 'REQ-1']);
   });
 });

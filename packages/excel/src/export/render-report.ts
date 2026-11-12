@@ -7,6 +7,7 @@ import {
   runContext,
   runTableItem,
   workbookContext,
+  workbookTables,
   type ReportData,
   type ReportRun,
   type TableItem,
@@ -59,6 +60,7 @@ export async function renderReport(
   }
   const activeBefore = book.activeSheet();
   const runsTable = data.runs.map(runTableItem);
+  const shared = { ...workbookTables(data), runs: runsTable };
 
   // 1) Copy the pristine run sheet once per run, in run order, right after the template sheet.
   const runSheets: { entry: SheetEntry; run: ReportRun }[] = [];
@@ -79,9 +81,9 @@ export async function renderReport(
     if (sheet === runTemplate && runSheets.length > 0) continue;
     const runSheet = runSheets.find((r) => r.entry === sheet);
     let ctx: FillContext;
-    if (runSheet) ctx = runFill(data, runSheet.run, runsTable);
-    else if (sheet === runTemplate) ctx = emptyRunFill(data, runsTable);
-    else ctx = { scalars: workbookContext(data), tables: { runs: runsTable } };
+    if (runSheet) ctx = runFill(data, runSheet.run, shared);
+    else if (sheet === runTemplate) ctx = emptyRunFill(data, shared);
+    else ctx = { scalars: workbookContext(data), tables: shared };
     const xml = await pkg.requireText(sheet.part);
     const res = fillSheetXml(xml, ctx, env);
     if (res.xml !== xml) pkg.setText(sheet.part, res.xml);
@@ -104,21 +106,25 @@ export async function renderReport(
   return pkg.generate();
 }
 
-function runFill(data: ReportData, run: ReportRun, runsTable: TableItem[]): FillContext {
+function runFill(
+  data: ReportData,
+  run: ReportRun,
+  shared: Record<string, TableItem[]>,
+): FillContext {
   return {
     scalars: runContext(data, run),
     tables: {
+      ...shared,
       cases: run.cases.map(caseTableItem),
       envList: run.envList.map((e) => ({ label: e.label, value: e.value })),
-      runs: runsTable,
     },
   };
 }
 
-function emptyRunFill(data: ReportData, runsTable: TableItem[]): FillContext {
+function emptyRunFill(data: ReportData, shared: Record<string, TableItem[]>): FillContext {
   return {
     scalars: { ...workbookContext(data), run: {}, env: {} },
-    tables: { cases: [], envList: [], runs: runsTable },
+    tables: { ...shared, cases: [], envList: [] },
   };
 }
 

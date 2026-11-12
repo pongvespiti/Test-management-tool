@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import JSZip from 'jszip';
 import { beforeAll, describe, expect, it } from '@jest/globals';
 import { ExcelJS, type Workbook } from '../src/cjs';
+import type { ReportData } from '../src/export';
 import { checkTemplate, inspectTemplate, renderReport, TemplateError } from '../src/export';
 import { sampleReport, sampleRun } from './fixtures/report-data';
 import { defaultTemplatePath } from '../src/assets';
@@ -207,6 +208,121 @@ describe('renderReport edge cases', () => {
     await expect(renderReport(Buffer.from('hello'), {}, sampleReport())).rejects.toBeInstanceOf(
       TemplateError,
     );
+  });
+});
+
+describe('tables of requirements, dimensions and sessions', () => {
+  const counts = { untested: 1, ok: 2, ng: 1, ok_cond: 0, blocked: 0, nt: 0, na: 0 };
+  async function template() {
+    const wb = new ExcelJS.Workbook();
+    const summary = wb.addWorksheet('Summary');
+    summary.getCell('A1').value = 'Requirement';
+    summary.getCell('A2').value = '${table:requirements.key}';
+    summary.getCell('B2').value = '${table:requirements.status}';
+    summary.getCell('C2').value = '${table:requirements.total}';
+    summary.getCell('D2').value = '${table:requirements.review}';
+    summary.getCell('A4').value = 'Total';
+    summary.getCell('A6').value = '${table:dimensions.dimension}';
+    summary.getCell('B6').value = '${table:dimensions.value}';
+    summary.getCell('C6').value = '${table:dimensions.ng}';
+    summary.getCell('A8').value = '${table:sessions.key}';
+    summary.getCell('B8').value = '${table:sessions.title}';
+    summary.getCell('C8').value = '${table:sessions.timeBox}';
+    const run = wb.addWorksheet('Run');
+    run.getCell('A1').value = '${run.code}';
+    run.getCell('A2').value = '${table:requirements.key}';
+    return Buffer.from(await wb.xlsx.writeBuffer());
+  }
+  const data = (): ReportData => ({
+    ...sampleReport(),
+    runs: [sampleRun('UT_01', 'A')],
+    requirements: [
+      {
+        key: 'REQ-1',
+        title: 'Power on',
+        source: 'Typed in',
+        jiraStatus: null,
+        status: 'Failing',
+        review: 'Review',
+        cases: 4,
+        counts,
+        defects: 'DEF-1',
+      },
+      {
+        key: 'IOT-12',
+        title: 'Pair',
+        source: 'Jira',
+        jiraStatus: 'Done',
+        status: 'Passing',
+        review: '',
+        cases: 2,
+        counts: { ...counts, ng: 0 },
+        defects: '',
+      },
+    ],
+    dimensions: [{ dimension: 'Platform', value: 'iOS', runs: 1, counts }],
+    sessions: [
+      {
+        key: 'EXP-1',
+        title: 'Charter A',
+        status: 'Completed',
+        owner: 'Ann',
+        build: null,
+        timeBox: 60,
+        started: '2026-11-01',
+        ended: '2026-11-01',
+        notes: 3,
+        defects: 1,
+        references: null,
+        summary: null,
+      },
+    ],
+  });
+
+  it('repeats the rows of every table on any sheet and keeps the rows below in place', async () => {
+    const out = await renderReport(await template(), { runSheet: 'Run' }, data());
+    const wb = await open(out);
+    const s = wb.getWorksheet('Summary')!;
+    expect([s.getCell('A2').value, s.getCell('B2').value, s.getCell('C2').value]).toEqual([
+      'REQ-1',
+      'Failing',
+      4,
+    ]);
+    expect(s.getCell('D2').value).toBe('Review');
+    expect([s.getCell('A3').value, s.getCell('B3').value, s.getCell('D3').value]).toEqual([
+      'IOT-12',
+      'Passing',
+      null,
+    ]);
+    // The row under the table moved down by the one extra requirement row.
+    expect(s.getCell('A5').value).toBe('Total');
+    expect([s.getCell('A7').value, s.getCell('B7').value, s.getCell('C7').value]).toEqual([
+      'Platform',
+      'iOS',
+      1,
+    ]);
+    expect([s.getCell('A9').value, s.getCell('B9').value, s.getCell('C9').value]).toEqual([
+      'EXP-1',
+      'Charter A',
+      60,
+    ]);
+    // Run sheets can use them too.
+    const run = wb.getWorksheet('UT_01')!;
+    expect([run.getCell('A1').value, run.getCell('A2').value, run.getCell('A3').value]).toEqual([
+      'UT_01',
+      'REQ-1',
+      'IOT-12',
+    ]);
+    expect((await inspectTemplate(out)).placeholders).toEqual([]);
+  });
+
+  it('leaves the table rows empty when the data has none', async () => {
+    const { requirements: _r, dimensions: _d, sessions: _s, ...plain } = data();
+    const wb = await open(await renderReport(await template(), { runSheet: 'Run' }, plain));
+    const s = wb.getWorksheet('Summary')!;
+    expect(s.getCell('A2').value).toBeNull();
+    expect(s.getCell('A4').value).toBe('Total');
+    expect(s.getCell('A6').value).toBeNull();
   });
 });
 

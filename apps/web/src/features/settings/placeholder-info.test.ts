@@ -44,6 +44,9 @@ describe('placeholder shapes', () => {
   it('groups placeholders by where they work', () => {
     expect(groupOf('${table:runs.code}')).toBe('runs');
     expect(groupOf('table:cases.title')).toBe('cases');
+    expect(groupOf('table:requirements.key')).toBe('requirements');
+    expect(groupOf('${table:dimensions.value}')).toBe('dimensions');
+    expect(groupOf('table:sessions.key')).toBe('sessions');
     expect(groupOf('run.code')).toBe('run');
     expect(groupOf('env.unit_model')).toBe('run');
     expect(groupOf('table:envList.label')).toBe('run');
@@ -69,6 +72,13 @@ describe('describePlaceholder', () => {
     ['table:cases.cf_unknown', 'Custom field'],
     ['table:cases.sectionMerged', 'Section name, cells merged down the whole section'],
     ['table:cases.nope', null],
+    ['table:requirements.status', 'Passing, Failing, In progress or Not covered'],
+    ['table:requirements.ng', 'Number of “NG” results'],
+    ['table:requirements.total', 'Number of case rows'],
+    ['table:requirements.nope', null],
+    ['table:dimensions.value', 'The value of that label'],
+    ['table:sessions.timeBox', 'Time box in minutes'],
+    ['table:sessions.nope', null],
     ['plan.nope', null],
   ])('%s', (placeholder, meaning) => {
     expect(describePlaceholder(placeholder, names)).toBe(meaning);
@@ -81,6 +91,9 @@ describe('suggestPlaceholder', () => {
     runs: ['${table:runs.code}'],
     run: ['${run.code}'],
     cases: ['${table:cases.title}'],
+    requirements: ['${table:requirements.status}'],
+    dimensions: [],
+    sessions: [],
   };
 
   it('suggests the closest known placeholder for a small typo', () => {
@@ -90,6 +103,19 @@ describe('suggestPlaceholder', () => {
     expect(suggestPlaceholder('table:case.title', reference)).toBe('table:cases.title');
     expect(suggestPlaceholder('something.else', reference)).toBeNull();
     expect(suggestPlaceholder('plan.title', undefined)).toBeNull();
-    expect(suggestPlaceholder('plan.x', { workbook: [], runs: [], run: [], cases: [] })).toBeNull();
+    expect(suggestPlaceholder('table:requirement.status', reference)).toBe(
+      'table:requirements.status',
+    );
+    expect(
+      suggestPlaceholder('plan.x', {
+        workbook: [],
+        runs: [],
+        run: [],
+        cases: [],
+        requirements: [],
+        dimensions: [],
+        sessions: [],
+      }),
+    ).toBeNull();
   });
 });

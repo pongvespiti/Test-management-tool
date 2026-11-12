@@ -24,6 +24,12 @@ export interface TemplatePlaceholders {
   run: string[];
   /** Case rows of the per-run sheet (`${table:cases.title}` …). */
   cases: string[];
+  /** Requirements tested by the plan, any sheet (`${table:requirements.key}` …). */
+  requirements: string[];
+  /** Results by environment value, any sheet (`${table:dimensions.value}` …). */
+  dimensions: string[];
+  /** Exploratory sessions of the plan's release, any sheet (`${table:sessions.key}` …). */
+  sessions: string[];
 }
 
 /** Report templates; the first item is the built-in default (`id: 0`, `builtIn: true`). */

@@ -79,6 +79,28 @@ describe('placeholderReference', () => {
     expect(isKnownPlaceholder('table:cases.estimate')).toBe(true);
   });
 
+  it('lists the tables that work on every sheet', () => {
+    expect(ref.requirements).toEqual(
+      expect.arrayContaining([
+        '${table:requirements.key}',
+        '${table:requirements.status}',
+        '${table:requirements.review}',
+        '${table:requirements.ng}',
+        '${table:requirements.total}',
+      ]),
+    );
+    expect(ref.dimensions).toEqual(
+      expect.arrayContaining(['${table:dimensions.dimension}', '${table:dimensions.value}']),
+    );
+    expect(ref.sessions).toEqual(
+      expect.arrayContaining(['${table:sessions.key}', '${table:sessions.timeBox}']),
+    );
+    expect(isKnownPlaceholder('table:requirements.jiraStatus')).toBe(true);
+    expect(isKnownPlaceholder('table:requirements.colour')).toBe(false);
+    expect(isKnownPlaceholder('table:sessions.summary')).toBe(true);
+    expect(isKnownPlaceholder('table:dimensions.runs')).toBe(true);
+  });
+
   it('accepts data-dependent names by shape', () => {
     expect(isKnownPlaceholder('plan.title')).toBe(true);
     expect(isKnownPlaceholder('env.anything_new')).toBe(true);

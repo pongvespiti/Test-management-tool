@@ -4,13 +4,17 @@
  * numbered text. Reads only run snapshots (ADR-003).
  */
 import type { RunCase, TestPlan } from '@tmt/database';
-import type { ReportCase, ReportData, ReportRun } from '@tmt/excel';
+import type { ReportCase, ReportData, ReportRun, ReportSession } from '@tmt/excel';
 import {
   CASE_PRIORITY_LABELS,
   JUDGEMENT_LABELS,
   MATRIX_CELL_EXPORT_LABELS,
   PLAN_STATUS_LABELS,
+  REQUIREMENT_SOURCE_LABELS,
+  SESSION_STATUS_LABELS,
   RESULT_EXPORT_LABELS,
+  defectKey,
+  OPEN_DEFECT_STATUSES,
   slugKey,
   stepsToText,
   type EnvEntryDTO,
@@ -23,6 +27,8 @@ import { buildRefs, countsByRun } from '../execution/execution.queries.js';
 import { buildPlanMatrix } from '../execution/matrix.js';
 import { dateInZone, safeTimeZone } from '../execution/report-time.js';
 import { envTemplateOf, fieldDefsOf } from '../library/library.mapper.js';
+import { needsReview } from '../requirements/requirements.service.js';
+import { dimensionRows, requirementRows } from './report-extras.js';
 
 /** Case result remark: the library remark and the tester's remark (both, when they differ). */
 function remarkOf(rc: Pick<RunCase, 'caseRemark' | 'resultRemark'>): string | null {
@@ -153,7 +159,88 @@ export async function buildPlanReportData(
     },
     groups: matrix.groups,
     runs: reportRuns,
+    requirements: await requirementTable(db, plan.projectId, caseRows),
+    dimensions: dimensionRows(reportRuns),
+    sessions: await sessionTable(db, plan.projectId, plan.releaseId, tz),
   };
+}
+
+/** Requirements tested by the plan's case rows, with their results and open defects. */
+async function requirementTable(db: Db, projectId: number, caseRows: RunCase[]) {
+  if (caseRows.length === 0) return [];
+  const [requirements, links, defectLinks] = await Promise.all([
+    db.requirement.findMany({ where: { projectId } }),
+    db.requirementCase.findMany({
+      where: { requirement: { projectId } },
+      select: { requirementId: true, testCaseId: true },
+    }),
+    db.defectLink.findMany({
+      where: {
+        runCaseId: { in: caseRows.map((rc) => rc.id) },
+        defect: { status: { in: [...OPEN_DEFECT_STATUSES] } },
+      },
+      select: { runCaseId: true, defect: { select: { seq: true } } },
+      orderBy: { defect: { seq: 'asc' } },
+    }),
+  ]);
+  const linked = new Map<number, Set<number>>();
+  for (const l of links) {
+    const set = linked.get(l.requirementId) ?? new Set<number>();
+    set.add(l.testCaseId);
+    linked.set(l.requirementId, set);
+  }
+  const defectKeys = new Map<number, string[]>();
+  for (const l of defectLinks) {
+    if (l.runCaseId === null) continue;
+    defectKeys.set(l.runCaseId, [...(defectKeys.get(l.runCaseId) ?? []), defectKey(l.defect.seq)]);
+  }
+  return requirementRows(
+    requirements.map((r) => ({
+      id: r.id,
+      key: r.key,
+      title: r.title,
+      source: REQUIREMENT_SOURCE_LABELS[r.source] ?? r.source,
+      externalStatus: r.externalStatus,
+      needsReview: needsReview(r),
+    })),
+    linked,
+    caseRows,
+    defectKeys,
+  );
+}
+
+/** Exploratory sessions of the plan's release (none without a release), oldest first. */
+async function sessionTable(
+  db: Db,
+  projectId: number,
+  releaseId: number | null,
+  tz: string,
+): Promise<ReportSession[]> {
+  if (releaseId === null) return [];
+  const sessions = await db.exploratorySession.findMany({
+    where: { projectId, releaseId },
+    orderBy: { seq: 'asc' },
+    include: {
+      owner: { select: { displayName: true } },
+      build: { select: { name: true } },
+      _count: { select: { notes: true, defects: true } },
+    },
+  });
+  const day = (d: Date | null) => (d ? dateInZone(d, tz) : null);
+  return sessions.map((s) => ({
+    key: `EXP-${s.seq}`,
+    title: s.title,
+    status: SESSION_STATUS_LABELS[s.status] ?? s.status,
+    owner: s.owner?.displayName ?? null,
+    build: s.build?.name ?? null,
+    timeBox: s.timeBoxMinutes,
+    started: day(s.startedAt),
+    ended: day(s.endedAt),
+    notes: s._count.notes,
+    defects: s._count.defects,
+    references: s.references,
+    summary: s.summary,
+  }));
 }
 
 /**

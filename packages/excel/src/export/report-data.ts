@@ -25,6 +25,60 @@ export interface ReportData {
   /** Summary group names in display order (columns of the summary matrix). */
   groups: string[];
   runs: ReportRun[];
+  /** Requirements tested by the plan (`${table:requirements.*}`); none when left out. */
+  requirements?: ReportRequirement[];
+  /** Results by environment value (`${table:dimensions.*}`); none when left out. */
+  dimensions?: ReportDimension[];
+  /** Exploratory sessions of the plan's release (`${table:sessions.*}`); none when left out. */
+  sessions?: ReportSession[];
+}
+
+/** One row of `${table:requirements.*}`: a requirement and the results of the plan's cases that test it. */
+export interface ReportRequirement {
+  key: string;
+  title: string;
+  /** Export label: "Excel", "Jira" or "Typed in". */
+  source: string;
+  /** Status of the Jira issue, for requirements read from Jira. */
+  jiraStatus: string | null;
+  /** "Passing", "Failing", "In progress" or "Not covered". */
+  status: string;
+  /** "Review" while the text changed and the cases were not checked again, else ''. */
+  review: string;
+  /** Case rows of the plan that test the requirement (a case in two runs counts twice). */
+  cases: number;
+  /** Case results of those rows by status. */
+  counts: StatusCounts;
+  /** Keys of the open defects raised on those rows, comma separated. */
+  defects: string;
+}
+
+/** One row of `${table:dimensions.*}`: one value of an environment label (or Build) and its results. */
+export interface ReportDimension {
+  /** Environment label, e.g. "Platform", or "Build". */
+  dimension: string;
+  value: string;
+  runs: number;
+  counts: StatusCounts;
+}
+
+/** One row of `${table:sessions.*}`. */
+export interface ReportSession {
+  /** `EXP-<seq>` */
+  key: string;
+  title: string;
+  /** Export label, e.g. "Completed". */
+  status: string;
+  owner: string | null;
+  build: string | null;
+  timeBox: number | null;
+  /** ISO date (YYYY-MM-DD). */
+  started: string | null;
+  ended: string | null;
+  notes: number;
+  defects: number;
+  references: string | null;
+  summary: string | null;
 }
 
 export interface ReportRun {
@@ -134,5 +188,51 @@ export function runContext(data: ReportData, run: ReportRun): Record<string, unk
     ...workbookContext(data),
     run: { ...runFields, ...run.counts },
     env: run.env,
+  };
+}
+
+function withCounts(item: TableItem, counts: StatusCounts): TableItem {
+  let total = 0;
+  for (const status of RESULT_STATUSES) {
+    item[status] = counts[status] ?? 0;
+    total += counts[status] ?? 0;
+  }
+  item.total = total;
+  return item;
+}
+
+/** Row of the `${table:requirements.*}` table. */
+export function requirementTableItem(r: ReportRequirement): TableItem {
+  return withCounts(
+    {
+      key: r.key,
+      title: r.title,
+      source: r.source,
+      jiraStatus: r.jiraStatus,
+      status: r.status,
+      review: r.review,
+      cases: r.cases,
+      defects: r.defects,
+    },
+    r.counts,
+  );
+}
+
+/** Row of the `${table:dimensions.*}` table. */
+export function dimensionTableItem(d: ReportDimension): TableItem {
+  return withCounts({ dimension: d.dimension, value: d.value, runs: d.runs }, d.counts);
+}
+
+/** Row of the `${table:sessions.*}` table. */
+export function sessionTableItem(s: ReportSession): TableItem {
+  return { ...s };
+}
+
+/** Tables every sheet can use besides the ones of its own context. */
+export function workbookTables(data: ReportData): Record<string, TableItem[]> {
+  return {
+    requirements: (data.requirements ?? []).map(requirementTableItem),
+    dimensions: (data.dimensions ?? []).map(dimensionTableItem),
+    sessions: (data.sessions ?? []).map(sessionTableItem),
   };
 }

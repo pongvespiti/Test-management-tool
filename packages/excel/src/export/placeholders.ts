@@ -31,6 +31,12 @@ export interface PlaceholderReference {
   run: string[];
   /** Case rows of the run sheet: `${table:cases.<field>}`. */
   cases: string[];
+  /** Requirements tested by the plan, any sheet: `${table:requirements.<field>}`. */
+  requirements: string[];
+  /** Results by environment value, any sheet: `${table:dimensions.<field>}`. */
+  dimensions: string[];
+  /** Exploratory sessions of the release, any sheet: `${table:sessions.<field>}`. */
+  sessions: string[];
 }
 
 const WORKBOOK_FIELDS = [
@@ -79,6 +85,33 @@ const CASE_FIELDS = [
   'estimate',
 ];
 
+const REQUIREMENT_FIELDS = [
+  'key',
+  'title',
+  'source',
+  'jiraStatus',
+  'status',
+  'review',
+  'cases',
+  'defects',
+  ...COUNT_FIELDS,
+];
+const DIMENSION_FIELDS = ['dimension', 'value', 'runs', ...COUNT_FIELDS];
+const SESSION_FIELDS = [
+  'key',
+  'title',
+  'status',
+  'owner',
+  'build',
+  'timeBox',
+  'started',
+  'ended',
+  'notes',
+  'defects',
+  'references',
+  'summary',
+];
+
 /**
  * Every placeholder a template may use for a suite with these custom fields, environment labels
  * and summary groups (for `/templates/placeholders` and the template check).
@@ -106,6 +139,9 @@ export function placeholderReference(
     cases: [...CASE_FIELDS, ...fieldDefs.map((f) => `cf_${f.key}`)].map((f) =>
       wrap(`table:cases.${f}`),
     ),
+    requirements: REQUIREMENT_FIELDS.map((f) => wrap(`table:requirements.${f}`)),
+    dimensions: DIMENSION_FIELDS.map((f) => wrap(`table:dimensions.${f}`)),
+    sessions: SESSION_FIELDS.map((f) => wrap(`table:sessions.${f}`)),
   };
 }
 
@@ -116,7 +152,15 @@ export function placeholderReference(
  */
 export function isKnownPlaceholder(inner: string, reference?: PlaceholderReference): boolean {
   if (reference) {
-    const all = [...reference.workbook, ...reference.runs, ...reference.run, ...reference.cases];
+    const all = [
+      ...reference.workbook,
+      ...reference.runs,
+      ...reference.run,
+      ...reference.cases,
+      ...reference.requirements,
+      ...reference.dimensions,
+      ...reference.sessions,
+    ];
     if (all.includes(`\${${inner}}`)) return true;
   }
   if (WORKBOOK_FIELDS.includes(inner)) return true;
@@ -138,6 +182,9 @@ export function isKnownPlaceholder(inner: string, reference?: PlaceholderReferen
   }
   if (collection === 'cases') return CASE_FIELDS.includes(field) || /^cf_[a-z0-9_]+$/.test(field);
   if (collection === 'envList') return field === 'label' || field === 'value';
+  if (collection === 'requirements') return REQUIREMENT_FIELDS.includes(field);
+  if (collection === 'dimensions') return DIMENSION_FIELDS.includes(field);
+  if (collection === 'sessions') return SESSION_FIELDS.includes(field);
   return false;
 }
 

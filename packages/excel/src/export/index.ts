@@ -16,4 +16,13 @@ export type { Placeholder, PlaceholderReference } from './placeholders';
 export { sanitizeSheetName, quoteSheetName, MAX_SHEET_NAME } from './sheet-name';
 export { TemplateError } from './errors';
 export { runTableItem, caseTableItem, workbookContext, runContext } from './report-data';
-export type { ReportData, ReportRun, ReportCase, CellScalar, TableItem } from './report-data';
+export type {
+  ReportData,
+  ReportRun,
+  ReportCase,
+  ReportRequirement,
+  ReportDimension,
+  ReportSession,
+  CellScalar,
+  TableItem,
+} from './report-data';
