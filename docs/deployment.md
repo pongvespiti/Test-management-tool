@@ -31,14 +31,32 @@ and `TRUST_PROXY=true`.
 
 ### Backup
 
+`scripts/backup.sh` writes a database dump and a copy of the data directory (attachments, report
+templates and `app-secret`) with the same time stamp, checks that both files are readable, and
+deletes its own backups older than `KEEP_DAYS` (default 14; `0` keeps everything):
+
 ```bash
-docker compose exec -T db pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" | gzip > tmt-$(date +%F).sql.gz
-docker run --rm -v tmt_tmt-data:/data -v "$PWD":/backup busybox tar czf /backup/tmt-data-$(date +%F).tgz -C /data .
+scripts/backup.sh /srv/tmt-backups          # run from the folder with docker-compose.yml and .env
 ```
 
-Back up the database **and** the `tmt-data` volume together — attachments and report templates are
-files referenced by database rows, and `app-secret` (when `APP_SECRET` is not set) decrypts the
+Schedule it every night, e.g. with cron (`30 1 * * * cd /opt/tmt && scripts/backup.sh /srv/tmt-backups`),
+and copy the folder to another machine: a backup on the same disk does not survive the disk.
+On a plain host (no Docker) set `BACKUP_MODE=host`, `DATABASE_URL` and `DATA_DIR`.
+
+Always back up the database **and** the data directory together — attachments and report templates
+are files referenced by database rows, and `app-secret` (when `APP_SECRET` is not set) decrypts the
 stored Jira token.
+
+### Restore
+
+```bash
+scripts/restore.sh --yes /srv/tmt-backups/tmt-db-20261112-013000.sql.gz /srv/tmt-backups/tmt-data-20261112-013000.tgz
+```
+
+This **replaces** the current database and data files (Docker: the API and web containers are
+stopped during the restore and started again). Practise it once on a spare server before you need
+it. A backup made by an older version restores into a newer one; start the stack afterwards and the
+migrate step brings the schema up to date.
 
 ### Upgrade
 
