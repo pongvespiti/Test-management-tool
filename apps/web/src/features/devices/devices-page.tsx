@@ -49,6 +49,16 @@ const STATUSES: StatusFilter[] = ['all', ...DEVICE_STATUSES];
 const pick = <T extends string>(all: readonly T[], value: string | null, fallback: T): T =>
   all.find((v) => v === value) ?? fallback;
 
+/** Runs a device action and tells the person how it went. */
+const run = async (action: () => Promise<unknown>, done: string, failed: string) => {
+  try {
+    await action();
+    notifySuccess(done);
+  } catch (err) {
+    notifyError(err, failed);
+  }
+};
+
 /** Route `/projects/[projectId]/devices`: the units, phones and routers of the team and who holds them. */
 export function DevicesPage() {
   const { project, projectId, can } = useProject();
@@ -83,15 +93,6 @@ export function DevicesPage() {
       }
       return next;
     });
-
-  const run = async (action: () => Promise<unknown>, done: string, failed: string) => {
-    try {
-      await action();
-      notifySuccess(done);
-    } catch (err) {
-      notifyError(err, failed);
-    }
-  };
 
   const newButton = canWrite && (
     <Button onClick={() => editor.open(null)}>
