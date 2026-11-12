@@ -13,6 +13,7 @@ describe('navigation config', () => {
       'Test plans',
       'Exploratory',
       'Defects',
+      'Devices',
       'Reports',
     ]);
     expect(sections[1]!.items.map((i) => i.href)).toContain('/projects/3/settings/suites');
@@ -27,6 +28,7 @@ describe('navigation config', () => {
       'Test plans',
       'Exploratory',
       'Defects',
+      'Devices',
       'Reports',
     ]);
     expect(projectNav(3, true)[0]!.items[2]!.href).toBe('/projects/3/team');

@@ -21,4 +21,5 @@ export * from './logic/steps';
 export * from './logic/references';
 export * from './logic/env-dimensions';
 export * from './logic/summary-view';
+export * from './schemas/devices';
 export * from './schemas/notifications';

@@ -20,6 +20,8 @@ import type {
   JiraAuthType,
   Judgement,
   MatrixGroupBy,
+  DeviceKind,
+  DeviceStatus,
   NotificationKind,
   PlanStatus,
   ProjectRole,
@@ -1537,4 +1539,22 @@ export interface NotificationListDTO {
   items: NotificationDTO[];
   /** Unread in the project, not only in `items`. */
   unread: number;
+}
+
+// ---------------------------------------------------------------- test devices
+
+export interface DeviceDTO {
+  id: number;
+  kind: DeviceKind;
+  name: string;
+  model: string | null;
+  serial: string | null;
+  osVersion: string | null;
+  status: DeviceStatus;
+  /** Who holds the device now (only when `status` is `in_use`). */
+  holder: UserRef | null;
+  heldSince: string | null;
+  note: string | null;
+  createdAt: string;
+  updatedAt: string;
 }

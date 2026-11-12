@@ -274,6 +274,7 @@ model User {
   sessionsCreated      ExploratorySession[] @relation("SessionCreatedBy")
   requirementsCreated  Requirement[]        @relation("RequirementCreatedBy")
   notifications        Notification[]
+  devicesHeld          Device[]             @relation("DeviceHolder")
   requirementsReviewed Requirement[]        @relation("RequirementReviewedBy")
   sessionNotes         ExploratoryNote[]
 
@@ -355,6 +356,7 @@ model Project {
   sessions        ExploratorySession[]
   requirements    Requirement[]
   notifications   Notification[]
+  devices         Device[]
 
   @@map("projects")
 }
@@ -1081,4 +1083,48 @@ model Notification {
   @@unique([userId, dedupeKey])
   @@index([userId, readAt, createdAt])
   @@map("notifications")
+}
+
+enum DeviceKind {
+  unit
+  phone
+  router
+  other
+
+  @@map("device_kind")
+}
+
+enum DeviceStatus {
+  available
+  in_use
+  repair
+
+  @@map("device_status")
+}
+
+/// A physical test device (air conditioner unit, phone, router …) with the person holding it now.
+model Device {
+  id        Int          @id @default(autoincrement())
+  projectId Int          @map("project_id")
+  kind      DeviceKind
+  name      String
+  model     String?
+  serial    String?
+  /// OS version or firmware.
+  osVersion String?      @map("os_version")
+  status    DeviceStatus @default(available)
+  /// Set exactly when `status` is `in_use`.
+  holderId  Int?         @map("holder_id")
+  heldSince DateTime?    @map("held_since") @db.Timestamptz(6)
+  note      String?
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  holder  User?   @relation("DeviceHolder", fields: [holderId], references: [id], onDelete: SetNull)
+
+  @@unique([projectId, name])
+  @@index([projectId, status])
+  @@index([holderId])
+  @@map("devices")
 }

@@ -36,6 +36,8 @@ export const PERMISSIONS = {
   importAutomation: 'tester',
   manageIntegrations: 'lead',
   useIntegrations: 'tester',
+  writeDevices: 'tester',
+  deleteDevices: 'lead',
   viewReports: 'viewer',
 } as const satisfies Record<string, ProjectRole>;
 

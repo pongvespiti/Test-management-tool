@@ -166,3 +166,11 @@ export const NOTIFICATION_KINDS = [
   'requirement_changed',
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
+
+/** What a test device is. */
+export const DEVICE_KINDS = ['unit', 'phone', 'router', 'other'] as const;
+export type DeviceKind = (typeof DEVICE_KINDS)[number];
+
+/** `in_use` means someone holds the device (it has a holder). */
+export const DEVICE_STATUSES = ['available', 'in_use', 'repair'] as const;
+export type DeviceStatus = (typeof DEVICE_STATUSES)[number];

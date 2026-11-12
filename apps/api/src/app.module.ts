@@ -22,6 +22,7 @@ import { ExecutionModule } from './modules/execution/execution.module.js';
 import { ImportsModule } from './modules/imports/imports.module.js';
 import { IntegrationsModule } from './modules/integrations/integrations.module.js';
 import { LibraryModule } from './modules/library/library.module.js';
+import { DevicesModule } from './modules/devices/devices.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
 import { MyWorkModule } from './modules/my-work/my-work.module.js';
 import { DimensionsModule } from './modules/dimensions/dimensions.module.js';
@@ -49,6 +50,7 @@ const FEATURE_MODULES = [
   ReportsModule,
   DashboardModule,
   MyWorkModule,
+  DevicesModule,
   NotificationsModule,
   TopicsModule,
   DimensionsModule,

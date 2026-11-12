@@ -537,3 +537,12 @@ export const DEMO_VIEWS = [
     config: { rows: 'Platform', cols: '@topic', filters: {} },
   },
 ] as const;
+
+/** Devices the team tests with; `repair` sends one to the repair state. */
+export const DEMO_DEVICES = [
+  { kind: 'unit', name: 'Unit A', model: 'FTXM-demo', serial: 'SN-0001', osVersion: 'FW 2.0.1' },
+  { kind: 'unit', name: 'Unit B', model: 'FTXM-demo', serial: 'SN-0002', osVersion: 'FW 2.0.0' },
+  { kind: 'phone', name: 'Pixel 9', model: 'Pixel 9', osVersion: 'Android 15' },
+  { kind: 'phone', name: 'iPhone 15', model: 'iPhone 15', osVersion: 'iOS 18' },
+  { kind: 'router', name: 'Router R1', model: 'AX3000', osVersion: 'FW 1.4', repair: true },
+] as const;

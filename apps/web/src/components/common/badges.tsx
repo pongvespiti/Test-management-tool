@@ -3,6 +3,7 @@ import type {
   DefectPriority,
   DefectSeverity,
   DefectStatus,
+  DeviceStatus,
   Judgement,
   MatrixCell,
   PlanStatus,
@@ -15,6 +16,7 @@ import { StatusPill } from './status-pill';
 import {
   CASE_STATUS_TONES,
   DEFECT_STATUS_TONES,
+  DEVICE_STATUS_TONES,
   JUDGEMENT_TONES,
   labels,
   MATRIX_TONES,
@@ -117,6 +119,14 @@ export function CaseTypeBadge({ type }: { type: string }) {
       tone={abnormal ? { fg: '#B45309', bg: '#FFF4E6' } : { fg: '#495057', bg: '#F1F3F5' }}
     >
       {type || 'Normal'}
+    </StatusPill>
+  );
+}
+
+export function DeviceStatusBadge({ status }: { status: DeviceStatus }) {
+  return (
+    <StatusPill tone={DEVICE_STATUS_TONES[status]} minWidth={80}>
+      {labels.deviceStatus[status]}
     </StatusPill>
   );
 }

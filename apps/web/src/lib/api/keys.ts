@@ -70,6 +70,9 @@ export const qk = {
   session: (projectId: number, sessionId: number) =>
     ['sessions', projectId, 'one', sessionId] as const,
 
+  devices: (projectId: number) => ['devices', projectId] as const,
+  deviceList: (projectId: number, params: object) =>
+    ['devices', projectId, 'list', params] as const,
   notifications: (projectId: number) => ['notifications', projectId] as const,
   notificationList: (projectId: number, params: object) =>
     ['notifications', projectId, 'list', params] as const,

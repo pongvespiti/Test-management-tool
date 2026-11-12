@@ -9,6 +9,7 @@ import {
   DEFECT_PRIORITY_LABELS,
   DEFECT_SEVERITY_LABELS,
   DEFECT_STATUS_LABELS,
+  DEVICE_STATUS_LABELS,
   JUDGEMENT_LABELS,
   MATRIX_CELL_LABELS,
   PLAN_STATUS_LABELS,
@@ -19,6 +20,7 @@ import {
   type DefectPriority,
   type DefectSeverity,
   type DefectStatus,
+  type DeviceStatus,
   type Judgement,
   type MatrixCell,
   type PlanStatus,
@@ -86,6 +88,12 @@ export const RELEASE_STATUS_TONES: Record<ReleaseStatus, Tone> = {
   completed: GREEN,
 };
 
+export const DEVICE_STATUS_TONES: Record<DeviceStatus, Tone> = {
+  available: GREEN,
+  in_use: BLUE,
+  repair: ORANGE,
+};
+
 export const CASE_STATUS_TONES: Record<CaseStatus, Tone> = {
   draft: GRAY,
   in_review: VIOLET,
@@ -145,6 +153,7 @@ export const labels = {
   releaseStatus: RELEASE_STATUS_LABELS,
   caseStatus: CASE_STATUS_LABELS,
   defectStatus: DEFECT_STATUS_LABELS,
+  deviceStatus: DEVICE_STATUS_LABELS,
   severity: DEFECT_SEVERITY_LABELS,
   priority: DEFECT_PRIORITY_LABELS,
   casePriority: CASE_PRIORITY_LABELS,

@@ -36,6 +36,7 @@ import {
   DEMO_PLAN,
   DEMO_PROJECT,
   DEMO_RELEASES,
+  DEMO_DEVICES,
   DEMO_REQUIREMENTS,
   DEMO_RESULT_PATTERN,
   DEMO_ENV_LISTS,
@@ -162,6 +163,16 @@ async function seedRequirements(
     for (const ref of cited) {
       await call('PATCH', `${projectPath}/cases/${caseId(ref)}`, { references: requirement.key });
     }
+  }
+}
+
+/** Test devices; one of them is in repair. */
+async function seedDevices(call: Call, projectPath: string): Promise<void> {
+  for (const { repair, ...fields } of DEMO_DEVICES as readonly (Record<string, unknown> & {
+    repair?: boolean;
+  })[]) {
+    const device = await call('POST', `${projectPath}/devices`, fields);
+    if (repair) await call('PATCH', `${projectPath}/devices/${device.id}`, { status: 'repair' });
   }
 }
 
@@ -332,6 +343,7 @@ async function seedProjectContent(
   }
 
   await seedRequirements(call, projectPath, suites);
+  await seedDevices(call, projectPath);
   await seedSessions(call, projectPath, {
     testerId,
     releaseId: activeRelease.id,
