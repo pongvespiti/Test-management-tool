@@ -229,15 +229,12 @@ export function ImportRequirementsDialog({ onClose }: { onClose: () => void }) {
                 <label htmlFor="req-import-header" className="text-sm font-medium">
                   Header row
                 </label>
-                <Input
-                  id="req-import-header"
-                  inputMode="numeric"
-                  value={String(analysis.headerRow)}
-                  onChange={(e) => {
-                    const n = Number(e.target.value.replace(/[^\d]/g, ''));
-                    if (n >= 1 && n !== analysis.headerRow)
-                      void reanalyze(analysis.uploadId, { sheet: analysis.sheet, headerRow: n });
-                  }}
+                <HeaderRowInput
+                  key={analysis.headerRow}
+                  value={analysis.headerRow}
+                  onApply={(n) =>
+                    void reanalyze(analysis.uploadId, { sheet: analysis.sheet, headerRow: n })
+                  }
                 />
               </div>
             </div>
@@ -315,6 +312,37 @@ export function ImportRequirementsDialog({ onClose }: { onClose: () => void }) {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * Header row: typed freely, applied on Enter or when leaving the box (one re-read of the file,
+ * not one per keystroke); an invalid entry goes back to the current row. Remount it per row.
+ */
+function HeaderRowInput({ value, onApply }: { value: number; onApply: (row: number) => void }) {
+  const [row, setRow] = useState(String(value));
+  const apply = () => {
+    const n = Number.parseInt(row, 10);
+    if (Number.isInteger(n) && n >= 1 && n <= 100000 && n !== value) onApply(n);
+    else setRow(String(value));
+  };
+  return (
+    <Input
+      id="req-import-header"
+      type="number"
+      min={1}
+      max={100000}
+      inputMode="numeric"
+      value={row}
+      onChange={(e) => setRow(e.currentTarget.value)}
+      onBlur={apply}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          apply();
+        }
+      }}
+    />
   );
 }
 

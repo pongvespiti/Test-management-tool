@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import type { ProjectRole } from '@tmt/shared';
 import { screen, waitFor, within } from '@testing-library/react';
 import {
@@ -54,6 +54,10 @@ const lastQuery = (api: ReturnType<typeof stubReports>, report: string) =>
   api.find('GET', `/projects/3/reports/${report}`).at(-1)!.query.toString();
 
 describe('ReportsPage', () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   beforeEach(() => {
     openUrl('/projects/3/reports');
     stubChartSize();
@@ -422,6 +426,21 @@ describe('ReportsPage', () => {
   });
 
   it('draws runs as bars per topic, then per person, and lists runs without dates', async () => {
+    // "Late" depends on today: pin it inside the fixture's schedule (R1 due Nov 13).
+    // Timers stay real (Testing Library waits on them); only the clock is pinned.
+    jest.useFakeTimers({
+      doNotFake: [
+        'setTimeout',
+        'setInterval',
+        'clearTimeout',
+        'clearInterval',
+        'queueMicrotask',
+        'nextTick',
+        'setImmediate',
+        'clearImmediate',
+      ],
+      now: new Date('2026-11-10T03:00:00Z'),
+    });
     openUrl('/projects/3/reports?tab=schedule&release=5');
     const api = stubReports();
     const { user, rerender } = renderWithProviders(<ReportsPage />, as());
