@@ -37,6 +37,8 @@ export const envSchema = z.object({
   TRUST_PROXY: boolish.default(false),
   DATA_DIR: z.string().default('./data'),
   MAX_UPLOAD_MB: z.coerce.number().positive().max(2047).default(25),
+  /** Evidence attachments (photos, videos) are streamed to disk, so they may be much larger. */
+  MAX_ATTACHMENT_MB: z.coerce.number().positive().max(2047).default(500),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   SWAGGER_ENABLED: boolish.default(true),
   // sessions & sign-in

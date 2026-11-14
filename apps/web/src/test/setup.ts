@@ -17,7 +17,10 @@ if (!('ResizeObserver' in globalThis)) {
   Object.assign(globalThis, { ResizeObserver: ResizeObserverStub });
 }
 
-if (!window.matchMedia) {
+// Server-side tests (`@jest-environment node`) have no DOM.
+const hasDom = typeof window !== 'undefined';
+
+if (hasDom && !window.matchMedia) {
   Object.defineProperty(window, 'matchMedia', {
     writable: true,
     value: (query: string) => ({
@@ -34,11 +37,14 @@ if (!window.matchMedia) {
 }
 
 // Radix Select / Popover call these on elements.
-Element.prototype.hasPointerCapture ??= () => false;
-Element.prototype.releasePointerCapture ??= () => undefined;
-Element.prototype.scrollIntoView ??= () => undefined;
+if (hasDom) {
+  Element.prototype.hasPointerCapture ??= () => false;
+  Element.prototype.releasePointerCapture ??= () => undefined;
+  Element.prototype.scrollIntoView ??= () => undefined;
+}
 
 afterEach(() => {
+  if (!hasDom) return;
   cleanup();
   resetNavigation();
   window.localStorage.clear();

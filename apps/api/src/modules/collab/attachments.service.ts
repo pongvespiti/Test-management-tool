@@ -11,7 +11,7 @@ import { ActivityService } from '../activity/activity.service.js';
 import { assertMultipart } from '../execution/http-files.js';
 import { isInlineType } from '../storage/mime.js';
 import { StorageService } from '../storage/storage.service.js';
-import { UploadService, type MultipartFile } from '../storage/upload.service.js';
+import { UploadService, type DiskMultipartFile } from '../storage/upload.service.js';
 import { toAttachmentDTO } from './attachments.mapper.js';
 import { attachmentsOf } from './attachments.queries.js';
 import { evidenceLocked, isLockedByPlan, resolveEntity } from './entities.queries.js';
@@ -60,7 +60,7 @@ export class AttachmentsService {
     ctx: ProjectContext,
     me: AuthUser,
     req: Pick<Request, 'is'>,
-    file: MultipartFile | undefined,
+    file: DiskMultipartFile | undefined,
     fields: AttachmentFieldsInput,
   ): Promise<AttachmentDTO> {
     const db = this.prisma.db;

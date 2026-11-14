@@ -1,4 +1,5 @@
 import { API_PREFIX, CSRF_HEADER, CSRF_HEADER_VALUE, type ApiErrorBody } from '@tmt/shared';
+import { STREAM_UPLOAD_PREFIX } from '../upload-path';
 
 /** Error thrown for every non-2xx API response (shape of the server's error envelope). */
 export class ApiError extends Error {
@@ -26,7 +27,11 @@ export type QueryValue =
 export type QueryParams = Record<string, QueryValue>;
 
 export function buildUrl(path: string, query?: QueryParams): string {
-  const base = path.startsWith('/api/') ? path : `${API_BASE}${path}`;
+  // `/upload/…` is the streamed evidence upload (src/app/upload), outside the `/api` proxy.
+  const base =
+    path.startsWith('/api/') || path.startsWith(`${STREAM_UPLOAD_PREFIX}/`)
+      ? path
+      : `${API_BASE}${path}`;
   if (!query) return base;
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(query)) {

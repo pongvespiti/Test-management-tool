@@ -8,6 +8,7 @@ import type {
 } from '@tmt/shared';
 import { api, buildUrl } from './client';
 import { qk } from './keys';
+import { STREAM_UPLOAD_PREFIX } from '../upload-path';
 
 /** Entity types that can own attachments through the generic endpoint. */
 export type AttachableType = 'run_case' | 'defect' | 'test_case' | 'plan' | 'comment';
@@ -92,7 +93,12 @@ export function useUploadAttachment(projectId: number) {
       fd.append('entityId', String(entityId));
       const name = fileName ?? (file instanceof File ? file.name : 'file');
       fd.append('file', file, name);
-      return api.upload<AttachmentDTO>(`/projects/${projectId}/attachments`, fd, { onProgress });
+      // Streamed past the /api proxy so large screen recordings are not held in memory.
+      return api.upload<AttachmentDTO>(
+        `${STREAM_UPLOAD_PREFIX}/projects/${projectId}/attachments`,
+        fd,
+        { onProgress },
+      );
     },
     onSuccess: (a) => {
       void qc.invalidateQueries({

@@ -26,5 +26,9 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   // Everything except Next.js internals and static files.
-  matcher: ['/((?!_next/static|_next/image|favicon.svg|.*\\.(?:png|jpg|svg|ico|woff2?)$).*)'],
+  // Not `upload/…`: evidence uploads are streamed by a route handler (src/app/upload), and a
+  // body that passes the proxy would be held in memory.
+  matcher: [
+    '/((?!_next/static|_next/image|upload/|favicon.svg|.*\\.(?:png|jpg|svg|ico|woff2?)$).*)',
+  ],
 };

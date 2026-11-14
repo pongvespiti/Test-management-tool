@@ -32,6 +32,11 @@ and `TRUST_PROXY=true`. Make the proxy **replace** `X-Forwarded-For` with the cl
 than append to it (nginx: `proxy_set_header X-Forwarded-For $remote_addr;`), so a browser cannot
 choose the address the sign-in limit counts.
 
+Evidence attachments may be up to `MAX_ATTACHMENT_MB` (500 MB by default), so the reverse proxy must
+accept bodies that large and wait for slow uploads (nginx: `client_max_body_size 520m;
+proxy_request_buffering off; proxy_read_timeout 600s;`). Without it, large screen recordings fail
+in the proxy with its own error page.
+
 ### Production settings
 
 | Setting                                   | Value                                                   | Why                                                                                                             |
@@ -46,10 +51,13 @@ choose the address the sign-in limit counts.
 | `DEFAULT_DOC_NO_PATTERN`                  | your document code, e.g. `{YY}TR-<dept>-{MM}-{SEQ}`     | numbers of new test plans                                                                                       |
 | `LOGIN_MAX_FAILED` / `LOGIN_LOCK_MINUTES` | `5` / `15` (defaults)                                   | a locked user waits, or an admin resets the password (which also unlocks)                                       |
 | `LOGIN_RATE_LIMIT_PER_MIN`                | `20` (default)                                          | per username and client; one client is capped at ten times that over all names                                  |
-| `MAX_UPLOAD_MB`                           | `25` (default), at most `99`                            | larger uploads also need `proxyClientMaxBodySize` in `apps/web/next.config.ts` raised and the web image rebuilt |
+| `MAX_UPLOAD_MB`                           | `25` (default), at most `99`                            | Excel imports, report templates, JUnit files (checked in memory)                                                |
+| `MAX_ATTACHMENT_MB`                       | `500` (default), at most `2047`                         | evidence (photos, videos) is streamed to disk; size the data volume for it                                      |
 | `SESSION_IDLE_HOURS` / `SESSION_MAX_DAYS` | `12` / `7` (defaults)                                   | how long a sign-in lasts                                                                                        |
 
-Server size: 2 CPU, 4 GB RAM is comfortable. The API used about 800 MB under a test load of
+Server size: 2 CPU, 4 GB RAM is comfortable. Large evidence uploads are streamed to disk: three
+400 MB videos at once kept the web server under 200 MB and the API under 300 MB, so they need
+disk space rather than memory (plan for the videos you keep; they are in the backups too). The API used about 800 MB under a test load of
 20,000 cases and 270,000 run cases, and stayed flat across repeated Excel exports.
 
 ### Backup

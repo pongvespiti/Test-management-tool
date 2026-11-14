@@ -11,12 +11,17 @@ import {
 import { createPrismaMock, type PrismaMock } from '../../../test/unit/prisma-mock.js';
 import type { ActivityService } from '../activity/activity.service.js';
 import type { StorageService } from '../storage/storage.service.js';
-import type { MultipartFile, UploadService } from '../storage/upload.service.js';
+import type { DiskMultipartFile, UploadService } from '../storage/upload.service.js';
 import { AttachmentsService } from './attachments.service.js';
 
 const multipart = { is: () => 'multipart/form-data' as const };
 const json = { is: () => false as const };
-const file: MultipartFile = { originalname: 'shot.png', size: 3, buffer: Buffer.from('abc') };
+const file: DiskMultipartFile = {
+  originalname: 'shot.png',
+  size: 3,
+  path: '/data/tmp/uploads/x',
+  sha256: 'abc',
+};
 const stored = {
   fileName: 'shot.png',
   mimeType: 'image/png',

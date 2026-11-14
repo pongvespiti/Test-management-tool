@@ -3,6 +3,8 @@
  * tests). Suites, cases, plans, runs and results are created through their endpoints.
  */
 import fs from 'node:fs';
+import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
 import type {
   ActivityDTO,
@@ -451,8 +453,44 @@ describe('attachments', () => {
     expect((await other.get(`${OTHER}/attachments/${mine.id}/download`)).status).toBe(404);
   });
 
+  it('streams evidence to disk under MAX_ATTACHMENT_MB, not the smaller MAX_UPLOAD_MB', async () => {
+    const app2 = await createExtraTestApp({ maxUploadBytes: 1024, maxAttachmentBytes: 64 * 1024 });
+    try {
+      const u = await createUser(app2.prisma, 'streamer');
+      const p = await createProject(app2.prisma, 'ST', [{ userId: u.id, role: 'lead' }]);
+      const api = await login(app2, 'streamer');
+      const plan2 = expectBody<PlanDTO>(
+        await api.post(`/projects/${p.id}/plans`, { docNo: 'V-1', title: 'V' }),
+        201,
+      );
+      const content = Buffer.alloc(40 * 1024);
+      for (let i = 0; i < content.length; i++) content[i] = (i * 7) % 251;
+      const a = expectBody<AttachmentDTO>(
+        await upload(app2, api, `/projects/${p.id}/attachments`, {
+          fields: { entityType: 'plan', entityId: String(plan2.id) },
+          file: { name: 'clip.mp4', content },
+        }),
+        201,
+      );
+      expect(a.sizeBytes).toBe(content.length);
+      const row = await app2.prisma.db.attachment.findUniqueOrThrow({ where: { id: a.id } });
+      expect(row.sha256).toBe(createHash('sha256').update(content).digest('hex'));
+      const stored = fs.readFileSync(path.join(app2.config.dataDir, row.storageKey));
+      expect(stored.equals(content)).toBe(true);
+      const exe = await upload(app2, api, `/projects/${p.id}/attachments`, {
+        fields: { entityType: 'plan', entityId: String(plan2.id) },
+        file: { name: 'tool.exe', content: Buffer.from('MZ') },
+      });
+      expect(exe.status).toBe(415);
+      // Nothing is left in the temporary directory, accepted or refused.
+      expect(fs.readdirSync(path.join(app2.config.dataDir, 'tmp', 'uploads'))).toEqual([]);
+    } finally {
+      await app2.close();
+    }
+  });
+
   it('enforces the upload size limit', async () => {
-    const small = await createExtraTestApp({ maxUploadBytes: 1024 });
+    const small = await createExtraTestApp({ maxAttachmentBytes: 1024 });
     try {
       const u = await createUser(small.prisma, 'sizer');
       const p = await createProject(small.prisma, 'SZ', [{ userId: u.id, role: 'lead' }]);
@@ -467,6 +505,7 @@ describe('attachments', () => {
       });
       expect(big.status).toBe(413);
       expect(errorCode(big)).toBe('FILE_TOO_LARGE');
+      expect(big.body.error.message).toBe('File is larger than 1 KB');
       expect(
         fs
           .readdirSync(small.config.dataDir, { recursive: true })

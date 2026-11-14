@@ -2,9 +2,12 @@ import { createHash, randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
-import { Injectable } from '@nestjs/common';
+import { Injectable, type OnModuleInit } from '@nestjs/common';
 import { AppConfig } from '../../config/app-config.js';
 import { AppException, badRequest } from '../../common/errors/app.exception.js';
+
+/** Temporary uploads older than this are leftovers of a crash. */
+const STALE_TEMP_MS = 24 * 60 * 60 * 1000;
 
 export interface StoredFile {
   storageKey: string;
@@ -17,7 +20,7 @@ export interface StoredFile {
  * signed reports, templates). Keys are opaque and never derived from client file names.
  */
 @Injectable()
-export class StorageService {
+export class StorageService implements OnModuleInit {
   private readonly root: string;
 
   constructor(private readonly config: AppConfig) {
@@ -50,6 +53,34 @@ export class StorageService {
       sizeBytes: buf.length,
       sha256: createHash('sha256').update(buf).digest('hex'),
     };
+  }
+
+  /**
+   * Moves a file that was streamed to `DATA_DIR/tmp` (see `DiskFileInterceptor`) into storage.
+   * Same file system, so this is a rename, not a copy.
+   */
+  async adoptFile(tempPath: string, sizeBytes: number, sha256: string): Promise<StoredFile> {
+    const tmpRoot = this.resolve('tmp') + path.sep;
+    if (!path.resolve(tempPath).startsWith(tmpRoot)) {
+      throw badRequest('BAD_STORAGE_KEY', 'Invalid file reference');
+    }
+    const storageKey = this.newKey();
+    const full = this.resolve(storageKey);
+    await fsp.mkdir(path.dirname(full), { recursive: true });
+    await fsp.rename(tempPath, full);
+    return { storageKey, sizeBytes, sha256 };
+  }
+
+  /** Removes temporary uploads left behind by a crash or a killed process (older than a day). */
+  async onModuleInit(): Promise<void> {
+    const dir = path.join(this.root, 'tmp', 'uploads');
+    const names = await fsp.readdir(dir).catch(() => [] as string[]);
+    const cutoff = Date.now() - STALE_TEMP_MS;
+    for (const name of names) {
+      const full = path.join(dir, name);
+      const st = await fsp.stat(full).catch(() => null);
+      if (st && st.mtimeMs < cutoff) await fsp.rm(full, { force: true }).catch(() => undefined);
+    }
   }
 
   openReadStream(storageKey: string): fs.ReadStream {

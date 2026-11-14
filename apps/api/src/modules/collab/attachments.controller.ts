@@ -27,8 +27,8 @@ import { ApiErrorCodes, ProjectPermission } from '../../common/decorators/auth.d
 import { CurrentProject, CurrentUser } from '../../common/decorators/request.decorators.js';
 import type { AuthUser, ProjectContext } from '../../common/types/auth.js';
 import { contentDisposition } from '../storage/mime.js';
-import { FileUpload } from '../storage/upload.decorator.js';
-import type { MultipartFile } from '../storage/upload.service.js';
+import { LargeFileUpload } from '../storage/disk-upload.interceptor.js';
+import type { DiskMultipartFile } from '../storage/upload.service.js';
 import { AttachmentsService } from './attachments.service.js';
 
 /**
@@ -72,16 +72,16 @@ export class AttachmentsController {
     return this.attachments.list(ctx.id, q.entityType, q.entityId);
   }
 
-  /** Uploads evidence (any non-executable file ≤ MAX_UPLOAD_MB) to an entity of the project. */
+  /** Uploads evidence (any non-executable file ≤ MAX_ATTACHMENT_MB, streamed to disk) to an entity of the project. */
   @Post()
   @ProjectPermission('comment')
-  @FileUpload({ entityType: { type: 'string' }, entityId: { type: 'string' } })
+  @LargeFileUpload({ entityType: { type: 'string' }, entityId: { type: 'string' } })
   @ApiErrorCodes('BAD_ENTITY', 'PLAN_LOCKED', ...UPLOAD_ERRORS)
   upload(
     @CurrentProject() ctx: ProjectContext,
     @CurrentUser() me: AuthUser,
     @Req() req: Request,
-    @UploadedFile() file: MultipartFile | undefined,
+    @UploadedFile() file: DiskMultipartFile | undefined,
     @Body({ schema: attachmentFieldsSchema }) fields: AttachmentFieldsInput,
   ): Promise<AttachmentDTO> {
     return this.attachments.upload(ctx, me, req, file, fields);

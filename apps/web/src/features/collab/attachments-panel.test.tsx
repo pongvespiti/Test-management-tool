@@ -73,7 +73,7 @@ describe('AttachmentsPanel', () => {
     await waitFor(() => expect(requests).toHaveLength(1));
     const req = requests[0]!;
     expect(req.method).toBe('POST');
-    expect(req.url).toBe('/api/v1/projects/3/attachments');
+    expect(req.url).toBe('/upload/projects/3/attachments');
     expect(req.body.get('entityType')).toBe('run_case');
     expect(req.body.get('entityId')).toBe('101');
     expect((req.body.get('file') as File).name).toBe('notes.txt');

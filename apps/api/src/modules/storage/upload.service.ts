@@ -26,10 +26,18 @@ export interface MultipartFile {
   buffer: Buffer;
 }
 
+/** The file part handed over by `@LargeFileUpload()`: already streamed to a temporary file. */
+export interface DiskMultipartFile {
+  originalname: string;
+  size: number;
+  path: string;
+  sha256: string;
+}
+
 /**
  * Validates and stores files received with `@FileUpload()`:
  * 400 FILE_REQUIRED / EMPTY_FILE, 415 UNSUPPORTED_FILE_TYPE, 413 FILE_TOO_LARGE (size limit from
- * MAX_UPLOAD_MB, enforced while receiving). The caller owns the stored file afterwards — remove it
+ * MAX_UPLOAD_MB or MAX_ATTACHMENT_MB, enforced while receiving). The caller owns the stored file afterwards — remove it
  * with `StorageService.remove()` if the database write that references it fails.
  */
 @Injectable()
@@ -37,7 +45,7 @@ export class UploadService {
   constructor(private readonly storage: StorageService) {}
 
   async store(
-    file: MultipartFile | undefined,
+    file: MultipartFile | DiskMultipartFile | undefined,
     opts: UploadOptions = {},
   ): Promise<UploadedFileInfo> {
     if (!file) throw badRequest('FILE_REQUIRED', 'Choose a file to upload');
@@ -52,7 +60,10 @@ export class UploadService {
         opts.typeError ?? `Files of type .${ext || '(none)'} cannot be uploaded`,
       );
     }
-    const stored = await this.storage.saveBuffer(file.buffer);
+    const stored =
+      'path' in file
+        ? await this.storage.adoptFile(file.path, file.size, file.sha256)
+        : await this.storage.saveBuffer(file.buffer);
     return { fileName, mimeType, stored };
   }
 }

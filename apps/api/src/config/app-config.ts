@@ -16,6 +16,7 @@ export class AppConfig {
   readonly trustProxy!: boolean;
   readonly dataDir!: string;
   readonly maxUploadBytes!: number;
+  readonly maxAttachmentBytes!: number;
   readonly logLevel!: 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent';
   readonly swaggerEnabled!: boolean;
   readonly sessionCookieName!: string;
@@ -60,6 +61,7 @@ export class AppConfig {
       trustProxy: e.TRUST_PROXY,
       dataDir: path.resolve(e.DATA_DIR),
       maxUploadBytes: Math.round(e.MAX_UPLOAD_MB * 1024 * 1024),
+      maxAttachmentBytes: Math.round(e.MAX_ATTACHMENT_MB * 1024 * 1024),
       logLevel: e.LOG_LEVEL,
       swaggerEnabled: e.SWAGGER_ENABLED,
       sessionCookieName: e.SESSION_COOKIE_NAME,

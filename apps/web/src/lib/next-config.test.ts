@@ -14,6 +14,8 @@ function bytes(size: string | number | undefined): number {
 
 describe('next.config', () => {
   it('lets uploads through the /api proxy up to well above the API upload limit (25 MB default)', () => {
+    // Evidence attachments (MAX_ATTACHMENT_MB, 500 MB) do not use this proxy: they are streamed by
+    // src/app/upload, see upload-forward.ts.
     // Below the API limit the proxy cuts the body and people get a bare 500 instead of the API's
     // "File too large" message.
     expect(bytes(nextConfig.experimental?.proxyClientMaxBodySize)).toBeGreaterThan(26 * 1024 ** 2);
