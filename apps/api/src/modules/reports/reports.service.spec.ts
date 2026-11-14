@@ -84,24 +84,21 @@ describe('ReportsService', () => {
 
   it('replays the history of the run cases in scope for the trend', async () => {
     mock.db.release.count.mockResolvedValue(1);
-    mock.db.runCase.findMany.mockResolvedValue([
-      { id: 1, run: { createdAt: new Date('2026-10-01T00:00:00Z') } },
-    ] as never);
-    mock.db.runCaseResult.findMany.mockResolvedValue([
-      { runCaseId: 1, status: 'ok', executedAt: new Date('2026-10-21T03:00:00Z') },
-    ] as never);
+    // Days come from the database (in REPORT_TIMEZONE): run cases first, then the results.
+    mock.db.$queryRaw
+      .mockResolvedValueOnce([{ id: 1, createdDay: '2026-10-01' }])
+      .mockResolvedValueOnce([{ runCaseId: 1, status: 'ok', day: '2026-10-21' }]);
     const r = await service.trend(10, { releaseId: 3, days: 2 }, NOW);
     expect(r).toMatchObject({ from: '2026-10-21', to: '2026-10-22', total: 1 });
     expect(r.points.map((p) => [p.executed, p.passRate])).toEqual([
       [1, 1],
       [0, 1],
     ]);
-    const plan = { projectId: 10, releaseId: 3 };
-    expect(mock.db.runCase.findMany.mock.calls[0]![0]!.where).toEqual({ run: { plan } });
-    expect(mock.db.runCaseResult.findMany.mock.calls[0]![0]).toMatchObject({
-      where: { runCase: { run: { plan } } },
-      orderBy: [{ executedAt: 'asc' }, { id: 'asc' }],
-    });
+    // Both queries are bound to the report time zone and the release scope.
+    for (const n of [0, 1]) {
+      expect(rawValues(mock, n)).toEqual(expect.arrayContaining(['Asia/Bangkok', 10, 3]));
+    }
+    expect(mock.db.runCase.findMany).not.toHaveBeenCalled();
   });
 
   it('aggregates the workload of open plans since the start of the 7-day window', async () => {

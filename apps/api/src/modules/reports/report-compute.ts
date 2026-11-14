@@ -127,24 +127,52 @@ export function trendReportOf(
   window: readonly string[],
   tz: string,
 ): ReportTrendDTO {
-  const replay: TrendResult[] = [];
+  return trendReportFromDays(
+    runCases.map((rc) => ({ id: rc.id, createdDay: localDate(rc.runCreatedAt, tz) })),
+    results.map((r) => ({
+      runCaseId: r.runCaseId,
+      status: r.status,
+      day: localDate(r.executedAt, tz),
+    })),
+    window,
+    tz,
+  );
+}
+
+/** A run case with the local day its run was created. */
+export interface TrendRunCaseOrigin {
+  id: number;
+  createdDay: string;
+}
+
+/**
+ * The same report from rows whose days are already local dates (the SQL path: the database turns
+ * timestamps into days, so hundreds of thousands of results never become Date objects). `results`
+ * are in execution order; a run case starts on its run's creation day or its first result's day,
+ * whichever is earlier.
+ */
+export function trendReportFromDays(
+  runCases: readonly TrendRunCaseOrigin[],
+  results: readonly TrendResult[],
+  window: readonly string[],
+  tz: string,
+): ReportTrendDTO {
   const firstResultDay = new Map<number, string>();
-  for (const r of results) {
-    const day = localDate(r.executedAt, tz);
-    replay.push({ runCaseId: r.runCaseId, status: r.status, day });
-    if (!firstResultDay.has(r.runCaseId)) firstResultDay.set(r.runCaseId, day);
-  }
+  for (const r of results)
+    if (!firstResultDay.has(r.runCaseId)) firstResultDay.set(r.runCaseId, r.day);
   const starts = runCases.map((rc) => {
-    const created = localDate(rc.runCreatedAt, tz);
     const firstResult = firstResultDay.get(rc.id);
-    return { id: rc.id, startDay: firstResult && firstResult < created ? firstResult : created };
+    return {
+      id: rc.id,
+      startDay: firstResult && firstResult < rc.createdDay ? firstResult : rc.createdDay,
+    };
   });
   return {
     from: window[0]!,
     to: window[window.length - 1]!,
     timezone: tz,
     total: runCases.length,
-    points: buildTrendPoints(starts, replay, window),
+    points: buildTrendPoints(starts, results, window),
   };
 }
 

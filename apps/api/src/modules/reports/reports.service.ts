@@ -29,7 +29,9 @@ import {
   coverageRows,
   releaseComparisonRows,
   summarizeDefects,
-  trendReportOf,
+  trendReportFromDays,
+  type TrendResult,
+  type TrendRunCaseOrigin,
   workloadRows,
   type WorkloadAggregate,
 } from './report-compute.js';
@@ -100,22 +102,25 @@ export class ReportsService {
   async trend(projectId: number, q: ReportTrendQuery, now = new Date()): Promise<ReportTrendDTO> {
     const db = this.prisma.db;
     const tz = this.config.reportTimezone;
-    const plan = planWhere(await this.resolveScope(projectId, q));
-    const runCases = await db.runCase.findMany({
-      where: { run: { plan } },
-      select: { id: true, run: { select: { createdAt: true } } },
-    });
-    const results = await db.runCaseResult.findMany({
-      where: { runCase: { run: { plan } } },
-      select: { runCaseId: true, status: true, executedAt: true },
-      orderBy: [{ executedAt: 'asc' }, { id: 'asc' }],
-    });
-    return trendReportOf(
-      runCases.map((rc) => ({ id: rc.id, runCreatedAt: rc.run.createdAt })),
-      results,
-      dayRange(localDate(now, tz), q.days),
-      tz,
-    );
+    const scope = await this.resolveScope(projectId, q);
+    // Plain SQL: the days come from the database and no row becomes a Prisma object, which keeps
+    // the report fast with hundreds of thousands of results (ADR-009 volume notes).
+    const runCases = await db.$queryRaw<TrendRunCaseOrigin[]>`
+      SELECT rc.id, to_char(r.created_at AT TIME ZONE ${tz}, 'YYYY-MM-DD') AS "createdDay"
+      FROM run_cases rc
+      JOIN test_runs r ON r.id = rc.run_id
+      JOIN test_plans p ON p.id = r.plan_id
+      WHERE ${planScopeSql(scope)}`;
+    const results = await db.$queryRaw<TrendResult[]>`
+      SELECT res.run_case_id AS "runCaseId", res.status::text AS status,
+             to_char(res.executed_at AT TIME ZONE ${tz}, 'YYYY-MM-DD') AS day
+      FROM run_case_results res
+      JOIN run_cases rc ON rc.id = res.run_case_id
+      JOIN test_runs r ON r.id = rc.run_id
+      JOIN test_plans p ON p.id = r.plan_id
+      WHERE ${planScopeSql(scope)}
+      ORDER BY res.executed_at, res.id`;
+    return trendReportFromDays(runCases, results, dayRange(localDate(now, tz), q.days), tz);
   }
 
   /** Run cases of not-completed plans per effective assignee (assignee, else run tester). */
