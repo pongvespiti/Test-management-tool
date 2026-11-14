@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module';
 import { type MiddlewareConsumer, Module, type NestModule } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_PIPE } from '@nestjs/core';
 import { LoggerModule } from 'nestjs-pino';
@@ -59,6 +60,19 @@ const FEATURE_MODULES = [
   OpenApiModule,
 ];
 
+/**
+ * Readable one-line logs in development, when `pino-pretty` (a dev dependency) is installed. A
+ * production image has no dev dependencies: there the API logs JSON instead of failing to start.
+ */
+function prettyLogsAvailable(): boolean {
+  try {
+    createRequire(import.meta.url).resolve('pino-pretty');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 @Module({
   imports: [
     ConfigModule,
@@ -74,9 +88,10 @@ const FEATURE_MODULES = [
               ? incoming
               : crypto.randomUUID();
           },
-          ...(config.nodeEnv === 'development' && {
-            transport: { target: 'pino-pretty', options: { singleLine: true } },
-          }),
+          ...(config.nodeEnv === 'development' &&
+            prettyLogsAvailable() && {
+              transport: { target: 'pino-pretty', options: { singleLine: true } },
+            }),
         },
       }),
     }),

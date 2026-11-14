@@ -47,6 +47,7 @@ services:
     environment:
       DATABASE_URL: *database-url
       # Container-internal values win over a copy of `.env.example` used on the host.
+      NODE_ENV: production
       API_HOST: 0.0.0.0
       API_PORT: 4000
       DATA_DIR: /data

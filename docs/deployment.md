@@ -58,6 +58,20 @@ stopped during the restore and started again). Practise it once on a spare serve
 it. A backup made by an older version restores into a newer one; start the stack afterwards and the
 migrate step brings the schema up to date.
 
+### Behind a corporate proxy
+
+The image build downloads packages from the npm registry and the Prisma schema engine from
+`binaries.prisma.sh` (used by the `migrate` service). When the server reaches the internet only
+through a proxy, pass it to the build:
+
+```bash
+docker compose build --build-arg HTTPS_PROXY=http://proxy.example:8080 --build-arg HTTP_PROXY=http://proxy.example:8080
+docker compose up -d
+```
+
+If `migrate` exits with an error about the schema engine, the download was blocked: allow
+`binaries.prisma.sh` on the proxy, or ask IT for an exception for the build.
+
 ### Upgrade
 
 ```bash
