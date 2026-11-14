@@ -11,6 +11,7 @@ import type { Request, Response } from 'express';
 import { AppConfig } from '../../config/app-config.js';
 import {
   AllowPendingPasswordChange,
+  TechnicianAllowed,
   ApiErrorCodes,
   Public,
   SessionOnly,
@@ -55,6 +56,7 @@ export class AuthController {
 
   @Public()
   @Post('logout')
+  @TechnicianAllowed()
   @HttpCode(204)
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response): Promise<void> {
     await this.auth.logout(req.cookies?.[this.config.sessionCookieName] as string | undefined);
@@ -63,12 +65,14 @@ export class AuthController {
 
   @Get('me')
   @AllowPendingPasswordChange()
+  @TechnicianAllowed()
   me(@CurrentUser() user: AuthUser): Promise<MeDTO> {
     return this.auth.me(user.id);
   }
 
   @Post('change-password')
   @HttpCode(204)
+  @TechnicianAllowed()
   @SessionOnly()
   @AllowPendingPasswordChange()
   @ApiErrorCodes('WRONG_PASSWORD', 'SAME_PASSWORD')

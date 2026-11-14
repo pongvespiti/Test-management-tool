@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
-import { NotificationsController } from './notifications.controller.js';
+import { LabNotificationsController, NotificationsController } from './notifications.controller.js';
 import { NotificationsService } from './notifications.service.js';
 
-/** In-app notifications: assignments, due dates, retests, changed requirements. */
+/** In-app notifications: assignments, due dates, retests, changed requirements, test stand requests. */
 @Module({
-  controllers: [NotificationsController],
+  controllers: [NotificationsController, LabNotificationsController],
   providers: [NotificationsService],
 })
 export class NotificationsModule {}

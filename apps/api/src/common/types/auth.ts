@@ -6,6 +6,8 @@ export interface AuthUser {
   username: string;
   displayName: string;
   isAdmin: boolean;
+  /** Lab technician: only routes marked `@TechnicianAllowed()`. */
+  isTechnician: boolean;
   mustChangePassword: boolean;
 }
 

@@ -12,6 +12,7 @@ const me: AuthUser = {
   username: 'tom',
   displayName: 'Tom',
   isAdmin: false,
+  isTechnician: false,
   mustChangePassword: false,
 };
 

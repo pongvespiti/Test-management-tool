@@ -95,7 +95,7 @@ export class ProjectsController {
 
   @Put(':projectId/members')
   @ProjectPermission('manageMembers')
-  @ApiErrorCodes('LEAD_REQUIRED', 'UNKNOWN_USER')
+  @ApiErrorCodes('LEAD_REQUIRED', 'UNKNOWN_USER', 'TECHNICIAN_NOT_MEMBER')
   setMembers(
     @CurrentProject() ctx: ProjectContext,
     @CurrentUser() me: AuthUser,

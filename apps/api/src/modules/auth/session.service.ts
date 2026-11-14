@@ -62,6 +62,7 @@ export class SessionService {
         username: u.username,
         displayName: u.displayName,
         isAdmin: u.isAdmin,
+        isTechnician: u.isTechnician,
         mustChangePassword: u.mustChangePassword,
       },
     };

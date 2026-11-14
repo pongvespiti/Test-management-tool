@@ -35,6 +35,8 @@ export const createUserSchema = z.object({
     .nullable()
     .optional(),
   isAdmin: z.boolean().default(false),
+  /** Lab technician: works only on test stands; cannot be an admin or a project member. */
+  isTechnician: z.boolean().default(false),
   password: passwordSchema,
 });
 export type CreateUserInput = z.infer<typeof createUserSchema>;
@@ -47,6 +49,7 @@ export const updateUserSchema = z.object({
     .nullable()
     .optional(),
   isAdmin: z.boolean().optional(),
+  isTechnician: z.boolean().optional(),
   isActive: z.boolean().optional(),
 });
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;

@@ -102,7 +102,9 @@ describe('ProjectsService', () => {
     });
 
     it('rejects unknown users', async () => {
-      mock.db.user.count.mockResolvedValue(1);
+      mock.db.user.findMany.mockResolvedValue([
+        { isTechnician: false, displayName: 'A' },
+      ] as never);
       await expect(
         service.setMembers(projectCtx(), me, {
           members: [
@@ -113,8 +115,26 @@ describe('ProjectsService', () => {
       ).rejects.toMatchObject({ code: 'UNKNOWN_USER' });
     });
 
+    it('refuses technicians as members', async () => {
+      mock.db.user.findMany.mockResolvedValue([
+        { isTechnician: false, displayName: 'A' },
+        { isTechnician: true, displayName: 'Tech' },
+      ] as never);
+      await expect(
+        service.setMembers(projectCtx(), me, {
+          members: [
+            { userId: 1, role: 'lead' },
+            { userId: 2, role: 'tester' },
+          ],
+        }),
+      ).rejects.toMatchObject({ code: 'TECHNICIAN_NOT_MEMBER' });
+    });
+
     it('replaces the member list (last role per user wins)', async () => {
-      mock.db.user.count.mockResolvedValue(2);
+      mock.db.user.findMany.mockResolvedValue([
+        { isTechnician: false, displayName: 'A' },
+        { isTechnician: false, displayName: 'B' },
+      ] as never);
       mock.db.projectMember.findMany.mockResolvedValue([]);
       await service.setMembers(projectCtx(), me, {
         members: [

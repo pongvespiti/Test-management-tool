@@ -56,6 +56,7 @@ describe('UsersService', () => {
       displayName: 'Bob Smith',
       password: 'Initial123',
       isAdmin: false,
+      isTechnician: false,
     });
     const data = mock.db.user.create.mock.calls[0]![0].data as {
       username: string;
@@ -79,6 +80,7 @@ describe('UsersService', () => {
         displayName: 'A',
         password: 'Initial123',
         isAdmin: false,
+        isTechnician: false,
       }),
     ).rejects.toMatchObject({ code: 'USERNAME_TAKEN' });
   });
@@ -93,15 +95,40 @@ describe('UsersService', () => {
   });
 
   it('signs out a user who gets disabled', async () => {
-    mock.db.user.count.mockResolvedValue(1);
+    mock.db.user.findUnique.mockResolvedValue({
+      isAdmin: false,
+      isTechnician: false,
+      _count: { memberships: 0 },
+    } as never);
     mock.db.user.update.mockResolvedValue(userRow({ id: 2, isActive: false }));
     const dto = await service.update(admin, 2, { isActive: false });
     expect(dto.isActive).toBe(false);
     expect(sessions.revokeForUser).toHaveBeenCalledWith(mock.db, 2);
   });
 
+  it('refuses admin + technician, and a technician who is still in projects', async () => {
+    await expect(
+      service.create(admin, {
+        username: 'tech',
+        displayName: 'Tech',
+        password: 'Initial123',
+        isAdmin: true,
+        isTechnician: true,
+      }),
+    ).rejects.toMatchObject({ code: 'ADMIN_TECHNICIAN' });
+    mock.db.user.findUnique.mockResolvedValue({
+      isAdmin: false,
+      isTechnician: false,
+      _count: { memberships: 2 },
+    } as never);
+    await expect(service.update(admin, 2, { isTechnician: true })).rejects.toMatchObject({
+      code: 'USER_HAS_PROJECTS',
+    });
+  });
+
   it('answers USER_NOT_FOUND for unknown users', async () => {
     mock.db.user.count.mockResolvedValue(0);
+    mock.db.user.findUnique.mockResolvedValue(null);
     await expect(service.update(admin, 404, { displayName: 'x' })).rejects.toMatchObject({
       code: 'USER_NOT_FOUND',
     });

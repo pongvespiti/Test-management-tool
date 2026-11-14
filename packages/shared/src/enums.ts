@@ -164,6 +164,8 @@ export const NOTIFICATION_KINDS = [
   'overdue',
   'retest',
   'requirement_changed',
+  'stand_request',
+  'stand_request_update',
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 
@@ -174,3 +176,20 @@ export type DeviceKind = (typeof DEVICE_KINDS)[number];
 /** `in_use` means someone holds the device (it has a holder). */
 export const DEVICE_STATUSES = ['available', 'in_use', 'repair'] as const;
 export type DeviceStatus = (typeof DEVICE_STATUSES)[number];
+
+/** What a technician is asked to do on a test stand. */
+export const STAND_REQUEST_KINDS = ['install', 'uninstall', 'replace'] as const;
+export type StandRequestKind = (typeof STAND_REQUEST_KINDS)[number];
+
+/** requested → accepted → done; or rejected by the technician / cancelled by the requester. */
+export const STAND_REQUEST_STATUSES = [
+  'requested',
+  'accepted',
+  'rejected',
+  'done',
+  'cancelled',
+] as const;
+export type StandRequestStatus = (typeof STAND_REQUEST_STATUSES)[number];
+
+/** Requests a technician still has to act on. */
+export const OPEN_STAND_REQUEST_STATUSES: readonly StandRequestStatus[] = ['requested', 'accepted'];

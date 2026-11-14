@@ -14,6 +14,7 @@ export function toUserDTO(u: User): UserDTO {
     displayName: u.displayName,
     email: u.email,
     isAdmin: u.isAdmin,
+    isTechnician: u.isTechnician,
     isActive: u.isActive,
     mustChangePassword: u.mustChangePassword,
     lastLoginAt: iso(u.lastLoginAt),

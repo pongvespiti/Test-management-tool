@@ -9,6 +9,7 @@ import {
   IS_PUBLIC,
   PROJECT_PERMISSION,
   SESSION_ONLY,
+  TECHNICIAN_ALLOWED,
 } from './metadata-keys.js';
 
 /** No authentication required (login, health). */
@@ -33,6 +34,13 @@ export const ProjectPermission = (permission: PermissionKey) =>
     // The 403 response is added to the document from this role (see openapi.enrich.ts).
     ApiExtension('x-min-role', requiredRole(permission)),
   );
+
+/**
+ * Open to technician accounts too. Technicians are refused everywhere else (403
+ * TECHNICIAN_NOT_ALLOWED): they see only the test stands, never test cases or projects.
+ */
+export const TechnicianAllowed = () =>
+  applyDecorators(SetMetadata(TECHNICIAN_ALLOWED, true), ApiExtension('x-technician', true));
 
 /** System administrators only. */
 export const AdminOnly = () =>

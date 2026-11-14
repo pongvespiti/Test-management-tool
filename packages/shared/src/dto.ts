@@ -23,6 +23,8 @@ import type {
   DeviceKind,
   DeviceStatus,
   NotificationKind,
+  StandRequestKind,
+  StandRequestStatus,
   PlanStatus,
   ProjectRole,
   ReleaseStatus,
@@ -58,6 +60,8 @@ export interface UserRef {
 export interface UserDTO extends UserRef {
   email: string | null;
   isAdmin: boolean;
+  /** Lab technician: sees only the test stands. */
+  isTechnician: boolean;
   isActive: boolean;
   mustChangePassword: boolean;
   lastLoginAt: string | null;
@@ -1537,7 +1541,7 @@ export interface NotificationDTO {
 
 export interface NotificationListDTO {
   items: NotificationDTO[];
-  /** Unread in the project, not only in `items`. */
+  /** Unread in the project (with lab-wide ones), not only in `items`. */
   unread: number;
 }
 
@@ -1557,4 +1561,95 @@ export interface DeviceDTO {
   note: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+// ---------------------------------------------------------------- test stands (lab-wide)
+
+/** A booking of a stand for a project's testing; dates are `YYYY-MM-DD`, both days included. */
+export interface StandBookingDTO {
+  id: number;
+  standId: number;
+  standCode: string;
+  project: { id: number; key: string; name: string };
+  model: string;
+  startDate: string;
+  endDate: string;
+  note: string | null;
+  createdBy: UserRef;
+  createdAt: string;
+}
+
+export interface StandRequestDTO {
+  id: number;
+  standId: number;
+  standCode: string;
+  zoneName: string;
+  project: { id: number; key: string; name: string } | null;
+  kind: StandRequestKind;
+  model: string | null;
+  technician: UserRef;
+  requestedBy: UserRef;
+  requestedDate: string;
+  scheduledDate: string | null;
+  status: StandRequestStatus;
+  note: string | null;
+  technicianNote: string | null;
+  doneAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StandDTO {
+  id: number;
+  zoneId: number;
+  code: string;
+  sortOrder: number;
+  currentModel: string | null;
+  inCharge: string | null;
+  note: string | null;
+  updatedBy: UserRef | null;
+  updatedAt: string;
+  /** Booking covering today, if any. */
+  currentBooking: StandBookingDTO | null;
+  /** First booking that starts after today. */
+  nextBooking: StandBookingDTO | null;
+  /** Requests still open (requested or accepted). */
+  openRequests: number;
+}
+
+export interface StandZoneDTO {
+  id: number;
+  name: string;
+  sortOrder: number;
+  stands: StandDTO[];
+}
+
+/** The whole lab: zones in order, each with its stands. */
+export interface StandBoardDTO {
+  zones: StandZoneDTO[];
+  /** What the caller may do here. */
+  canManage: boolean;
+  canRequest: boolean;
+}
+
+/** One stand row of the lab sheet as read by the Excel import. */
+export interface StandImportRow {
+  zone: string;
+  code: string;
+  model: string | null;
+  inCharge: string | null;
+  note: string | null;
+  /** What the import does with the stand. */
+  action: 'create' | 'update' | 'unchanged';
+}
+
+export interface StandImportResultDTO {
+  rows: StandImportRow[];
+  zonesCreated: number;
+  created: number;
+  updated: number;
+  unchanged: number;
+  /** False for a preview: nothing was written. */
+  applied: boolean;
+  warnings: string[];
 }

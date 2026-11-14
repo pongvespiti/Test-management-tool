@@ -81,7 +81,12 @@ export async function truncateAll(prisma: PrismaService): Promise<void> {
 export async function createUser(
   prisma: PrismaService,
   username: string,
-  opts: { isAdmin?: boolean; mustChangePassword?: boolean; isActive?: boolean } = {},
+  opts: {
+    isAdmin?: boolean;
+    isTechnician?: boolean;
+    mustChangePassword?: boolean;
+    isActive?: boolean;
+  } = {},
 ) {
   passwordHash ??= hashPassword(PASSWORD);
   return prisma.db.user.create({
@@ -90,6 +95,7 @@ export async function createUser(
       displayName: username.charAt(0).toUpperCase() + username.slice(1),
       passwordHash: await passwordHash,
       isAdmin: opts.isAdmin ?? false,
+      isTechnician: opts.isTechnician ?? false,
       isActive: opts.isActive ?? true,
       mustChangePassword: opts.mustChangePassword ?? false,
     },

@@ -16,6 +16,13 @@ import { ApiTokenService } from '../auth/api-token.service.js';
 import { hashPassword } from '../auth/password.js';
 import { SessionService } from '../auth/session.service.js';
 
+/** An administrator manages everything; a technician sees only the stands. Not both. */
+function assertRoles(isAdmin: boolean, isTechnician: boolean): void {
+  if (isAdmin && isTechnician) {
+    throw unprocessable('ADMIN_TECHNICIAN', 'A user cannot be both administrator and technician');
+  }
+}
+
 /** Users of the lookup list at most (pickers search as you type). */
 const LOOKUP_LIMIT = 50;
 
@@ -53,6 +60,7 @@ export class UsersService {
   }
 
   async create(me: AuthUser, input: CreateUserInput): Promise<UserDTO> {
+    assertRoles(input.isAdmin, input.isTechnician);
     const username = input.username.toLowerCase();
     const passwordHash = await hashPassword(input.password);
     try {
@@ -63,6 +71,7 @@ export class UsersService {
             displayName: input.displayName,
             email: input.email ?? null,
             isAdmin: input.isAdmin,
+            isTechnician: input.isTechnician,
             passwordHash,
             mustChangePassword: true,
           },
@@ -93,14 +102,26 @@ export class UsersService {
       );
     }
     return this.prisma.db.$transaction(async (tx) => {
-      const exists = await tx.user.count({ where: { id: userId } });
-      if (!exists) throw notFound('User', 'USER_NOT_FOUND');
+      const current = await tx.user.findUnique({
+        where: { id: userId },
+        select: { isAdmin: true, isTechnician: true, _count: { select: { memberships: true } } },
+      });
+      if (!current) throw notFound('User', 'USER_NOT_FOUND');
+      const isTechnician = input.isTechnician ?? current.isTechnician;
+      assertRoles(input.isAdmin ?? current.isAdmin, isTechnician);
+      if (isTechnician && !current.isTechnician && current._count.memberships > 0) {
+        throw unprocessable(
+          'USER_HAS_PROJECTS',
+          'Remove the user from their projects before making them a technician',
+        );
+      }
       const user = await tx.user.update({
         where: { id: userId },
         data: {
           ...(input.displayName !== undefined && { displayName: input.displayName }),
           ...(input.email !== undefined && { email: input.email }),
           ...(input.isAdmin !== undefined && { isAdmin: input.isAdmin }),
+          ...(input.isTechnician !== undefined && { isTechnician: input.isTechnician }),
           ...(input.isActive !== undefined && { isActive: input.isActive }),
         },
       });

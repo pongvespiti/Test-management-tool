@@ -130,8 +130,18 @@ export class ProjectsService {
       throw unprocessable('LEAD_REQUIRED', 'A project needs at least one lead');
     }
     const ids = [...byUser.keys()];
-    const found = await this.prisma.db.user.count({ where: { id: { in: ids } } });
-    if (found !== ids.length) throw unprocessable('UNKNOWN_USER', 'Some users do not exist');
+    const found = await this.prisma.db.user.findMany({
+      where: { id: { in: ids } },
+      select: { isTechnician: true, displayName: true },
+    });
+    if (found.length !== ids.length) throw unprocessable('UNKNOWN_USER', 'Some users do not exist');
+    const technician = found.find((u) => u.isTechnician);
+    if (technician) {
+      throw unprocessable(
+        'TECHNICIAN_NOT_MEMBER',
+        `${technician.displayName} is a technician and works only on test stands`,
+      );
+    }
 
     await this.prisma.db.$transaction(async (tx) => {
       await tx.projectMember.deleteMany({ where: { projectId: ctx.id } });

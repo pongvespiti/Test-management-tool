@@ -53,6 +53,7 @@ describe('SessionService', () => {
         username: 'alice',
         displayName: 'Alice',
         isAdmin: false,
+        isTechnician: false,
         mustChangePassword: false,
       },
     });

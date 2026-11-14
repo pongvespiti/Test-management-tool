@@ -8,6 +8,8 @@ import type {
   DeviceStatus,
   Judgement,
   NotificationKind,
+  StandRequestKind,
+  StandRequestStatus,
   PlanStatus,
   ProjectRole,
   ReleaseStatus,
@@ -143,6 +145,8 @@ export const NOTIFICATION_KIND_LABELS: Record<NotificationKind, string> = {
   overdue: 'Overdue',
   retest: 'Ready for retest',
   requirement_changed: 'Requirement changed',
+  stand_request: 'Stand request',
+  stand_request_update: 'Stand request update',
 };
 
 export const DEVICE_KIND_LABELS: Record<DeviceKind, string> = {
@@ -156,4 +160,18 @@ export const DEVICE_STATUS_LABELS: Record<DeviceStatus, string> = {
   available: 'Available',
   in_use: 'In use',
   repair: 'In repair',
+};
+
+export const STAND_REQUEST_KIND_LABELS: Record<StandRequestKind, string> = {
+  install: 'Install',
+  uninstall: 'Uninstall',
+  replace: 'Replace',
+};
+
+export const STAND_REQUEST_STATUS_LABELS: Record<StandRequestStatus, string> = {
+  requested: 'Requested',
+  accepted: 'Accepted',
+  rejected: 'Rejected',
+  done: 'Done',
+  cancelled: 'Cancelled',
 };

@@ -33,6 +33,7 @@ export function authUser(overrides: Partial<AuthUser> = {}): AuthUser {
     username: 'alice',
     displayName: 'Alice',
     isAdmin: false,
+    isTechnician: false,
     mustChangePassword: false,
     ...overrides,
   };
@@ -51,6 +52,7 @@ export function userRow(overrides: Partial<User> = {}): User {
     passwordHash: 'scrypt$x',
     authProvider: 'local',
     isAdmin: false,
+    isTechnician: false,
     isActive: true,
     mustChangePassword: false,
     failedLogins: 0,

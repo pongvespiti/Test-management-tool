@@ -5,7 +5,12 @@ import { authUser, unitConfig } from '../../../test/unit/fixtures.js';
 import { fakeRequest, httpContext } from '../../../test/unit/http-context.js';
 import type { ApiTokenService } from '../../modules/auth/api-token.service.js';
 import type { SessionService } from '../../modules/auth/session.service.js';
-import { AllowPendingPasswordChange, Public, SessionOnly } from '../decorators/auth.decorators.js';
+import {
+  AllowPendingPasswordChange,
+  Public,
+  SessionOnly,
+  TechnicianAllowed,
+} from '../decorators/auth.decorators.js';
 import { AppException } from '../errors/app.exception.js';
 import { bearerToken } from '../security/bearer-token.js';
 import { AuthGuard } from './auth.guard.js';
@@ -19,6 +24,9 @@ class TestController {
 
   @AllowPendingPasswordChange()
   me() {}
+
+  @TechnicianAllowed()
+  stands() {}
 
   normal() {}
 }
@@ -52,6 +60,18 @@ describe('AuthGuard', () => {
       sessions as unknown as SessionService,
       tokens as unknown as ApiTokenService,
     );
+  });
+
+  it('keeps technician accounts to @TechnicianAllowed() routes', async () => {
+    sessions.resolve.mockResolvedValue({
+      sessionId: 's1',
+      user: authUser({ isTechnician: true }),
+    });
+    const req = () => fakeRequest({ cookies: { sid: 'abc' } });
+    await expect(activate(req(), 'stands')).resolves.toBe(true);
+    const error = await failure(activate(req()));
+    expect(error.getStatus()).toBe(403);
+    expect(error.code).toBe('TECHNICIAN_NOT_ALLOWED');
   });
 
   it('lets @Public() routes through without credentials', async () => {

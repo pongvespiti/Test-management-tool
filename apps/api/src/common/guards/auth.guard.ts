@@ -4,7 +4,12 @@ import type { Request } from 'express';
 import { AppConfig } from '../../config/app-config.js';
 import { ApiTokenService } from '../../modules/auth/api-token.service.js';
 import { SessionService } from '../../modules/auth/session.service.js';
-import { ALLOW_PENDING_PASSWORD, IS_PUBLIC, SESSION_ONLY } from '../decorators/metadata-keys.js';
+import {
+  ALLOW_PENDING_PASSWORD,
+  IS_PUBLIC,
+  SESSION_ONLY,
+  TECHNICIAN_ALLOWED,
+} from '../decorators/metadata-keys.js';
 import { AppException, forbidden, unauthorized } from '../errors/app.exception.js';
 import { bearerToken } from '../security/bearer-token.js';
 
@@ -52,6 +57,12 @@ export class AuthGuard implements CanActivate {
     const allowPending = this.reflector.getAllAndOverride<boolean>(ALLOW_PENDING_PASSWORD, targets);
     if (req.authUser.mustChangePassword && !allowPending) {
       throw new AppException(403, 'PASSWORD_CHANGE_REQUIRED', 'Please change your password first');
+    }
+    if (
+      req.authUser.isTechnician &&
+      !this.reflector.getAllAndOverride<boolean>(TECHNICIAN_ALLOWED, targets)
+    ) {
+      throw forbidden('Technician accounts can use the test stands only', 'TECHNICIAN_NOT_ALLOWED');
     }
     return true;
   }

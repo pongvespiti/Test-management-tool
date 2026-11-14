@@ -10,7 +10,7 @@ const device = (overrides: Partial<DeviceDTO> = {}): DeviceDTO => ({
   id: 1,
   kind: 'unit',
   name: 'Unit A',
-  model: 'FTKM',
+  model: 'ACU-35',
   serial: 'SN-001',
   osVersion: 'FW 2.0.1',
   status: 'available',

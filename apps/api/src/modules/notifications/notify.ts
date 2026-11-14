@@ -3,7 +3,8 @@ import type { Db } from '../../prisma/prisma.service.js';
 
 export interface NotificationInput {
   userId: number | null | undefined;
-  projectId: number;
+  /** Null for lab-wide notifications (test stands). */
+  projectId: number | null;
   kind: NotificationKind;
   title: string;
   body?: string | null;

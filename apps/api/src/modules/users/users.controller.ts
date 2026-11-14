@@ -40,7 +40,7 @@ export class UsersController {
   @Post()
   @AdminOnly()
   @SessionOnly()
-  @ApiErrorCodes('USERNAME_TAKEN')
+  @ApiErrorCodes('USERNAME_TAKEN', 'ADMIN_TECHNICIAN')
   create(
     @CurrentUser() me: AuthUser,
     @Body({ schema: createUserSchema }) body: CreateUserInput,
@@ -51,7 +51,7 @@ export class UsersController {
   @Patch(':userId')
   @AdminOnly()
   @SessionOnly()
-  @ApiErrorCodes('USER_NOT_FOUND', 'CANNOT_MODIFY_SELF')
+  @ApiErrorCodes('USER_NOT_FOUND', 'CANNOT_MODIFY_SELF', 'ADMIN_TECHNICIAN', 'USER_HAS_PROJECTS')
   update(
     @CurrentUser() me: AuthUser,
     @Param('userId', ID) userId: number,

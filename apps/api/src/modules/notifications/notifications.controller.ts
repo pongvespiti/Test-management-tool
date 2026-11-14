@@ -5,7 +5,11 @@ import {
   type ListNotificationsQuery,
   type NotificationListDTO,
 } from '@tmt/shared';
-import { ApiErrorCodes, ProjectPermission } from '../../common/decorators/auth.decorators.js';
+import {
+  ApiErrorCodes,
+  ProjectPermission,
+  TechnicianAllowed,
+} from '../../common/decorators/auth.decorators.js';
 import { CurrentProject, CurrentUser } from '../../common/decorators/request.decorators.js';
 import { ID } from '../../common/http/params.js';
 import type { AuthUser, ProjectContext } from '../../common/types/auth.js';
@@ -45,5 +49,37 @@ export class NotificationsController {
     @Param('notificationId', ID) notificationId: number,
   ): Promise<void> {
     return this.notifications.markRead(ctx, me, notificationId);
+  }
+}
+
+/** Lab-wide notifications (test stand requests) of the signed-in user, outside any project. */
+@ApiTags('Notifications')
+@Controller('notifications')
+@TechnicianAllowed()
+export class LabNotificationsController {
+  constructor(private readonly notifications: NotificationsService) {}
+
+  @Get()
+  list(
+    @CurrentUser() me: AuthUser,
+    @Query({ schema: listNotificationsQuerySchema }) q: ListNotificationsQuery,
+  ): Promise<NotificationListDTO> {
+    return this.notifications.listLab(me, q);
+  }
+
+  @Post('read-all')
+  @HttpCode(204)
+  readAll(@CurrentUser() me: AuthUser): Promise<void> {
+    return this.notifications.markAllRead(null, me);
+  }
+
+  @Post(':notificationId/read')
+  @HttpCode(204)
+  @ApiErrorCodes('NOTIFICATION_NOT_FOUND')
+  read(
+    @CurrentUser() me: AuthUser,
+    @Param('notificationId', ID) notificationId: number,
+  ): Promise<void> {
+    return this.notifications.markRead(null, me, notificationId);
   }
 }

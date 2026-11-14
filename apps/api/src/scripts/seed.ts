@@ -29,6 +29,7 @@ import { loadEnvFiles } from '../config/load-env.js';
 import { hashPassword, randomPassword } from '../modules/auth/password.js';
 import { SessionService } from '../modules/auth/session.service.js';
 import { ProjectsService } from '../modules/projects/projects.service.js';
+import { StandsService } from '../modules/stands/stands.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
   DEMO_BUILDS,
@@ -45,6 +46,8 @@ import {
   DEMO_SHARED_STEP,
   DEMO_STEPS_CASE,
   DEMO_SUITES,
+  DEMO_STAND_ZONES,
+  DEMO_TECHNICIAN,
   DEMO_USERS,
   DEMO_VIEWS,
   type DemoSuite,
@@ -104,6 +107,75 @@ async function ensureDemoUsers(
     created = true;
   }
   return { ids, created };
+}
+
+/** The demo technician (created once, like the other demo accounts). */
+async function ensureDemoTechnician(prisma: PrismaService, password: string): Promise<number> {
+  const existing = await prisma.db.user.findUnique({
+    where: { username: DEMO_TECHNICIAN.username },
+  });
+  if (existing) return existing.id;
+  const user = await prisma.db.user.create({
+    data: {
+      ...DEMO_TECHNICIAN,
+      isTechnician: true,
+      passwordHash: await hashPassword(password),
+      mustChangePassword: false,
+    },
+  });
+  return user.id;
+}
+
+/**
+ * Lab layout (only when there are no zones yet), a booking for the demo project and a request
+ * to the technician, sent by the demo lead.
+ */
+async function seedStands(
+  stands: StandsService,
+  actor: AuthUser,
+  call: Call,
+  projectId: number,
+  technicianId: number,
+): Promise<void> {
+  const board = await stands.board(actor, {});
+  if (board.zones.length > 0) return;
+  const ids = new Map<string, number>();
+  for (const z of DEMO_STAND_ZONES) {
+    const zone = await stands.createZone(actor, { name: z.name });
+    for (const s of z.stands) {
+      const stand = await stands.createStand(actor, {
+        zoneId: zone.id,
+        code: s.code,
+        currentModel: s.model,
+        inCharge: s.inCharge ?? null,
+      });
+      ids.set(s.code, stand.id);
+    }
+  }
+  await call('POST', '/stands/bookings', {
+    standId: ids.get('L1/B-1'),
+    projectId,
+    model: 'ACU-35X',
+    startDate: dayFromToday(-3),
+    endDate: dayFromToday(10),
+    note: 'Firmware regression of v1.0',
+  });
+  await call('POST', '/stands/bookings', {
+    standId: ids.get('L2/A-1'),
+    projectId,
+    model: 'ACU-25',
+    startDate: dayFromToday(5),
+    endDate: dayFromToday(20),
+  });
+  await call('POST', '/stands/requests', {
+    standId: ids.get('L2/A-1'),
+    projectId,
+    kind: 'install',
+    model: 'ACU-25',
+    technicianId,
+    requestedDate: dayFromToday(4),
+    note: 'Needed for the v1.1 energy tests',
+  });
 }
 
 interface SeededSuite extends Id {
@@ -385,6 +457,7 @@ async function seed(app: NestExpressApplication): Promise<void> {
   }
   const password = configured || randomPassword();
   const users = await ensureDemoUsers(prisma, password);
+  const technicianId = await ensureDemoTechnician(prisma, password);
 
   // Creating a project and its member list are administrator actions: done with the services.
   const actor: AuthUser = {
@@ -392,6 +465,7 @@ async function seed(app: NestExpressApplication): Promise<void> {
     username: admin.username,
     displayName: admin.displayName,
     isAdmin: true,
+    isTechnician: false,
     mustChangePassword: false,
   };
   const projects = app.get(ProjectsService);
@@ -419,12 +493,15 @@ async function seed(app: NestExpressApplication): Promise<void> {
   );
   try {
     await seedProjectContent(call, project.id, testerId, leadId);
+    await seedStands(app.get(StandsService), actor, call, project.id, technicianId);
   } finally {
     await call('POST', '/auth/logout').catch(() => undefined);
   }
 
   say(`Seeded project ${DEMO_PROJECT.key} — ${DEMO_PROJECT.name} (id ${project.id}).`);
-  say(`Demo accounts: ${DEMO_USERS.map((u) => `${u.username} (${u.role})`).join(', ')}`);
+  say(
+    `Demo accounts: ${DEMO_USERS.map((u) => `${u.username} (${u.role})`).join(', ')}, ${DEMO_TECHNICIAN.username} (technician)`,
+  );
   if (!users.created) say('The demo accounts already existed and keep their password.');
   else if (configured) say('Password of the demo accounts: the value of SEED_USER_PASSWORD.');
   else say(`Password of the demo accounts (shown once): ${password}`);

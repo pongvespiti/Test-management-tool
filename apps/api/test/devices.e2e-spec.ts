@@ -62,14 +62,14 @@ describe('devices', () => {
     unit = await add({
       kind: 'unit',
       name: '  Unit A ',
-      model: 'FTKM',
+      model: 'ACU-35',
       serial: 'SN-001',
       osVersion: 'FW 2.0.1',
     });
     expect(unit).toMatchObject({
       kind: 'unit',
       name: 'Unit A',
-      model: 'FTKM',
+      model: 'ACU-35',
       status: 'available',
       holder: null,
       heldSince: null,

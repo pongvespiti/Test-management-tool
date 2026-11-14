@@ -540,9 +540,40 @@ export const DEMO_VIEWS = [
 
 /** Devices the team tests with; `repair` sends one to the repair state. */
 export const DEMO_DEVICES = [
-  { kind: 'unit', name: 'Unit A', model: 'FTXM-demo', serial: 'SN-0001', osVersion: 'FW 2.0.1' },
-  { kind: 'unit', name: 'Unit B', model: 'FTXM-demo', serial: 'SN-0002', osVersion: 'FW 2.0.0' },
+  { kind: 'unit', name: 'Unit A', model: 'ACU-35X', serial: 'SN-0001', osVersion: 'FW 2.0.1' },
+  { kind: 'unit', name: 'Unit B', model: 'ACU-35X', serial: 'SN-0002', osVersion: 'FW 2.0.0' },
   { kind: 'phone', name: 'Pixel 9', model: 'Pixel 9', osVersion: 'Android 15' },
   { kind: 'phone', name: 'iPhone 15', model: 'iPhone 15', osVersion: 'iOS 18' },
   { kind: 'router', name: 'Router R1', model: 'AX3000', osVersion: 'FW 1.4', repair: true },
 ] as const;
+
+/** Technician account of the demo: sees only the test stands. */
+export const DEMO_TECHNICIAN = { username: 'demo.tech', displayName: 'Demo Technician' };
+
+/**
+ * Lab layout of the demo: zones with stands and the model installed on each (null = empty).
+ * Neutral model names only.
+ */
+export const DEMO_STAND_ZONES: readonly {
+  name: string;
+  stands: readonly { code: string; model: string | null; inCharge?: string }[];
+}[] = [
+  {
+    name: 'Zone A',
+    stands: [
+      { code: 'L1/A-1', model: 'ACU-25', inCharge: 'Demo Tester' },
+      { code: 'L1/A-2', model: 'IoT gateway' },
+      { code: 'L2/A-1', model: null },
+      { code: 'L2/A-2', model: 'ACU-50', inCharge: 'Demo Lead' },
+    ],
+  },
+  {
+    name: 'Zone B',
+    stands: [
+      { code: 'L1/B-1', model: 'ACU-35X', inCharge: 'Demo Tester' },
+      { code: 'L1/B-2', model: null },
+      { code: 'L2/B-1', model: 'ACU-71' },
+      { code: 'L2/B-2', model: 'ACU-60' },
+    ],
+  },
+];

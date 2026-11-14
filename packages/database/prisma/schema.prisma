@@ -90,6 +90,8 @@ enum NotificationKind {
   overdue
   retest
   requirement_changed
+  stand_request
+  stand_request_update
 
   @@map("notification_kind")
 }
@@ -233,6 +235,8 @@ model User {
   passwordHash       String       @map("password_hash")
   authProvider       AuthProvider @default(local) @map("auth_provider")
   isAdmin            Boolean      @default(false) @map("is_admin")
+  /// Lab technician: sees and works only on test stands (install / uninstall requests).
+  isTechnician       Boolean      @default(false) @map("is_technician")
   isActive           Boolean      @default(true) @map("is_active")
   mustChangePassword Boolean      @default(true) @map("must_change_password")
   failedLogins       Int          @default(0) @map("failed_logins")
@@ -264,6 +268,10 @@ model User {
   runCasesExecuted     RunCase[]            @relation("RunCaseExecutedBy")
   resultsRecorded      RunCaseResult[]
   defectsAssigned      Defect[]             @relation("DefectAssignee")
+  standsUpdated        Stand[]              @relation("StandUpdatedBy")
+  standBookings        StandBooking[]       @relation("StandBookingCreatedBy")
+  standRequestsHandled StandRequest[]       @relation("StandRequestTechnician")
+  standRequestsMade    StandRequest[]       @relation("StandRequestRequestedBy")
   defectsReported      Defect[]             @relation("DefectReporter")
   comments             Comment[]
   imports              Import[]
@@ -357,6 +365,8 @@ model Project {
   requirements    Requirement[]
   notifications   Notification[]
   devices         Device[]
+  standBookings   StandBooking[]
+  standRequests   StandRequest[]
 
   @@map("projects")
 }
@@ -1066,7 +1076,8 @@ model RequirementCase {
 model Notification {
   id        Int              @id @default(autoincrement())
   userId    Int              @map("user_id")
-  projectId Int              @map("project_id")
+  /// Null for lab-wide notifications (test stand requests).
+  projectId Int?             @map("project_id")
   kind      NotificationKind
   title     String
   body      String?
@@ -1077,8 +1088,8 @@ model Notification {
   readAt    DateTime?        @map("read_at") @db.Timestamptz(6)
   createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([userId, dedupeKey])
   @@index([userId, readAt, createdAt])
@@ -1127,4 +1138,110 @@ model Device {
   @@index([projectId, status])
   @@index([holderId])
   @@map("devices")
+}
+
+enum StandRequestKind {
+  install
+  uninstall
+  replace
+
+  @@map("stand_request_kind")
+}
+
+enum StandRequestStatus {
+  requested
+  accepted
+  rejected
+  done
+  cancelled
+
+  @@map("stand_request_status")
+}
+
+/// An area of the lab with test stands (Zone A, Zone B …). Shared by all projects.
+model StandZone {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  stands Stand[]
+
+  @@map("stand_zones")
+}
+
+/// A place where one AC unit is installed for testing, and what is installed now.
+model Stand {
+  id           Int      @id @default(autoincrement())
+  zoneId       Int      @map("zone_id")
+  code         String   @unique
+  sortOrder    Int      @default(0) @map("sort_order")
+  /// Model installed now; null = empty.
+  currentModel String?  @map("current_model")
+  /// Person responsible for the unit on the stand (free text, as on the lab sheet).
+  inCharge     String?  @map("in_charge")
+  note         String?
+  updatedById  Int?     @map("updated_by_id")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  zone      StandZone      @relation(fields: [zoneId], references: [id], onDelete: Restrict)
+  updatedBy User?          @relation("StandUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  bookings  StandBooking[]
+  requests  StandRequest[]
+
+  @@index([zoneId, sortOrder])
+  @@map("stands")
+}
+
+/// A stand reserved for a project's testing over a date range (both days included).
+model StandBooking {
+  id          Int      @id @default(autoincrement())
+  standId     Int      @map("stand_id")
+  projectId   Int      @map("project_id")
+  model       String
+  startDate   DateTime @map("start_date") @db.Date
+  endDate     DateTime @map("end_date") @db.Date
+  note        String?
+  createdById Int      @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  stand     Stand   @relation(fields: [standId], references: [id], onDelete: Cascade)
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy User    @relation("StandBookingCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([standId, startDate])
+  @@index([projectId])
+  @@map("stand_bookings")
+}
+
+/// A request to a technician to install, uninstall or replace the unit on a stand on a day.
+model StandRequest {
+  id             Int                @id @default(autoincrement())
+  standId        Int                @map("stand_id")
+  projectId      Int?               @map("project_id")
+  kind           StandRequestKind
+  /// Model to install (install / replace).
+  model          String?
+  technicianId   Int                @map("technician_id")
+  requestedById  Int                @map("requested_by_id")
+  requestedDate  DateTime           @map("requested_date") @db.Date
+  /// Day the technician will do it (set on accept; may differ from the requested day).
+  scheduledDate  DateTime?          @map("scheduled_date") @db.Date
+  status         StandRequestStatus @default(requested)
+  note           String?
+  technicianNote String?            @map("technician_note")
+  doneAt         DateTime?          @map("done_at") @db.Timestamptz(6)
+  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  stand       Stand    @relation(fields: [standId], references: [id], onDelete: Cascade)
+  project     Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  technician  User     @relation("StandRequestTechnician", fields: [technicianId], references: [id], onDelete: Restrict)
+  requestedBy User     @relation("StandRequestRequestedBy", fields: [requestedById], references: [id], onDelete: Restrict)
+
+  @@index([technicianId, status])
+  @@index([standId, status])
+  @@index([requestedById])
+  @@map("stand_requests")
 }

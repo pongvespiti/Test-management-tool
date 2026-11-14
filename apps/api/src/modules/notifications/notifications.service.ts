@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { Prisma } from '@tmt/database';
 import type { NotificationDTO, NotificationListDTO, ListNotificationsQuery } from '@tmt/shared';
 import { notFound } from '../../common/errors/app.exception.js';
 import type { AuthUser, ProjectContext } from '../../common/types/auth.js';
@@ -11,6 +12,11 @@ import { notifyUsers } from './notify.js';
 export const DUE_SOON_DAYS = 2;
 
 const dateKey = (d: Date) => d.toISOString().slice(0, 10);
+
+/** Notifications visible in a project (its own and lab-wide), or lab-wide only outside projects. */
+function scopeOf(ctx: ProjectContext | null): Prisma.NotificationWhereInput {
+  return ctx ? { OR: [{ projectId: ctx.id }, { projectId: null }] } : { projectId: null };
+}
 
 @Injectable()
 export class NotificationsService {
@@ -26,7 +32,19 @@ export class NotificationsService {
   ): Promise<NotificationListDTO> {
     const db = this.prisma.db;
     await this.refreshDue(ctx, me);
-    const where = { userId: me.id, projectId: ctx.id };
+    return this.listWhere({ userId: me.id, OR: [{ projectId: ctx.id }, { projectId: null }] }, q);
+  }
+
+  /** Lab-wide notifications only (test stand requests): the bell outside projects. */
+  listLab(me: AuthUser, q: ListNotificationsQuery): Promise<NotificationListDTO> {
+    return this.listWhere({ userId: me.id, projectId: null }, q);
+  }
+
+  private async listWhere(
+    where: Prisma.NotificationWhereInput,
+    q: ListNotificationsQuery,
+  ): Promise<NotificationListDTO> {
+    const db = this.prisma.db;
     const [rows, unread] = await Promise.all([
       db.notification.findMany({
         where: { ...where, ...(q.unread && { readAt: null }) },
@@ -47,22 +65,22 @@ export class NotificationsService {
     return { items, unread };
   }
 
-  async markRead(ctx: ProjectContext, me: AuthUser, id: number): Promise<void> {
+  /** In a project: its notifications and the lab-wide ones; outside (`ctx` null): lab-wide only. */
+  async markRead(ctx: ProjectContext | null, me: AuthUser, id: number): Promise<void> {
+    const where = { id, userId: me.id, ...scopeOf(ctx) };
     const { count } = await this.prisma.db.notification.updateMany({
-      where: { id, userId: me.id, projectId: ctx.id, readAt: null },
+      where: { ...where, readAt: null },
       data: { readAt: new Date() },
     });
     if (count === 0) {
-      const exists = await this.prisma.db.notification.count({
-        where: { id, userId: me.id, projectId: ctx.id },
-      });
+      const exists = await this.prisma.db.notification.count({ where });
       if (exists === 0) throw notFound('Notification', 'NOTIFICATION_NOT_FOUND');
     }
   }
 
-  async markAllRead(ctx: ProjectContext, me: AuthUser): Promise<void> {
+  async markAllRead(ctx: ProjectContext | null, me: AuthUser): Promise<void> {
     await this.prisma.db.notification.updateMany({
-      where: { userId: me.id, projectId: ctx.id, readAt: null },
+      where: { userId: me.id, readAt: null, ...scopeOf(ctx) },
       data: { readAt: new Date() },
     });
   }
