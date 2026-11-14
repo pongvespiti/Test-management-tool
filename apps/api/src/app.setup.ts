@@ -35,9 +35,11 @@ export function configureApp(app: NestExpressApplication): void {
   app.useBodyParser('urlencoded', { limit: JSON_BODY_LIMIT, extended: false });
   app.enableShutdownHooks();
 
+  // The document always backs the signed-in page (GET /api/v1/openapi.json, "REST API docs");
+  // SWAGGER_ENABLED only decides whether the public Swagger UI at /api/docs is served too.
+  const document = buildOpenApiDocument(app);
+  app.get(OpenApiDocumentHolder).set(document);
   if (config.swaggerEnabled) {
-    const document = buildOpenApiDocument(app);
-    app.get(OpenApiDocumentHolder).set(document);
     SwaggerModule.setup('api/docs', app, document, {
       useGlobalPrefix: false,
       jsonDocumentUrl: 'api/docs/openapi.json',

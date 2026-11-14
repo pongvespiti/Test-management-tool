@@ -6,7 +6,14 @@
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
 import { HTTP_METHODS, routeKey } from '../src/modules/openapi/openapi.enrich.js';
 import { API_TAGS, ROUTE_DOCS } from '../src/modules/openapi/route-docs.js';
-import { createTestApp, createUser, login, type TestApp } from './helpers.js';
+import {
+  anon,
+  createExtraTestApp,
+  createTestApp,
+  createUser,
+  login,
+  type TestApp,
+} from './helpers.js';
 
 interface Operation {
   operationId?: string;
@@ -126,5 +133,26 @@ describe('OpenAPI document', () => {
     expect(Object.keys(xlsx.responses!['200']!.content ?? {})).toEqual([
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     ]);
+  });
+});
+
+describe('SWAGGER_ENABLED=false', () => {
+  it('hides the public Swagger UI but keeps the document for signed-in users', async () => {
+    const quiet = await createExtraTestApp({ swaggerEnabled: false } as never);
+    try {
+      expect((await anon(quiet).get('/api/docs')).status).toBe(404);
+      expect((await anon(quiet).get('/api/docs/openapi.json')).status).toBe(404);
+      expect((await anon(quiet).get('/api/v1/openapi.json')).status).toBe(401);
+      const alice = await login(quiet, 'alice');
+      const res = await alice.get('/openapi.json');
+      expect(res.status).toBe(200);
+      expect(Object.keys((res.body as Document).paths).length).toBeGreaterThan(100);
+    } finally {
+      await quiet.close();
+    }
+  });
+
+  it('serves the public Swagger UI when enabled (the default)', async () => {
+    expect((await anon(t).get('/api/docs/openapi.json')).status).toBe(200);
   });
 });

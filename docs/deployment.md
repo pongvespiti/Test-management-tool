@@ -20,14 +20,37 @@ docker compose logs api | grep -i "one-time\|password"   # first administrator p
 
 Services: `db` (PostgreSQL 16) → `migrate` (one-shot `prisma migrate deploy`) → `api` → `web`.
 Data lives in the volumes `db-data` (database) and `tmt-data` (uploads, templates, generated
-secret). Web is published on `WEB_PORT` (default 3000), the API on `API_PUBLISHED_PORT` (default
-4000; remove that mapping if only the web app should be reachable).
+secret). Web is published on `WEB_PORT` (default 3000). The API is published on
+`API_PUBLISHED_PORT` (default 4000) for the server itself only (`127.0.0.1`); browsers and CI reach
+it through the web app's `/api`. Set `API_BIND=0.0.0.0` to open the API port to the network.
 
 ### HTTPS
 
 Terminate TLS in a reverse proxy (nginx, Caddy, IIS ARR …) in front of the **web** container and
 forward everything (`/` and `/api/*`) to it. Set `WEB_ORIGINS` to the public URL, `COOKIE_SECURE=true`
-and `TRUST_PROXY=true`.
+and `TRUST_PROXY=true`. Make the proxy **replace** `X-Forwarded-For` with the client address rather
+than append to it (nginx: `proxy_set_header X-Forwarded-For $remote_addr;`), so a browser cannot
+choose the address the sign-in limit counts.
+
+### Production settings
+
+| Setting                                   | Value                                                   | Why                                                                                                             |
+| ----------------------------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `POSTGRES_PASSWORD`                       | long random letters and digits (`openssl rand -hex 24`) | the database password; compose refuses to start without it                                                      |
+| `APP_SECRET`                              | 32+ random characters (`openssl rand -hex 32`)          | encrypts the Jira token; keep a copy with the backups                                                           |
+| `WEB_ORIGINS` / `PUBLIC_URL`              | the URL people open, e.g. `http://tmt.company.local`    | other origins are refused for changes; links in Jira use it                                                     |
+| `COOKIE_SECURE`                           | `true` with HTTPS, `false` on plain HTTP                | a Secure cookie is never sent over HTTP, so sign-in would fail                                                  |
+| `TRUST_PROXY`                             | `true` only behind your own reverse proxy (above)       | otherwise anyone could choose the address the sign-in limit counts                                              |
+| `SWAGGER_ENABLED`                         | `false`                                                 | hides the public API page; the signed-in REST API docs still work                                               |
+| `INITIAL_ADMIN_PASSWORD`                  | empty (a one-time password is printed in the log)       | change it at the first sign-in                                                                                  |
+| `DEFAULT_DOC_NO_PATTERN`                  | your document code, e.g. `{YY}TR-<dept>-{MM}-{SEQ}`     | numbers of new test plans                                                                                       |
+| `LOGIN_MAX_FAILED` / `LOGIN_LOCK_MINUTES` | `5` / `15` (defaults)                                   | a locked user waits, or an admin resets the password (which also unlocks)                                       |
+| `LOGIN_RATE_LIMIT_PER_MIN`                | `20` (default)                                          | per username and client; one client is capped at ten times that over all names                                  |
+| `MAX_UPLOAD_MB`                           | `25` (default), at most `99`                            | larger uploads also need `proxyClientMaxBodySize` in `apps/web/next.config.ts` raised and the web image rebuilt |
+| `SESSION_IDLE_HOURS` / `SESSION_MAX_DAYS` | `12` / `7` (defaults)                                   | how long a sign-in lasts                                                                                        |
+
+Server size: 2 CPU, 4 GB RAM is comfortable. The API used about 800 MB under a test load of
+20,000 cases and 270,000 run cases, and stayed flat across repeated Excel exports.
 
 ### Backup
 
