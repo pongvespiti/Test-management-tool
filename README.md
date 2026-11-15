@@ -70,6 +70,8 @@ runs with environments and results, defects (one reopened twice), requirements w
 (one without a case yet and one reworded after its cases were linked, so it asks for a review),
 exploratory sessions in each state, test devices (one in repair) and a shared summary view. Look at
 Reports (Summary, Schedule, Reopens, Compare, Traceability), Requirements, Exploratory and Devices.
+The lab's **Test stands** (shared by all projects) have two zones, two bookings and a request to the
+demo technician (`demo.tech`, who sees only the stands).
 
 ## Docker (one server)
 
@@ -120,6 +122,8 @@ pattern of a project at any time under **Settings → General**.
 - API tokens (hash stored, shown once) for automation; they cannot reach session-only endpoints.
 - Integration secrets (Jira token) are encrypted with `APP_SECRET`.
 - Project roles (viewer · manager · tester · lead) enforced on every route; administrators manage users.
+- Technician accounts reach only the test stand routes (403 `TECHNICIAN_NOT_ALLOWED` elsewhere) and
+  cannot be project members.
 
 ## Contributing
 

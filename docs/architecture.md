@@ -64,6 +64,7 @@ from the others.
 | `modules/my-work`                                  | cases waiting for the signed-in user and a day/week summary of their results                              |
 | `modules/notifications`                            | in-app notifications: assignment, due soon / overdue, retest, changed requirement                         |
 | `modules/devices`                                  | test device registry (units, phones, routers) with check-out / return                                     |
+| `modules/stands`                                   | lab test stands (not per project): zones, stands, bookings, install requests, stand sheet import          |
 | `modules/collab`                                   | comments, attachments                                                                                     |
 | `modules/integrations`                             | Jira settings and client                                                                                  |
 | `modules/automation`                               | JUnit XML upload for CI                                                                                   |
@@ -201,6 +202,16 @@ Reports added later, all computed on request (no stored aggregates):
   exactly when it is `in_use` (database check constraint); taking one is a conditional update, so
   two people cannot both get it; the holder or a lead returns it; a held device cannot be sent to
   repair.
+- **Test stands** (`stand_zones`, `stands`, `stand_bookings`, `stand_requests`) belong to the lab,
+  not to a project. Bookings of one stand may not overlap (checked under a row lock on the stand,
+  409 `STAND_BOOKED`). A request goes requested → accepted (with the day the technician will do it)
+  → done, or is rejected (reason) or cancelled; done writes the requested model to the stand.
+  Each step notifies the other side with a lab-wide notification (`notifications.project_id`
+  null). Users with `is_technician` pass the auth guard only on routes marked `@TechnicianAllowed`
+  and cannot be project members, so they never see test cases.
+- **Evidence uploads** stream to `DATA_DIR/tmp/uploads` (hashed on the way) and are renamed into
+  storage, up to `MAX_ATTACHMENT_MB`. The web forwards them with a route handler under `/upload`
+  instead of the `/api` proxy, which would hold the body in memory.
 - **Report template tables.** Besides `runs`, `cases` and `envList`, any sheet of a template can
   repeat rows for `${table:requirements.*}` (requirements that the plan's case rows test, by link
   or by citing the key, with their results and open defects), `${table:dimensions.*}` (results by
