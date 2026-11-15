@@ -170,6 +170,7 @@ export function CreateUserForm({ onDone }: { onDone: () => void }) {
       displayName: '',
       email: '',
       isAdmin: false,
+      isTechnician: false,
       password: initialPassword,
     },
   });
@@ -185,6 +186,8 @@ export function CreateUserForm({ onDone }: { onDone: () => void }) {
     } catch (err) {
       if (err instanceof ApiError && err.code === 'USERNAME_TAKEN')
         form.setError('username', { message: 'This username is already taken' });
+      else if (err instanceof ApiError && err.code === 'ADMIN_TECHNICIAN')
+        form.setError('isTechnician', { message: err.message });
       else notifyError(err, 'Could not create the user');
     }
   });
@@ -267,6 +270,29 @@ export function CreateUserForm({ onDone }: { onDone: () => void }) {
             </FormItem>
           )}
         />
+        <FormField
+          control={form.control}
+          name="isTechnician"
+          render={({ field }) => (
+            <FormItem className="flex items-start gap-3">
+              <FormControl>
+                <Checkbox
+                  checked={field.value === true}
+                  onCheckedChange={(c) => field.onChange(c === true)}
+                  className="mt-0.5"
+                />
+              </FormControl>
+              <div className="grid gap-1">
+                <FormLabel>Technician</FormLabel>
+                <FormDescription>
+                  Sees only the test stands and handles install / uninstall requests; no projects or
+                  test cases
+                </FormDescription>
+                <FormMessage />
+              </div>
+            </FormItem>
+          )}
+        />
         <DialogFooter className="mt-1">
           <Button type="button" variant="outline" onClick={onDone}>
             Cancel
@@ -291,6 +317,7 @@ export function EditUserForm({ user, onDone }: { user: UserDTO; onDone: () => vo
       displayName: user.displayName,
       email: user.email ?? '',
       isAdmin: user.isAdmin,
+      isTechnician: user.isTechnician,
       isActive: user.isActive,
     },
   });
@@ -301,7 +328,12 @@ export function EditUserForm({ user, onDone }: { user: UserDTO; onDone: () => vo
       notifySuccess(`${values.displayName ?? user.displayName} updated.`);
       onDone();
     } catch (err) {
-      notifyError(err, 'Could not update the user');
+      if (
+        err instanceof ApiError &&
+        (err.code === 'ADMIN_TECHNICIAN' || err.code === 'USER_HAS_PROJECTS')
+      )
+        form.setError('isTechnician', { message: err.message });
+      else notifyError(err, 'Could not update the user');
     }
   });
 
@@ -349,6 +381,13 @@ export function EditUserForm({ user, onDone }: { user: UserDTO; onDone: () => vo
                 : 'Can manage users and every project',
             },
             {
+              name: 'isTechnician',
+              label: 'Technician',
+              description: isSelf
+                ? 'You cannot change this for your own account'
+                : 'Sees only the test stands; cannot be in projects',
+            },
+            {
               name: 'isActive',
               label: 'Active',
               description: isSelf
@@ -374,6 +413,7 @@ export function EditUserForm({ user, onDone }: { user: UserDTO; onDone: () => vo
                 <div className="grid gap-1">
                   <FormLabel>{s.label}</FormLabel>
                   <FormDescription>{s.description}</FormDescription>
+                  <FormMessage />
                 </div>
               </FormItem>
             )}

@@ -26,6 +26,7 @@ import {
   type PlanStatus,
   type ReleaseStatus,
   type ResultStatus,
+  type StandRequestStatus,
 } from '@tmt/shared';
 
 export interface Tone {
@@ -86,6 +87,14 @@ export const RELEASE_STATUS_TONES: Record<ReleaseStatus, Tone> = {
   planned: GRAY,
   active: BLUE,
   completed: GREEN,
+};
+
+export const STAND_REQUEST_STATUS_TONES: Record<StandRequestStatus, Tone> = {
+  requested: ORANGE,
+  accepted: BLUE,
+  done: GREEN,
+  rejected: RED,
+  cancelled: GRAY,
 };
 
 export const DEVICE_STATUS_TONES: Record<DeviceStatus, Tone> = {

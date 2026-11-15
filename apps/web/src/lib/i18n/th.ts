@@ -9,6 +9,7 @@ export const TH: Readonly<Record<string, string>> = {
   Project: 'โปรเจกต์',
   Workspace: 'พื้นที่ทำงาน',
   Admin: 'ผู้ดูแลระบบ',
+  Lab: 'ห้องแล็บ',
   // Menu items and page titles
   Dashboard: 'แดชบอร์ด',
   'My work': 'งานของฉัน',
@@ -23,6 +24,7 @@ export const TH: Readonly<Record<string, string>> = {
   Defects: 'ข้อบกพร่อง',
   Defect: 'ข้อบกพร่อง',
   Devices: 'อุปกรณ์ทดสอบ',
+  'Test stands': 'สแตนด์ทดสอบ',
   Reports: 'รายงาน',
   'Test cases': 'เทสต์เคส',
   Requirements: 'ข้อกำหนด',

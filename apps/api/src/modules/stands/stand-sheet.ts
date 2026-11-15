@@ -24,11 +24,15 @@ const LABELS = {
   target: /^target$/i,
 };
 const ZONE = /^zone\b/i;
+/** Columns of a block (label column included) when a row has only one block. */
+const DEFAULT_BLOCK_WIDTH = 7;
 /** Values the lab writes for "nothing". */
 const EMPTY = /^[-.\s]*$/;
 
 function text(ws: Worksheet, row: number, col: number): string {
   const cell = ws.getRow(row).getCell(col);
+  // A value merged down over several rows (a grey "IoT" block) belongs to its first row only.
+  if (cell.isMerged && Number(cell.master.row) !== row) return '';
   const v = cell.isMerged ? cell.master.value : cell.value;
   if (v === null || v === undefined) return '';
   if (v instanceof Date) {
@@ -76,8 +80,12 @@ export function readStandSheet(ws: Worksheet): SheetReadResult {
   for (let r = 1; r <= lastRow; r++) {
     const labelCols: number[] = [];
     for (let c = 1; c <= lastCol; c++) if (LABELS.stand.test(text(ws, r, c))) labelCols.push(c);
+    // Blocks of a row are equally wide; the last one is as wide as the others, so a table further
+    // right on the sheet (e.g. an install history) is not read as stands.
+    const gaps = labelCols.slice(1).map((c, i) => c - labelCols[i]!);
+    const width = gaps.length > 0 ? Math.min(...gaps) : DEFAULT_BLOCK_WIDTH;
     labelCols.forEach((labelCol, i) => {
-      const end = (labelCols[i + 1] ?? lastCol + 1) - 1;
+      const end = Math.min((labelCols[i + 1] ?? lastCol + 1) - 1, labelCol + width - 1);
       // Rows of the labels below "Stand No." in the label column.
       const rowOf: Partial<Record<keyof typeof LABELS, number>> = {};
       for (let rr = r + 1; rr <= Math.min(r + 8, lastRow); rr++) {

@@ -18,14 +18,16 @@ import { NotificationItem } from '@/features/notifications/notification-item';
 
 const PREVIEW = 8;
 
-/** Bell in the header: unread count and the latest notifications of the open project. */
+/**
+ * Bell in the header: unread count and the latest notifications — of the open project plus the
+ * lab-wide ones (test stand requests), or only the lab-wide ones outside projects.
+ */
 export function NotificationBell() {
   const project = useOptionalProject();
-  if (!project) return null;
-  return <BellMenu projectId={project.projectId} />;
+  return <BellMenu key={project?.projectId ?? 'lab'} projectId={project?.projectId ?? null} />;
 }
 
-function BellMenu({ projectId }: { projectId: number }) {
+function BellMenu({ projectId }: { projectId: number | null }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const query = useNotifications(projectId, { limit: PREVIEW });
@@ -68,7 +70,9 @@ function BellMenu({ projectId }: { projectId: number }) {
         </div>
         {items.length === 0 ? (
           <p className="px-4 py-6 text-center text-sm text-muted-foreground">
-            Nothing new. Runs given to you, fixes to retest and due dates show up here.
+            {projectId === null
+              ? 'Nothing new. Test stand requests and their answers show up here.'
+              : 'Nothing new. Runs given to you, fixes to retest, due dates and test stand requests show up here.'}
           </p>
         ) : (
           <ul aria-label="Latest notifications" className="max-h-96 divide-y overflow-auto">
@@ -89,11 +93,15 @@ function BellMenu({ projectId }: { projectId: number }) {
         )}
         <div className="border-t px-4 py-2 text-right">
           <Link
-            href={routes.notifications(projectId)}
+            href={
+              projectId === null
+                ? routes.stands({ tab: 'requests' })
+                : routes.notifications(projectId)
+            }
             className="text-sm text-primary hover:underline"
             onClick={() => setOpen(false)}
           >
-            See all
+            {projectId === null ? 'Stand requests' : 'See all'}
           </Link>
         </div>
       </PopoverContent>

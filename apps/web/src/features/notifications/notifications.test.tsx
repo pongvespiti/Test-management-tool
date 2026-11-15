@@ -79,9 +79,27 @@ describe('Notification bell', () => {
     expect(screen.getByRole('button', { name: 'Mark all as read' })).toBeDisabled();
   });
 
-  it('renders nothing outside a project', () => {
-    const { container } = renderWithProviders(<NotificationBell />);
-    expect(container).toBeEmptyDOMElement();
+  it('shows the lab-wide notifications (stand requests) outside a project', async () => {
+    const api = mockApi({
+      'GET /notifications': list([
+        note({
+          id: 7,
+          kind: 'stand_request',
+          title: 'Ann: Install ACU-25 at L2/A-1',
+          link: '/stands?tab=requests&request=4',
+        }),
+      ]),
+      'POST /notifications/7/read': null,
+    });
+    const { user } = renderWithProviders(<NotificationBell />);
+    await user.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    expect(screen.getByRole('link', { name: 'Stand requests' })).toHaveAttribute(
+      'href',
+      '/stands?tab=requests',
+    );
+    await user.click(screen.getByRole('button', { name: /Install ACU-25/ }));
+    await waitFor(() => expect(api.find('POST', '/notifications/7/read')).toHaveLength(1));
+    expect(mockRouter.push).toHaveBeenCalledWith('/stands?tab=requests&request=4');
   });
 });
 

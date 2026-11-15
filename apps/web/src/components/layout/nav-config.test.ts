@@ -14,6 +14,7 @@ describe('navigation config', () => {
       'Exploratory',
       'Defects',
       'Devices',
+      'Test stands',
       'Reports',
     ]);
     expect(sections[1]!.items.map((i) => i.href)).toContain('/projects/3/settings/suites');
@@ -29,9 +30,19 @@ describe('navigation config', () => {
       'Exploratory',
       'Defects',
       'Devices',
+      'Test stands',
       'Reports',
     ]);
     expect(projectNav(3, true)[0]!.items[2]!.href).toBe('/projects/3/team');
+  });
+
+  it('shows technicians the test stands only', () => {
+    const sections = navSections(3, false, false, true);
+    expect(sections.map((s) => s.title)).toEqual(['Lab']);
+    expect(sections[0]!.items.map((i) => [i.label, i.href])).toEqual([['Test stands', '/stands']]);
+    expect(navSections(null, false).flatMap((s) => s.items.map((i) => i.href))).toContain(
+      '/stands',
+    );
   });
 
   it('shows the workspace outside projects and the admin section to admins only', () => {

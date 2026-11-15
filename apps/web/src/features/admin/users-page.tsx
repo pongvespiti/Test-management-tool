@@ -236,6 +236,8 @@ export function UsersPage() {
                       <TableCell>
                         {u.isAdmin ? (
                           <StatusPill tone={VIOLET}>Administrator</StatusPill>
+                        ) : u.isTechnician ? (
+                          <StatusPill tone={GRAY}>Technician · test stands</StatusPill>
                         ) : (
                           <span className="text-muted-foreground">Project roles</span>
                         )}
@@ -291,10 +293,14 @@ export function UsersPage() {
                             {!isSelf && (
                               <>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem onSelect={() => setAdmin(u, !u.isAdmin)}>
-                                  {u.isAdmin ? <ShieldOff /> : <Shield />}
-                                  {u.isAdmin ? 'Remove administrator rights' : 'Make administrator'}
-                                </DropdownMenuItem>
+                                {!u.isTechnician && (
+                                  <DropdownMenuItem onSelect={() => setAdmin(u, !u.isAdmin)}>
+                                    {u.isAdmin ? <ShieldOff /> : <Shield />}
+                                    {u.isAdmin
+                                      ? 'Remove administrator rights'
+                                      : 'Make administrator'}
+                                  </DropdownMenuItem>
+                                )}
                                 <DropdownMenuItem
                                   variant={u.isActive ? 'destructive' : 'default'}
                                   onSelect={() => setActive(u, !u.isActive)}

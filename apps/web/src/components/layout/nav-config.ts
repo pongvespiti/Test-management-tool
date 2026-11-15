@@ -7,6 +7,7 @@ import {
   FileSpreadsheet,
   Flag,
   Folders,
+  Grid2x2,
   Layers,
   ListTree,
   LayoutDashboard,
@@ -63,6 +64,7 @@ export function projectNav(projectId: number, showTeam = false): NavSection[] {
         { label: 'Exploratory', href: routes.sessions(projectId), icon: Compass },
         { label: 'Defects', href: routes.defects(projectId), icon: Bug },
         { label: 'Devices', href: routes.devices(projectId), icon: Smartphone },
+        { label: 'Test stands', href: routes.stands(), icon: Grid2x2 },
         { label: 'Reports', href: routes.reports(projectId), icon: ChartColumn },
       ],
     },
@@ -105,7 +107,16 @@ export function projectNav(projectId: number, showTeam = false): NavSection[] {
 
 export const WORKSPACE_NAV: NavSection = {
   title: 'Workspace',
-  items: [{ label: 'Projects', href: routes.projects, icon: Folders, exact: true }],
+  items: [
+    { label: 'Projects', href: routes.projects, icon: Folders, exact: true },
+    { label: 'Test stands', href: routes.stands(), icon: Grid2x2 },
+  ],
+};
+
+/** All a technician account sees. */
+export const TECHNICIAN_NAV: NavSection = {
+  title: 'Lab',
+  items: [{ label: 'Test stands', href: routes.stands(), icon: Grid2x2 }],
 };
 
 export const ADMIN_NAV: NavSection = {
@@ -118,7 +129,9 @@ export function navSections(
   projectId: number | null,
   isAdmin: boolean,
   showTeam = false,
+  isTechnician = false,
 ): NavSection[] {
+  if (isTechnician) return [TECHNICIAN_NAV];
   const sections = projectId ? projectNav(projectId, showTeam) : [WORKSPACE_NAV];
   return isAdmin ? [...sections, ADMIN_NAV] : sections;
 }

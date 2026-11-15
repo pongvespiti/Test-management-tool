@@ -3,14 +3,16 @@ import type { NotificationListDTO } from '@tmt/shared';
 import { api } from './client';
 import { qk } from './keys';
 
-const base = (projectId: number) => `/projects/${projectId}/notifications`;
+/** Project notifications (with lab-wide ones), or only lab-wide ones outside projects (`null`). */
+const base = (projectId: number | null) =>
+  projectId === null ? '/notifications' : `/projects/${projectId}/notifications`;
 
 /** How often the bell looks for new notifications. */
 export const NOTIFICATION_POLL_MS = 60_000;
 
 /** My notifications in the project; polled so the bell notices new ones. */
 export function useNotifications(
-  projectId: number,
+  projectId: number | null,
   params: { unread?: boolean; limit?: number } = {},
 ) {
   return useQuery({
@@ -25,18 +27,18 @@ export function useNotifications(
   });
 }
 
-export function useMarkNotificationRead(projectId: number) {
+export function useMarkNotificationRead(projectId: number | null) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => api.post<void>(`${base(projectId)}/${id}/read`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: qk.notifications(projectId) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
   });
 }
 
-export function useMarkAllNotificationsRead(projectId: number) {
+export function useMarkAllNotificationsRead(projectId: number | null) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => api.post<void>(`${base(projectId)}/read-all`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: qk.notifications(projectId) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
   });
 }

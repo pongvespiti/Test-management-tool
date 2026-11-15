@@ -11,6 +11,8 @@ export interface AuthContextValue {
   me: MeDTO | null;
   user: UserDTO | null;
   isAdmin: boolean;
+  /** Lab technician: sees only the test stands. */
+  isTechnician: boolean;
   /** True until the first `/auth/me` probe has finished. */
   loading: boolean;
   /** Probe failed for a reason other than 401 (server down). */
@@ -43,6 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       me,
       user: me?.user ?? null,
       isAdmin: me?.user.isAdmin ?? false,
+      isTechnician: me?.user.isTechnician ?? false,
       loading: meQuery.isPending,
       error: meQuery.isError ? meQuery.error : null,
       login: (body) => loginMutation.mutateAsync(body),

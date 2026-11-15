@@ -7,6 +7,7 @@ import { Suspense, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { routes } from '@/lib/routes';
+import { useAuth } from '@/providers/auth-provider';
 import { AppSidebar } from './app-sidebar';
 import { GlobalSearch } from './global-search';
 import { Logo } from './logo';
@@ -17,6 +18,8 @@ import { UserMenu } from './user-menu';
 /** Header (61px) + left navigation (240px) + content, as in the approved mockup. */
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  // Technicians work only on the test stands: no project switcher or case search.
+  const { isTechnician } = useAuth();
   // The mobile navigation is open for the page it was opened on, so any navigation closes it.
   const [openOn, setOpenOn] = useState<string | null>(null);
   const mobileOpen = openOn === pathname;
@@ -43,10 +46,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Logo />
           </Link>
           <div className="hidden min-w-0 flex-1 items-center gap-3 sm:flex">
-            <ProjectSwitcher />
-            <Suspense fallback={<div className="flex-[1_1_240px]" />}>
-              <GlobalSearch />
-            </Suspense>
+            {!isTechnician && (
+              <>
+                <ProjectSwitcher />
+                <Suspense fallback={<div className="flex-[1_1_240px]" />}>
+                  <GlobalSearch />
+                </Suspense>
+              </>
+            )}
           </div>
           <div className="ml-auto flex items-center gap-2">
             <NotificationBell />
@@ -63,9 +70,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         <SheetContent side="left" className="w-72 gap-0 p-0">
           <SheetTitle className="sr-only">Navigation</SheetTitle>
           <SheetDescription className="sr-only">Project switcher and pages</SheetDescription>
-          <div className="border-b p-3 pr-12">
-            <ProjectSwitcher />
-          </div>
+          {!isTechnician && (
+            <div className="border-b p-3 pr-12">
+              <ProjectSwitcher />
+            </div>
+          )}
           <AppSidebar onNavigate={() => setMobileOpen(false)} />
         </SheetContent>
       </Sheet>

@@ -37,6 +37,22 @@ describe('RequireAuth', () => {
     await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith('/change-password'));
   });
 
+  it('keeps technicians on the test stands', async () => {
+    setNavigation({ pathname: '/projects/3/cases' });
+    const tech = makeUser({ isTechnician: true });
+    const { unmount } = renderWithProviders(<RequireAuth>secret page</RequireAuth>, {
+      auth: { user: tech, me: { user: tech, memberships: [] } },
+    });
+    await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith('/stands'));
+    expect(screen.queryByText('secret page')).not.toBeInTheDocument();
+    unmount();
+    setNavigation({ pathname: '/stands' });
+    renderWithProviders(<RequireAuth>stands page</RequireAuth>, {
+      auth: { user: tech, me: { user: tech, memberships: [] } },
+    });
+    expect(screen.getByText('stands page')).toBeInTheDocument();
+  });
+
   it('explains when the server cannot be reached', () => {
     renderWithProviders(<RequireAuth>secret page</RequireAuth>, {
       auth: {

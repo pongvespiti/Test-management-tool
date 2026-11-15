@@ -79,6 +79,7 @@ describe('UsersPage', () => {
       displayName: 'Dan Tester',
       email: null,
       isAdmin: true,
+      isTechnician: false,
       password: password.value,
     });
     expect(within(dialog).getByText('dan.t')).toBeInTheDocument();
@@ -123,6 +124,7 @@ describe('UsersPage', () => {
       displayName: 'Bob T.',
       email: 'bob@example.com',
       isAdmin: true,
+      isTechnician: false,
       isActive: true,
     });
 

@@ -31,6 +31,9 @@ function labSheet() {
     ['', '', '', '', '', ''],
   ]);
   block(11, 2, null, [['L2/N-1', '', '', '', '', '']]);
+  // A history table further right on the same rows is not a stand block.
+  ws.getCell(4, 16).value = 'L1/N-1';
+  ws.getCell(5, 16).value = 'ACU-99';
   // An empty block of a planned zone: skipped.
   block(20, 2, 'Zone Spare', [['', '', '', '', '', '']]);
   return { wb, ws };
@@ -54,6 +57,20 @@ describe('readStandSheet', () => {
       { zone: 'Zone North', code: 'L2/N-1', model: null, inCharge: null, note: null },
     ]);
     expect(warnings).toEqual([]);
+  });
+
+  it('takes a value merged down over Model … Target as the model only', () => {
+    const ws = new ExcelJS.Workbook().addWorksheet('Stand');
+    ws.getCell('C3').value = 'Zone X';
+    ['Stand No.', 'Model Name', 'In charge', 'Request', 'Replace', 'Target'].forEach((l, i) => {
+      ws.getCell(4 + i, 2).value = l;
+    });
+    ws.getCell('C4').value = 'X-1';
+    ws.mergeCells('C5:D9');
+    ws.getCell('C5').value = 'IoT';
+    expect(readStandSheet(ws).stands).toEqual([
+      { zone: 'Zone X', code: 'X-1', model: 'IoT', inCharge: null, note: null },
+    ]);
   });
 
   it('reads date cells as day/month/year and reports duplicate codes', async () => {

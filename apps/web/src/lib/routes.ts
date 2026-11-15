@@ -29,6 +29,18 @@ export const routes = {
   apiTokens: '/account/tokens',
   apiDocs: '/api-docs',
   adminUsers: '/admin/users',
+  stands: (query?: {
+    tab?: 'board' | 'bookings' | 'requests' | 'import' | null;
+    stand?: Id | null;
+    request?: Id | null;
+    model?: string | null;
+  }) =>
+    `/stands${toQueryString({
+      tab: query?.tab ?? undefined,
+      stand: query?.stand ?? undefined,
+      request: query?.request ?? undefined,
+      model: query?.model ?? undefined,
+    })}`,
 
   project,
   dashboard: project,

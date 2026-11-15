@@ -4,7 +4,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
 import { ErrorAlert } from '@/components/common/error-alert';
 import { FullPage, FullPageSpinner } from '@/components/common/full-page';
-import { routes } from '@/lib/routes';
+import { isUnder, routes } from '@/lib/routes';
 import { useAuth } from '@/providers/auth-provider';
 
 /**
@@ -17,14 +17,22 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   const router = useRouter();
   const mustChangePassword = !!me?.user.mustChangePassword && pathname !== routes.changePassword;
   const anonymous = !loading && !me && !error;
+  // Technician accounts see only the test stands (the API refuses everything else anyway).
+  const technicianElsewhere =
+    !!me?.user.isTechnician &&
+    !mustChangePassword &&
+    !isUnder(pathname, routes.stands()) &&
+    pathname !== routes.changePassword;
 
   useEffect(() => {
     if (anonymous) {
       router.replace(routes.login(`${window.location.pathname}${window.location.search}`));
     } else if (mustChangePassword) {
       router.replace(routes.changePassword);
+    } else if (technicianElsewhere) {
+      router.replace(routes.stands());
     }
-  }, [anonymous, mustChangePassword, router]);
+  }, [anonymous, mustChangePassword, technicianElsewhere, router]);
 
   if (loading) return <FullPageSpinner />;
 
@@ -42,6 +50,6 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     );
   }
 
-  if (!me || mustChangePassword) return <FullPageSpinner />;
+  if (!me || mustChangePassword || technicianElsewhere) return <FullPageSpinner />;
   return <>{children}</>;
 }

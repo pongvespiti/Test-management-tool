@@ -56,11 +56,12 @@ function SidebarSection({
 export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const project = useOptionalProject();
-  const { isAdmin } = useAuth();
+  const { isAdmin, isTechnician } = useAuth();
   const sections = navSections(
     project?.projectId ?? null,
     isAdmin,
     project?.can('viewTeam') ?? false,
+    isTechnician,
   );
 
   return (

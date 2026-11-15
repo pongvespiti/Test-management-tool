@@ -73,9 +73,16 @@ export const qk = {
   devices: (projectId: number) => ['devices', projectId] as const,
   deviceList: (projectId: number, params: object) =>
     ['devices', projectId, 'list', params] as const,
-  notifications: (projectId: number) => ['notifications', projectId] as const,
-  notificationList: (projectId: number, params: object) =>
-    ['notifications', projectId, 'list', params] as const,
+  /** `null` = lab-wide notifications outside projects. */
+  notifications: (projectId: number | null) => ['notifications', projectId ?? 'lab'] as const,
+  notificationList: (projectId: number | null, params: object) =>
+    ['notifications', projectId ?? 'lab', 'list', params] as const,
+  stands: ['stands'] as const,
+  standBoard: (params: object) => ['stands', 'board', params] as const,
+  stand: (standId: number) => ['stands', 'one', standId] as const,
+  standBookings: (params: object) => ['stands', 'bookings', params] as const,
+  standRequests: (params: object) => ['stands', 'requests', params] as const,
+  standTechnicians: ['stands', 'technicians'] as const,
 
   comments: (projectId: number, entityType: string, entityId: number) =>
     ['comments', projectId, entityType, entityId] as const,
