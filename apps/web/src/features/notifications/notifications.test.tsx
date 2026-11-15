@@ -13,6 +13,7 @@ const note = (overrides: Partial<NotificationDTO> = {}): NotificationDTO => ({
   title: 'Run "Smoke 1.2" is yours',
   body: 'Due 20 Nov',
   link: '/projects/3/runs/9',
+  message: null,
   read: false,
   createdAt: new Date().toISOString(),
   ...overrides,
@@ -77,6 +78,40 @@ describe('Notification bell', () => {
     await user.click(await screen.findByRole('button', { name: 'Notifications' }));
     expect(await screen.findByText(/Nothing new/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Mark all as read' })).toBeDisabled();
+  });
+
+  it('shows notifications in Thai when the menu language is Thai', async () => {
+    window.localStorage.setItem('tmt.locale', 'th');
+    mockApi({
+      'GET /notifications': list([
+        note({
+          id: 8,
+          kind: 'stand_request_update',
+          title: 'Install ACU-25 at L2/A-1 done by Tina',
+          body: 'Morning',
+          link: '/stands?tab=requests&request=4',
+          message: {
+            title: {
+              key: 'stand_done',
+              vars: {
+                actor: 'Tina',
+                what: { key: 'stand_what_install', vars: { model: 'ACU-25', code: 'L2/A-1' } },
+              },
+            },
+            body: { key: 'text', vars: { text: 'Morning' } },
+          },
+        }),
+        note({ id: 9, read: true }),
+      ]),
+    });
+    const { user } = renderWithProviders(<NotificationBell />);
+    await user.click(await screen.findByRole('button', { name: 'การแจ้งเตือน, 1 ยังไม่อ่าน' }));
+    expect(screen.getByText('Tina ทำงาน ติดตั้ง ACU-25 ที่ L2/A-1 เสร็จแล้ว')).toBeInTheDocument();
+    expect(screen.getByText('Morning')).toBeInTheDocument();
+    expect(screen.getAllByText(/อัปเดตคำขอช่าง/)).toHaveLength(1);
+    // An older notification without a message keeps its English text.
+    expect(screen.getByText('Run "Smoke 1.2" is yours')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'การแจ้งเตือน' })).toBeInTheDocument();
   });
 
   it('shows the lab-wide notifications (stand requests) outside a project', async () => {

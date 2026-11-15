@@ -30,7 +30,7 @@ export const routes = {
   apiDocs: '/api-docs',
   adminUsers: '/admin/users',
   stands: (query?: {
-    tab?: 'board' | 'bookings' | 'requests' | 'import' | null;
+    tab?: 'board' | 'bookings' | 'requests' | 'history' | 'import' | null;
     stand?: Id | null;
     request?: Id | null;
     model?: string | null;

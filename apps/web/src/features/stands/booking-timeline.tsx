@@ -8,10 +8,13 @@ import { Button } from '@/components/ui/button';
 import { useStandBookings } from '@/lib/api/stands';
 import { cn } from '@/lib/utils';
 import { addDaysIso, daysBetween, todayIso, weekStart } from './stand-dates';
-import { useStandsDates, useStandsT } from './stand-i18n';
+import { periodText, useStandsDates, useStandsT } from './stand-i18n';
 
 /** Days shown at once. */
 const WINDOW = 28;
+const DAY_MINUTES = 1440;
+const minutes = (time: string | null, fallback: number) =>
+  time ? Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5)) : fallback;
 const PALETTE = ['#1864AB', '#0B7285', '#6741D9', '#B45309', '#237032', '#C2255C', '#495057'];
 
 /** Same project → same colour on the whole timeline. */
@@ -119,32 +122,41 @@ export function BookingTimeline({
                         />
                       )}
                       {(byStand.get(s.id) ?? []).map((b) => {
-                        const start = Math.max(0, daysBetween(from, b.startDate));
-                        const end = Math.min(WINDOW - 1, daysBetween(from, b.endDate));
+                        // Position in days from `from`, hours as fractions of a day.
+                        const start = Math.max(
+                          0,
+                          daysBetween(from, b.startDate) + minutes(b.startTime, 0) / DAY_MINUTES,
+                        );
+                        const end = Math.min(
+                          WINDOW,
+                          daysBetween(from, b.endDate) +
+                            minutes(b.endTime, DAY_MINUTES) / DAY_MINUTES,
+                        );
+                        const who = b.tester?.displayName ?? b.createdBy.displayName;
                         return (
                           <button
                             key={b.id}
                             type="button"
                             onClick={() => onOpen(b)}
-                            title={`${b.project.key} · ${b.model} · ${fmt.date(b.startDate)} – ${fmt.date(b.endDate)}`}
+                            title={`${b.project.key} · ${b.model} · ${who} · ${periodText(fmt, b)}`}
                             aria-label={t(
                               '{code} booked by {project} for {model}, {from} to {to}',
                               {
                                 code: s.code,
                                 project: b.project.key,
                                 model: b.model,
-                                from: fmt.date(b.startDate),
-                                to: fmt.date(b.endDate),
+                                from: fmt.at(b.startDate, b.startTime),
+                                to: fmt.at(b.endDate, b.endTime),
                               },
                             )}
                             className="absolute top-1.5 bottom-1.5 overflow-hidden rounded-md px-2 text-left text-xs font-semibold whitespace-nowrap text-white hover:opacity-90 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
                             style={{
-                              left: `calc(${(start / WINDOW) * 100}% + 2px)`,
-                              width: `calc(${((end - start + 1) / WINDOW) * 100}% - 4px)`,
+                              left: `calc(${(start / WINDOW) * 100}% + 1px)`,
+                              width: `max(6px, calc(${((end - start) / WINDOW) * 100}% - 2px))`,
                               background: colorOf(b.project.id),
                             }}
                           >
-                            {b.project.key} · {b.model}
+                            {b.project.key} · {b.model} · {who}
                           </button>
                         );
                       })}

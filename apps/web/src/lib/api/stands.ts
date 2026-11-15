@@ -6,6 +6,9 @@ import type {
   CreateStandRequestInput,
   CreateStandZoneInput,
   ListStandBookingsQuery,
+  ListStandEventsQuery,
+  StandEventDTO,
+  TechnicianWorkDTO,
   ListStandRequestsQuery,
   StandBoardDTO,
   StandBookingDTO,
@@ -51,7 +54,36 @@ export function useStandBookings(params: ListStandBookingsQuery) {
         to: params.to,
         standId: params.standId,
         projectId: params.projectId,
+        q: params.q,
       }),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/** Installs, uninstalls and replacements on the stands, newest first. */
+export function useStandEvents(params: Partial<ListStandEventsQuery>) {
+  return useQuery({
+    queryKey: qk.standEvents(params),
+    queryFn: () =>
+      api.get<StandEventDTO[]>('/stands/events', {
+        q: params.q,
+        standId: params.standId,
+        actorId: params.actorId,
+        from: params.from,
+        to: params.to,
+        limit: params.limit,
+      }),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/** A technician's year: for the year-end report. */
+export function useTechnicianWork(technicianId: number | null, year: number) {
+  return useQuery({
+    queryKey: qk.standWork(technicianId ?? 0, year),
+    queryFn: () =>
+      api.get<TechnicianWorkDTO>('/stands/work', { technicianId: technicianId!, year }),
+    enabled: technicianId !== null,
     placeholderData: keepPreviousData,
   });
 }

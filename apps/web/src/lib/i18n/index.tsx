@@ -9,6 +9,8 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { formatDistanceToNow, isValid, parseISO } from 'date-fns';
+import { th } from 'date-fns/locale/th';
 import { TH } from './th';
 
 export const LOCALES = ['en', 'th'] as const;
@@ -70,6 +72,19 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
 }
 
 export const useLocale = () => useContext(LocaleContext);
+
+/** `3 hours ago` / `3 ชั่วโมงที่แล้ว` in the chosen language. */
+export function useRelativeTime(): (iso: string) => string {
+  const { locale } = useLocale();
+  return useCallback(
+    (iso: string) => {
+      const d = parseISO(iso);
+      if (!isValid(d)) return '—';
+      return formatDistanceToNow(d, { addSuffix: true, ...(locale === 'th' && { locale: th }) });
+    },
+    [locale],
+  );
+}
 
 /** `t('Defects')` → "ข้อบกพร่อง" in Thai. */
 export function useT(): (text: string) => string {

@@ -46,4 +46,29 @@ export const TH: Readonly<Record<string, string>> = {
   'API tokens': 'โทเคน API',
   'REST API': 'REST API',
   'Not found': 'ไม่พบหน้านี้',
+  // Notifications (bell and page)
+  unread: 'ยังไม่อ่าน',
+  'Mark all as read': 'อ่านทั้งหมดแล้ว',
+  'See all': 'ดูทั้งหมด',
+  'Stand requests': 'คำขอช่าง',
+  'Latest notifications': 'การแจ้งเตือนล่าสุด',
+  'Nothing new. Test stand requests and their answers show up here.':
+    'ยังไม่มีอะไรใหม่ คำขอช่างและการตอบกลับจะแสดงที่นี่',
+  'Nothing new. Runs given to you, fixes to retest, due dates and test stand requests show up here.':
+    'ยังไม่มีอะไรใหม่ งานที่ได้รับมอบหมาย defect ที่รอทดสอบซ้ำ กำหนดส่ง และคำขอช่างจะแสดงที่นี่',
+  'Runs given to you, due dates, fixes to retest and requirements that changed':
+    'งานที่ได้รับมอบหมาย กำหนดส่ง defect ที่รอทดสอบซ้ำ และ requirement ที่เปลี่ยน',
+  All: 'ทั้งหมด',
+  Unread: 'ยังไม่อ่าน',
+  'No unread notifications': 'ไม่มีการแจ้งเตือนที่ยังไม่อ่าน',
+  'No notifications yet': 'ยังไม่มีการแจ้งเตือน',
+  'You are told when a run is given to you, when one is due or overdue, when a defect you reported is ready for retest and when a requirement you test changes.':
+    'คุณจะได้รับแจ้งเมื่อได้รับมอบหมายรอบทดสอบ เมื่อใกล้หรือเลยกำหนดส่ง เมื่อ defect ที่คุณแจ้งพร้อมทดสอบซ้ำ และเมื่อ requirement ที่คุณทดสอบเปลี่ยน',
+  'Assigned to you': 'มอบหมายให้คุณ',
+  'Due soon': 'ใกล้ถึงกำหนด',
+  Overdue: 'เลยกำหนด',
+  'Ready for retest': 'พร้อมทดสอบซ้ำ',
+  'Requirement changed': 'requirement เปลี่ยน',
+  'Stand request': 'คำขอช่าง',
+  'Stand request update': 'อัปเดตคำขอช่าง',
 };

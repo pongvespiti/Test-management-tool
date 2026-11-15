@@ -167,6 +167,16 @@ async function seedStands(
     startDate: dayFromToday(5),
     endDate: dayFromToday(20),
   });
+  await call('POST', '/stands/bookings', {
+    standId: ids.get('L1/A-1'),
+    projectId,
+    model: 'ACU-25',
+    startDate: dayFromToday(1),
+    endDate: dayFromToday(1),
+    startTime: '09:00',
+    endTime: '12:00',
+    note: 'Short check of the new firmware',
+  });
   await call('POST', '/stands/requests', {
     standId: ids.get('L2/A-1'),
     projectId,

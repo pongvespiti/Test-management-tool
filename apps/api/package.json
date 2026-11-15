@@ -14,7 +14,7 @@
     "seed": "nest build && node dist/scripts/seed.js",
     "clean": "rm -rf dist .turbo",
     "test:cov": "node --experimental-vm-modules --disable-warning=ExperimentalWarning node_modules/jest/bin/jest.js --coverage",
-    "test:e2e": "node --experimental-vm-modules --disable-warning=ExperimentalWarning node_modules/jest/bin/jest.js --config jest.e2e.config.js",
+    "test:e2e": "node --max-old-space-size=4096 --experimental-vm-modules --disable-warning=ExperimentalWarning node_modules/jest/bin/jest.js --config jest.e2e.config.js",
     "lint": "oxlint -c ../../.oxlintrc.json src test"
   },
   "dependencies": {

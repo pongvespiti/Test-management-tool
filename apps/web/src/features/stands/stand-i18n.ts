@@ -210,9 +210,61 @@ export const STANDS_TH: Readonly<Record<string, string>> = {
   'Enter a valid date': 'ใส่วันที่ให้ถูกต้อง',
   'Invalid format': 'รูปแบบไม่ถูกต้อง',
   'The end date is before the start date': 'วันสิ้นสุดอยู่ก่อนวันเริ่ม',
+  'Book for': 'จองเป็น',
+  'Whole days': 'ทั้งวัน',
+  Hours: 'รายชั่วโมง',
+  'Start time': 'เวลาเริ่ม',
+  'End time': 'เวลาสิ้นสุด',
+  To: 'ถึง',
+  'Who tests': 'ผู้ทดสอบ',
+  'Enter both times, or none': 'ใส่เวลาให้ครบทั้งสองช่อง',
+  'The end time is before the start time': 'เวลาสิ้นสุดต้องหลังเวลาเริ่ม',
+  'Use HH:mm, e.g. 09:30': 'ใช้รูปแบบ ชม:นาที เช่น 09:30',
+  'Testing: {name}': 'ผู้ทดสอบ: {name}',
+  History: 'ประวัติ',
+  'Units on stands': 'แอร์ที่เคยติดตั้ง',
+  'Technician work': 'งานของช่าง',
+  'Search the history': 'ค้นหาในประวัติ',
+  'Model, stand or project, e.g. ACU-35': 'รุ่น stand หรือโปรเจกต์ เช่น ACU-35',
+  'Installs and removals': 'การติดตั้งและถอดแอร์',
+  'No history yet': 'ยังไม่มีประวัติ',
+  'Each install, uninstall or replacement shows up here once a technician marks it done or changes a stand.':
+    'การติดตั้ง ถอด หรือเปลี่ยนรุ่นแต่ละครั้งจะแสดงที่นี่ เมื่อช่างกดเสร็จหรือแก้ข้อมูล stand',
+  Date: 'วันที่',
+  Unit: 'แอร์ (รุ่น)',
+  By: 'โดย',
+  'From the sheet': 'จากชีต Excel',
+  'Changed by hand': 'แก้ไขเอง',
+  'Request {model} again': 'ขอติดตั้ง {model} อีกครั้ง',
+  'Request again': 'ขอติดตั้งอีกครั้ง',
+  'Bookings: which unit was tested for which project':
+    'การจอง: แอร์รุ่นไหนเคยใช้ทดสอบกับโปรเจกต์อะไร',
+  'No bookings found.': 'ไม่พบการจอง',
+  Period: 'ช่วงเวลา',
+  'Requested by': 'ผู้ขอ',
+  Status: 'สถานะ',
+  Year: 'ปี',
+  'Export CSV': 'ส่งออก CSV',
+  Totals: 'สรุปยอด',
+  'Stand updates': 'แก้ข้อมูล stand',
+  'Done per month': 'งานที่เสร็จรายเดือน',
+  Month: 'เดือน',
+  'Requests handled in {year}': 'คำขอที่ทำในปี {year}',
+  'None in this year.': 'ไม่มีในปีนี้',
   'Delete {what}?': 'ลบ{what}?',
   'This cannot be undone.': 'ลบแล้วกู้คืนไม่ได้',
 };
+
+/** "16 Nov 2026 09:00 – 12:00", "16 Nov 2026 – 20 Nov 2026". */
+export function periodText(
+  fmt: { at: (d: string, t: string | null) => string },
+  b: { startDate: string; endDate: string; startTime: string | null; endTime: string | null },
+): string {
+  if (b.startDate === b.endDate && b.startTime && b.endTime)
+    return `${fmt.at(b.startDate, b.startTime)} – ${b.endTime}`;
+  if (b.startDate === b.endDate) return fmt.at(b.startDate, null);
+  return `${fmt.at(b.startDate, b.startTime)} – ${fmt.at(b.endDate, b.endTime)}`;
+}
 
 export type StandsT = (text: string, vars?: Record<string, string | number>) => string;
 
@@ -248,6 +300,14 @@ export function useStandsDates() {
         const d = parse(v);
         if (!d || !isValid(d)) return '—';
         return thai ? formatDistanceToNow(d, { addSuffix: true, locale: th }) : formatRelative(v);
+      },
+      /** `November 2026` / `พฤศจิกายน 2026`. */
+      month: (year: number, month: number) =>
+        format(new Date(year, month - 1, 1), 'LLLL yyyy', thai ? { locale: th } : undefined),
+      /** A day with an optional `HH:mm`. */
+      at: (d: string, time: string | null) => {
+        const day = thai ? format(parseISO(d), 'd MMM yyyy', { locale: th }) : formatDate(d);
+        return time ? `${day} ${time}` : day;
       },
       /** date-fns locale for calendars (undefined = English). */
       locale: thai ? th : undefined,

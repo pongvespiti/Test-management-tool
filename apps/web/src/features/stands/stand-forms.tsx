@@ -47,6 +47,7 @@ import {
 } from '@/lib/api/stands';
 import { schemaErrors } from '@/lib/form-errors';
 import { notifyError, notifySuccess } from '@/lib/notify';
+import { useMembers } from '@/lib/api/projects';
 import { getLastProjectId } from '@/lib/storage';
 import { useAuth } from '@/providers/auth-provider';
 import { addDaysIso, todayIso } from './stand-dates';
@@ -350,6 +351,7 @@ export function BookingForm({
   const t = useStandsT();
   const fmt = useStandsDates();
   const projects = useBookableProjects();
+  const { user: me } = useAuth();
   const today = todayIso();
   const [stand, setStand] = useState(String(booking?.standId ?? standId ?? ''));
   const [project, setProject] = useState(
@@ -358,6 +360,10 @@ export function BookingForm({
   const [model, setModel] = useState(booking?.model ?? '');
   const [start, setStart] = useState<string | null>(booking?.startDate ?? today);
   const [end, setEnd] = useState<string | null>(booking?.endDate ?? addDaysIso(today, 6));
+  const [span, setSpan] = useState<'days' | 'hours'>(booking?.startTime ? 'hours' : 'days');
+  const [startTime, setStartTime] = useState(booking?.startTime ?? '09:00');
+  const [endTime, setEndTime] = useState(booking?.endTime ?? '17:00');
+  const [tester, setTester] = useState(String(booking?.tester?.id ?? me?.id ?? ''));
   const [note, setNote] = useState(booking?.note ?? '');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -365,11 +371,12 @@ export function BookingForm({
   const clashText = (err: ApiError) => {
     const b = (err.details as { booking?: StandBookingDTO } | undefined)?.booking;
     if (!b) return err.message;
+    const at = (d: string, time: string | null) => (time ? `${fmt.date(d)} ${time}` : fmt.date(d));
     return t('{code} is booked for {project} from {from} to {to}', {
       code: b.standCode,
       project: b.project.key,
-      from: fmt.date(b.startDate),
-      to: fmt.date(b.endDate),
+      from: at(b.startDate, b.startTime),
+      to: at(b.endDate, b.endTime),
     });
   };
 
@@ -379,7 +386,10 @@ export function BookingForm({
       projectId: Number(project),
       model,
       startDate: start ?? '',
-      endDate: end ?? '',
+      endDate: (span === 'hours' && !end ? start : end) ?? '',
+      startTime: span === 'hours' ? startTime : null,
+      endTime: span === 'hours' ? endTime : null,
+      testerId: tester ? Number(tester) : null,
       note,
     };
     const found = schemaErrors(createStandBookingSchema, body);
@@ -392,6 +402,9 @@ export function BookingForm({
           model,
           startDate: body.startDate,
           endDate: body.endDate,
+          startTime: body.startTime,
+          endTime: body.endTime,
+          testerId: body.testerId,
           note,
         });
       else await create.mutateAsync(body);
@@ -462,6 +475,29 @@ export function BookingForm({
         />
         <FieldError message={errors.model} />
       </div>
+      {project && (
+        <TesterPick
+          projectId={Number(project)}
+          value={tester}
+          onChange={setTester}
+          invalid={!!errors.testerId}
+        />
+      )}
+      <div className={FIELD}>
+        <span className={LABEL}>{t('Book for')}</span>
+        <SegmentedControl
+          aria-label={t('Book for')}
+          value={span}
+          onChange={(v) => {
+            setSpan(v);
+            if (v === 'hours' && start) setEnd(start);
+          }}
+          options={[
+            { value: 'days', label: t('Whole days') },
+            { value: 'hours', label: t('Hours') },
+          ]}
+        />
+      </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className={FIELD}>
           <label htmlFor="booking-start" className={LABEL}>
@@ -479,7 +515,7 @@ export function BookingForm({
         </div>
         <div className={FIELD}>
           <label htmlFor="booking-end" className={LABEL}>
-            {t('To (included)')}
+            {t(span === 'hours' ? 'To' : 'To (included)')}
           </label>
           <DateInput
             id="booking-end"
@@ -492,6 +528,38 @@ export function BookingForm({
           <FieldError message={errors.endDate} />
         </div>
       </div>
+      {span === 'hours' && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className={FIELD}>
+            <label htmlFor="booking-start-time" className={LABEL}>
+              {t('Start time')}
+            </label>
+            <Input
+              id="booking-start-time"
+              type="time"
+              step={900}
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+              aria-invalid={!!errors.startTime}
+            />
+            <FieldError message={errors.startTime} />
+          </div>
+          <div className={FIELD}>
+            <label htmlFor="booking-end-time" className={LABEL}>
+              {t('End time')}
+            </label>
+            <Input
+              id="booking-end-time"
+              type="time"
+              step={900}
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+              aria-invalid={!!errors.endTime}
+            />
+            <FieldError message={errors.endTime} />
+          </div>
+        </div>
+      )}
       <div className={FIELD}>
         <label htmlFor="booking-note" className={LABEL}>
           {t('Note')}
@@ -507,16 +575,49 @@ export function BookingForm({
   );
 }
 
+/** Who tests on the stand: a member of the project (default: who books). */
+function TesterPick({
+  projectId,
+  value,
+  onChange,
+  invalid,
+}: {
+  projectId: number;
+  value: string;
+  onChange: (v: string) => void;
+  invalid?: boolean;
+}) {
+  const t = useStandsT();
+  const members = useMembers(projectId);
+  const options = (members.data ?? []).map((m) => ({
+    value: String(m.user.id),
+    label: m.user.displayName,
+  }));
+  return (
+    <Pick
+      id="booking-tester"
+      label={t('Who tests')}
+      value={options.some((o) => o.value === value) ? value : ''}
+      onChange={onChange}
+      options={options}
+      invalid={invalid}
+    />
+  );
+}
+
 // ---------------------------------------------------------------- request
 
 /** Ask a technician to install, uninstall or replace the unit on a stand on a day. */
 export function RequestForm({
   stands,
   standId,
+  model: initialModel,
   onClose,
 }: {
   stands: StandDTO[];
   standId?: number;
+  /** Model to install (from the history: bring a unit back). */
+  model?: string;
   onClose: () => void;
 }) {
   const create = useCreateStandRequest();
@@ -526,7 +627,7 @@ export function RequestForm({
   const projects = useBookableProjects();
   const [stand, setStand] = useState(String(standId ?? ''));
   const [kind, setKind] = useState<StandRequestKind>('install');
-  const [model, setModel] = useState('');
+  const [model, setModel] = useState(initialModel ?? '');
   const [technician, setTechnician] = useState('');
   const [project, setProject] = useState(defaultProject(projects));
   const [day, setDay] = useState<string | null>(addDaysIso(todayIso(), 1));

@@ -11,7 +11,7 @@ import {
   useMarkNotificationRead,
   useNotifications,
 } from '@/lib/api/notifications';
-import { formatRelative } from '@/lib/format';
+import { useRelativeTime, useT } from '@/lib/i18n';
 import { routes } from '@/lib/routes';
 import { useOptionalProject } from '@/providers/project-provider';
 import { NotificationItem } from '@/features/notifications/notification-item';
@@ -28,6 +28,8 @@ export function NotificationBell() {
 }
 
 function BellMenu({ projectId }: { projectId: number | null }) {
+  const t = useT();
+  const relative = useRelativeTime();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const query = useNotifications(projectId, { limit: PREVIEW });
@@ -43,7 +45,9 @@ function BellMenu({ projectId }: { projectId: number | null }) {
           variant="ghost"
           size="icon"
           className="relative"
-          aria-label={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
+          aria-label={
+            unread > 0 ? `${t('Notifications')}, ${unread} ${t('unread')}` : t('Notifications')
+          }
         >
           <Bell />
           {unread > 0 && (
@@ -58,24 +62,26 @@ function BellMenu({ projectId }: { projectId: number | null }) {
       </PopoverTrigger>
       <PopoverContent align="end" className="w-96 p-0">
         <div className="flex items-center justify-between border-b px-4 py-3">
-          <h2 className="text-sm font-semibold">Notifications</h2>
+          <h2 className="text-sm font-semibold">{t('Notifications')}</h2>
           <Button
             variant="ghost"
             size="sm"
             disabled={unread === 0}
             onClick={() => readAll.mutate()}
           >
-            Mark all as read
+            {t('Mark all as read')}
           </Button>
         </div>
         {items.length === 0 ? (
           <p className="px-4 py-6 text-center text-sm text-muted-foreground">
             {projectId === null
-              ? 'Nothing new. Test stand requests and their answers show up here.'
-              : 'Nothing new. Runs given to you, fixes to retest, due dates and test stand requests show up here.'}
+              ? t('Nothing new. Test stand requests and their answers show up here.')
+              : t(
+                  'Nothing new. Runs given to you, fixes to retest, due dates and test stand requests show up here.',
+                )}
           </p>
         ) : (
-          <ul aria-label="Latest notifications" className="max-h-96 divide-y overflow-auto">
+          <ul aria-label={t('Latest notifications')} className="max-h-96 divide-y overflow-auto">
             {items.map((n) => (
               <li key={n.id}>
                 <NotificationItem
@@ -85,7 +91,7 @@ function BellMenu({ projectId }: { projectId: number | null }) {
                     setOpen(false);
                     router.push(n.link);
                   }}
-                  time={formatRelative(n.createdAt)}
+                  time={relative(n.createdAt)}
                 />
               </li>
             ))}
@@ -101,7 +107,7 @@ function BellMenu({ projectId }: { projectId: number | null }) {
             className="text-sm text-primary hover:underline"
             onClick={() => setOpen(false)}
           >
-            {projectId === null ? 'Stand requests' : 'See all'}
+            {t(projectId === null ? 'Stand requests' : 'See all')}
           </Link>
         </div>
       </PopoverContent>

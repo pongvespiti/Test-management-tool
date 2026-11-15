@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from '@jest/globals';
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import type {
   StandBoardDTO,
   StandBookingDTO,
@@ -39,7 +39,10 @@ const booking = (overrides: Partial<StandBookingDTO> = {}): StandBookingDTO => (
   model: 'ACU-60',
   startDate: today,
   endDate: addDaysIso(today, 3),
+  startTime: null,
+  endTime: null,
   note: null,
+  tester: userRef(1, 'Alice Tester'),
   createdBy: userRef(1, 'Alice Tester'),
   createdAt: new Date().toISOString(),
   ...overrides,
@@ -185,6 +188,9 @@ describe('Test stands page', () => {
       model: 'ACU-35',
       startDate: today,
       endDate: addDaysIso(today, 6),
+      startTime: null,
+      endTime: null,
+      testerId: 1,
       note: '',
     });
     await waitFor(() =>
@@ -367,5 +373,122 @@ describe('Test stands page', () => {
     );
     await user.click(screen.getByRole('radio', { name: 'English' }));
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Test stands');
+  });
+
+  it('books hours for someone else of the project', async () => {
+    const api = mockApi({
+      'GET /stands': board(),
+      'GET /stands/bookings': [],
+      'GET /stands/requests': [],
+      'GET /projects/3/members': [
+        { user: userRef(1, 'Alice Tester'), role: 'tester' },
+        { user: userRef(7, 'Bob Lead'), role: 'lead' },
+      ],
+      'POST /stands/bookings': booking({ startTime: '13:00', endTime: '15:30' }),
+    });
+    const { user } = renderWithProviders(<StandsPage />, tester);
+    await user.click(await screen.findByRole('button', { name: /Book a stand/ }));
+    const form = await screen.findByRole('dialog', { name: 'Book a stand' });
+    await user.click(within(form).getByRole('combobox', { name: 'Stand' }));
+    await user.click(await screen.findByRole('option', { name: 'L1/A-1 (ACU-25)' }));
+    await user.click(within(form).getByRole('combobox', { name: 'Who tests' }));
+    await user.click(await screen.findByRole('option', { name: 'Bob Lead' }));
+    await user.click(within(form).getByRole('radio', { name: 'Hours' }));
+    expect(within(form).getByText('To')).toBeInTheDocument();
+    fireEvent.change(within(form).getByLabelText('Start time'), { target: { value: '13:00' } });
+    fireEvent.change(within(form).getByLabelText('End time'), { target: { value: '15:30' } });
+    await user.type(within(form).getByLabelText('Model to test'), 'ACU-25');
+    await user.click(within(form).getByRole('button', { name: 'Book' }));
+    await waitFor(() => expect(api.find('POST', '/stands/bookings')).toHaveLength(1));
+    expect(api.find('POST', '/stands/bookings')[0]!.body).toMatchObject({
+      standId: 1,
+      startDate: today,
+      endDate: today,
+      startTime: '13:00',
+      endTime: '15:30',
+      testerId: 7,
+    });
+  });
+
+  it('shows who tests on the stand card', async () => {
+    mockApi({ 'GET /stands': board() });
+    renderWithProviders(<StandsPage />, tester);
+    const a2 = await screen.findByRole('button', { name: 'Stand L1/A-2: empty' });
+    expect(a2).toHaveTextContent('Testing: Alice Tester');
+  });
+
+  it('shows the unit history and brings a unit back with a request', async () => {
+    openUrl('/stands?tab=history');
+    const api = mockApi({
+      'GET /stands': board(),
+      'GET /stands/technicians': [userRef(9, 'Tina Tech')],
+      'GET /stands/events': [
+        {
+          id: 1,
+          standId: 3,
+          standCode: 'L1/B-1',
+          zoneName: 'Zone B',
+          kind: 'uninstall',
+          source: 'request',
+          modelBefore: 'ACU-60',
+          modelAfter: null,
+          project: { id: 3, key: 'ACS' },
+          requestId: 2,
+          actor: userRef(9, 'Tina Tech'),
+          note: 'Back to storage',
+          at: '2026-06-01T03:00:00.000Z',
+        },
+      ],
+      'GET /stands/bookings': [booking({ startDate: '2026-05-01', endDate: '2026-05-31' })],
+    });
+    const { user } = renderWithProviders(<StandsPage />, tester);
+    const events = await screen.findByRole('table', { name: 'Installs and removals' });
+    expect(events).toHaveTextContent('ACU-60 → Empty');
+    expect(events).toHaveTextContent('Back to storage');
+    const bookings = await screen.findByRole('table', { name: 'Bookings' });
+    expect(bookings).toHaveTextContent('ACU-60');
+    expect(bookings).toHaveTextContent('Alice Tester');
+    await waitFor(() =>
+      expect(api.find('GET', '/stands/bookings').at(-1)!.query.get('from')).toBe('2000-01-01'),
+    );
+    await user.click(screen.getByRole('button', { name: 'Request ACU-60 again' }));
+    const form = await screen.findByRole('dialog', { name: 'Request a technician' });
+    expect(within(form).getByLabelText('Model to install')).toHaveValue('ACU-60');
+    expect(within(form).getByRole('combobox', { name: 'Stand' })).toHaveTextContent('L1/B-1');
+  });
+
+  it("sums up a technician's year and exports it", async () => {
+    openUrl('/stands?tab=history');
+    mockApi({
+      'GET /stands': board({ canManage: true, canRequest: false }),
+      'GET /stands/technicians': [userRef(9, 'Tina Tech')],
+      'GET /stands/events': [],
+      'GET /stands/bookings': [],
+      'GET /stands/work': {
+        technician: userRef(9, 'Tina Tech'),
+        year: 2026,
+        totals: { install: 3, uninstall: 1, replace: 2, rejected: 1, manual: 4 },
+        months: Array.from({ length: 12 }, (_, i) => ({
+          month: i + 1,
+          install: i === 10 ? 3 : 0,
+          uninstall: i === 10 ? 1 : 0,
+          replace: i === 9 ? 2 : 0,
+        })),
+        requests: [request({ status: 'done', doneAt: '2026-11-10T03:00:00.000Z' })],
+        events: [],
+      },
+    });
+    const create = jest.fn(() => 'blob:x');
+    Object.assign(URL, { createObjectURL: create, revokeObjectURL: jest.fn() });
+    const { user } = renderWithProviders(<StandsPage />, technician);
+    await user.click(await screen.findByRole('radio', { name: 'Technician work' }));
+    const totals = await screen.findByLabelText('Totals');
+    expect(totals).toHaveTextContent('Install3');
+    expect(totals).toHaveTextContent('Stand updates4');
+    const months = screen.getByRole('table', { name: 'Done per month' });
+    expect(within(months).getAllByRole('row')).toHaveLength(3);
+    expect(screen.getByText('Install ACU-35')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Export CSV/ }));
+    expect(create).toHaveBeenCalled();
   });
 });

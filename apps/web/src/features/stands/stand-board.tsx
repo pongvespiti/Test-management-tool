@@ -165,16 +165,21 @@ function StandCard({
           <span className="text-muted-foreground">
             {t('{model} until {date}', {
               model: s.currentBooking.model,
-              date: fmt.date(s.currentBooking.endDate),
+              date: fmt.at(s.currentBooking.endDate, s.currentBooking.endTime),
             })}
           </span>
+          {s.currentBooking.tester && (
+            <span className="w-full font-medium">
+              {t('Testing: {name}', { name: s.currentBooking.tester.displayName })}
+            </span>
+          )}
         </span>
       ) : s.nextBooking ? (
         <span className="mt-auto flex items-center gap-1 text-xs text-muted-foreground">
           <CalendarClock className="size-3.5" />
           {t('{project} from {date}', {
             project: s.nextBooking.project.key,
-            date: fmt.date(s.nextBooking.startDate),
+            date: fmt.at(s.nextBooking.startDate, s.nextBooking.startTime),
           })}
         </span>
       ) : (

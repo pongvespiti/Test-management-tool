@@ -15,17 +15,18 @@ import { BookingTimeline } from './booking-timeline';
 import { StandBoard } from './stand-board';
 import { StandDetail } from './stand-detail';
 import { BookingForm, RequestForm, StandForm, ZoneForm } from './stand-forms';
+import { StandHistory } from './stand-history';
 import { StandImport } from './stand-import';
 import { useStandsT } from './stand-i18n';
 import { StandRequests } from './stand-requests';
 
-type Tab = 'board' | 'bookings' | 'requests' | 'import';
+type Tab = 'board' | 'bookings' | 'requests' | 'history' | 'import';
 
 type Editing =
   | { kind: 'zone'; zone: StandZoneDTO | null }
   | { kind: 'stand'; stand: StandDTO | null; zoneId?: number }
   | { kind: 'booking'; booking: StandBookingDTO | null; standId?: number }
-  | { kind: 'request'; standId?: number };
+  | { kind: 'request'; standId?: number; model?: string };
 
 /**
  * Route `/stands`: the lab's test stands, shared by every project. Find where a model is
@@ -41,8 +42,8 @@ export function StandsPage() {
   const canManage = board?.canManage ?? false;
   const canRequest = board?.canRequest ?? false;
   const tabs: Tab[] = canManage
-    ? ['board', 'bookings', 'requests', 'import']
-    : ['board', 'bookings', 'requests'];
+    ? ['board', 'bookings', 'requests', 'history', 'import']
+    : ['board', 'bookings', 'requests', 'history'];
   const tab = (tabs.find((x) => x === params.get('tab')) ?? 'board') as Tab;
   const text = params.get('model') ?? '';
   const search = useDebouncedValue(text.trim(), 250);
@@ -106,7 +107,13 @@ export function StandsPage() {
           options={tabs.map((tb) => ({
             value: tb,
             label: t(
-              { board: 'Stands', bookings: 'Bookings', requests: 'Requests', import: 'Import' }[tb],
+              {
+                board: 'Stands',
+                bookings: 'Bookings',
+                requests: 'Requests',
+                history: 'History',
+                import: 'Import',
+              }[tb],
             ),
           }))}
         />
@@ -150,6 +157,14 @@ export function StandsPage() {
         </QueryState>
       )}
       {tab === 'requests' && <StandRequests highlight={requestId} />}
+      {tab === 'history' && (
+        <StandHistory
+          canRequest={canRequest}
+          onRequestAgain={(model, standId) =>
+            edit({ kind: 'request', model, standId: standId ?? undefined })
+          }
+        />
+      )}
       {tab === 'import' && canManage && <StandImport onDone={() => set({ tab: null })} />}
 
       {openStand && (
@@ -185,7 +200,12 @@ export function StandsPage() {
         />
       )}
       {editing?.kind === 'request' && (
-        <RequestForm stands={stands} standId={editing.standId} onClose={() => setEditing(null)} />
+        <RequestForm
+          stands={stands}
+          standId={editing.standId}
+          model={editing.model}
+          onClose={() => setEditing(null)}
+        />
       )}
     </>
   );

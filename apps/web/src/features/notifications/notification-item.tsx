@@ -1,4 +1,5 @@
-import { NOTIFICATION_KIND_LABELS, type NotificationDTO } from '@tmt/shared';
+import { NOTIFICATION_KIND_LABELS, renderMessage, type NotificationDTO } from '@tmt/shared';
+import { useLocale, useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 /** One notification as a button that opens what it is about. */
@@ -11,6 +12,11 @@ export function NotificationItem({
   time: string;
   onOpen: () => void;
 }) {
+  const { locale } = useLocale();
+  const t = useT();
+  // Stored as a message: shown in the reader's language; older ones keep their English text.
+  const title = n.message ? renderMessage(n.message.title, locale) : n.title;
+  const body = n.message ? (n.message.body ? renderMessage(n.message.body, locale) : null) : n.body;
   return (
     <button
       type="button"
@@ -22,10 +28,10 @@ export function NotificationItem({
     >
       <span className="flex items-center gap-2 text-xs text-muted-foreground">
         {!n.read && <span aria-label="Unread" className="size-2 rounded-full bg-primary" />}
-        {NOTIFICATION_KIND_LABELS[n.kind]} · {time}
+        {t(NOTIFICATION_KIND_LABELS[n.kind])} · {time}
       </span>
-      <span className={cn('text-sm', !n.read && 'font-semibold')}>{n.title}</span>
-      {n.body && <span className="text-sm text-muted-foreground">{n.body}</span>}
+      <span className={cn('text-sm', !n.read && 'font-semibold')}>{title}</span>
+      {body && <span className="text-sm text-muted-foreground">{body}</span>}
     </button>
   );
 }

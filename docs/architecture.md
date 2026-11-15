@@ -206,9 +206,16 @@ Reports added later, all computed on request (no stored aggregates):
   not to a project. Bookings of one stand may not overlap (checked under a row lock on the stand,
   409 `STAND_BOOKED`). A request goes requested → accepted (with the day the technician will do it)
   → done, or is rejected (reason) or cancelled; done writes the requested model to the stand.
+  Bookings are whole days or hours (`start_minute` / `end_minute`, overlap checked to the minute)
+  and name who tests. Every change of the unit on a stand is kept in `stand_events` (done
+  request, hand edit, sheet import) with the project and who did it, for the unit history and the
+  technician's year (`GET /stands/work`).
   Each step notifies the other side with a lab-wide notification (`notifications.project_id`
   null). Users with `is_technician` pass the auth guard only on routes marked `@TechnicianAllowed`
   and cannot be project members, so they never see test cases.
+- **Notifications in the reader's language.** A notification stores its title and body as a
+  message key with values (`notifications.message`, templates in `packages/shared/src/logic/messages.ts`);
+  the web renders them in English or Thai, older rows keep their English text.
 - **Evidence uploads** stream to `DATA_DIR/tmp/uploads` (hashed on the way) and are renamed into
   storage, up to `MAX_ATTACHMENT_MB`. The web forwards them with a route handler under `/upload`
   instead of the `/api` proxy, which would hold the body in memory.

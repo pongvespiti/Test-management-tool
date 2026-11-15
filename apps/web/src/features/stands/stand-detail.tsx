@@ -16,7 +16,7 @@ import { useDeleteBooking, useDeleteStand, useStandBookings } from '@/lib/api/st
 import { notifyError, notifySuccess } from '@/lib/notify';
 import { BLUE } from '@/lib/status';
 import { useAuth } from '@/providers/auth-provider';
-import { confirmStandDelete, useStandsDates, useStandsT } from './stand-i18n';
+import { confirmStandDelete, periodText, useStandsDates, useStandsT } from './stand-i18n';
 import { StandRequests } from './stand-requests';
 import { addDaysIso, todayIso } from './stand-dates';
 
@@ -127,7 +127,10 @@ export function StandDetail({
                     <StatusPill tone={BLUE}>{b.project.key}</StatusPill>
                     <span className="font-medium">{b.model}</span>
                     <span className="text-muted-foreground">
-                      {fmt.date(b.startDate)} – {fmt.date(b.endDate)} · {b.createdBy.displayName}
+                      {periodText(fmt, b)} ·{' '}
+                      {t('Testing: {name}', {
+                        name: (b.tester ?? b.createdBy).displayName,
+                      })}
                     </span>
                     {canEditBooking(b) && (
                       <span className="ml-auto flex gap-1">

@@ -13,7 +13,7 @@ import {
   useMarkNotificationRead,
   useNotifications,
 } from '@/lib/api/notifications';
-import { formatRelative } from '@/lib/format';
+import { useRelativeTime, useT } from '@/lib/i18n';
 import { useProject } from '@/providers/project-provider';
 import { NotificationItem } from './notification-item';
 
@@ -22,6 +22,8 @@ const PAGE_SIZE = 100;
 /** Route `/projects/[projectId]/notifications`: everything addressed to me in this project. */
 export function NotificationsPage() {
   const { project, projectId } = useProject();
+  const t = useT();
+  const relative = useRelativeTime();
   const router = useRouter();
   const [params, setParams] = useUrlSearchParams();
   const unreadOnly = params.get('show') === 'unread';
@@ -35,14 +37,14 @@ export function NotificationsPage() {
       <PageHeader
         eyebrow={project.name}
         title="Notifications"
-        subtitle="Runs given to you, due dates, fixes to retest and requirements that changed"
+        subtitle={t('Runs given to you, due dates, fixes to retest and requirements that changed')}
         actions={
           <Button
             variant="outline"
             disabled={(query.data?.unread ?? 0) === 0}
             onClick={() => readAll.mutate()}
           >
-            Mark all as read
+            {t('Mark all as read')}
           </Button>
         }
       />
@@ -59,8 +61,8 @@ export function NotificationsPage() {
             })
           }
           options={[
-            { value: 'all', label: 'All' },
-            { value: 'unread', label: 'Unread' },
+            { value: 'all', label: t('All') },
+            { value: 'unread', label: t('Unread') },
           ]}
         />
       </div>
@@ -68,8 +70,10 @@ export function NotificationsPage() {
         {items.length === 0 ? (
           <EmptyState
             icon={<Bell className="size-6" strokeWidth={1.6} />}
-            title={unreadOnly ? 'No unread notifications' : 'No notifications yet'}
-            description="You are told when a run is given to you, when one is due or overdue, when a defect you reported is ready for retest and when a requirement you test changes."
+            title={t(unreadOnly ? 'No unread notifications' : 'No notifications yet')}
+            description={t(
+              'You are told when a run is given to you, when one is due or overdue, when a defect you reported is ready for retest and when a requirement you test changes.',
+            )}
           />
         ) : (
           <ul
@@ -80,7 +84,7 @@ export function NotificationsPage() {
               <li key={n.id}>
                 <NotificationItem
                   notification={n}
-                  time={formatRelative(n.createdAt)}
+                  time={relative(n.createdAt)}
                   onOpen={() => {
                     if (!n.read) read.mutate(n.id);
                     router.push(n.link);

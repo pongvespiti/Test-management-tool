@@ -35,7 +35,6 @@ export class NotificationsService {
     me: AuthUser,
     q: ListNotificationsQuery,
   ): Promise<NotificationListDTO> {
-    const db = this.prisma.db;
     await this.refreshDue(ctx, me);
     return this.listWhere({ userId: me.id, OR: [{ projectId: ctx.id }, { projectId: null }] }, q);
   }
