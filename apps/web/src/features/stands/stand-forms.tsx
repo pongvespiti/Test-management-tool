@@ -50,13 +50,15 @@ import { notifyError, notifySuccess } from '@/lib/notify';
 import { getLastProjectId } from '@/lib/storage';
 import { useAuth } from '@/providers/auth-provider';
 import { addDaysIso, todayIso } from './stand-dates';
+import { useStandsDates, useStandsT } from './stand-i18n';
 
 const FIELD = 'flex flex-col gap-1.5';
 const LABEL = 'text-sm font-medium';
 const NONE = '__none__';
 
 function FieldError({ message }: { message?: string }) {
-  return message ? <p className="text-sm text-destructive">{message}</p> : null;
+  const t = useStandsT();
+  return message ? <p className="text-sm text-destructive">{t(message)}</p> : null;
 }
 
 /** Labelled Radix select of a few options (`''` = nothing chosen). */
@@ -66,7 +68,7 @@ function Pick({
   value,
   onChange,
   options,
-  placeholder = 'Choose …',
+  placeholder,
   invalid,
 }: {
   id: string;
@@ -77,6 +79,7 @@ function Pick({
   placeholder?: string;
   invalid?: boolean;
 }) {
+  const t = useStandsT();
   return (
     <div className={FIELD}>
       <label htmlFor={id} className={LABEL}>
@@ -84,7 +87,7 @@ function Pick({
       </label>
       <Select value={value || undefined} onValueChange={(v) => onChange(v === NONE ? '' : v)}>
         <SelectTrigger id={id} aria-label={label} className="w-full" aria-invalid={invalid}>
-          <SelectValue placeholder={placeholder} />
+          <SelectValue placeholder={placeholder ?? t('Choose …')} />
         </SelectTrigger>
         <SelectContent>
           {options.map((o) => (
@@ -115,6 +118,7 @@ function FormDialog({
   pending: boolean;
   children: ReactNode;
 }) {
+  const t = useStandsT();
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
@@ -133,7 +137,7 @@ function FormDialog({
           {children}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
+              {t('Cancel')}
             </Button>
             <Button type="submit" loading={pending}>
               {submitLabel}
@@ -150,6 +154,7 @@ function FormDialog({
 export function ZoneForm({ zone, onClose }: { zone: StandZoneDTO | null; onClose: () => void }) {
   const create = useCreateZone();
   const update = useUpdateZone();
+  const t = useStandsT();
   const [name, setName] = useState(zone?.name ?? '');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -159,27 +164,27 @@ export function ZoneForm({ zone, onClose }: { zone: StandZoneDTO | null; onClose
     try {
       if (zone) await update.mutateAsync({ zoneId: zone.id, name });
       else await create.mutateAsync({ name });
-      notifySuccess(zone ? 'Zone renamed.' : `Zone ${name.trim()} added.`);
+      notifySuccess(zone ? t('Zone renamed.') : t('Zone {name} added.', { name: name.trim() }));
       onClose();
     } catch (err) {
       if (err instanceof ApiError && err.code === 'STAND_ZONE_NAME_TAKEN')
         setErrors({ name: 'Another zone has this name' });
-      else notifyError(err, 'Could not save the zone');
+      else notifyError(err, t('Could not save the zone'));
     }
   };
 
   return (
     <FormDialog
-      title={zone ? `Rename ${zone.name}` : 'New zone'}
-      description="An area of the lab with test stands."
+      title={zone ? t('Rename {name}', { name: zone.name }) : t('New zone')}
+      description={t('An area of the lab with test stands.')}
       onClose={onClose}
       onSubmit={() => void submit()}
-      submitLabel={zone ? 'Save' : 'Add zone'}
+      submitLabel={t(zone ? 'Save' : 'Add zone')}
       pending={create.isPending || update.isPending}
     >
       <div className={FIELD}>
         <label htmlFor="zone-name" className={LABEL}>
-          Name
+          {t('Name')}
         </label>
         <Input
           id="zone-name"
@@ -212,6 +217,7 @@ export function StandForm({
 }) {
   const create = useCreateStand();
   const update = useUpdateStand();
+  const t = useStandsT();
   const [zone, setZone] = useState(String(stand?.zoneId ?? zoneId ?? zones[0]?.id ?? ''));
   const [code, setCode] = useState(stand?.code ?? '');
   const [model, setModel] = useState(stand?.currentModel ?? '');
@@ -232,28 +238,32 @@ export function StandForm({
     try {
       if (stand) await update.mutateAsync({ standId: stand.id, ...body });
       else await create.mutateAsync(body);
-      notifySuccess(stand ? `${code.trim()} saved.` : `Stand ${code.trim()} added.`);
+      notifySuccess(
+        stand
+          ? t('{code} saved.', { code: code.trim() })
+          : t('Stand {code} added.', { code: code.trim() }),
+      );
       onClose();
     } catch (err) {
       if (err instanceof ApiError && err.code === 'STAND_CODE_TAKEN')
         setErrors({ code: 'Another stand has this code' });
-      else notifyError(err, 'Could not save the stand');
+      else notifyError(err, t('Could not save the stand'));
     }
   };
 
   return (
     <FormDialog
-      title={stand ? `Edit ${stand.code}` : 'New stand'}
-      description="Keep the model installed up to date so testers can find it."
+      title={stand ? t('Edit {code}', { code: stand.code }) : t('New stand')}
+      description={t('Keep the model installed up to date so testers can find it.')}
       onClose={onClose}
       onSubmit={() => void submit()}
-      submitLabel={stand ? 'Save' : 'Add stand'}
+      submitLabel={t(stand ? 'Save' : 'Add stand')}
       pending={create.isPending || update.isPending}
     >
       <div className="grid gap-4 sm:grid-cols-2">
         <div className={FIELD}>
           <label htmlFor="stand-code" className={LABEL}>
-            Stand code
+            {t('Stand code')}
           </label>
           <Input
             id="stand-code"
@@ -266,7 +276,7 @@ export function StandForm({
         </div>
         <Pick
           id="stand-zone"
-          label="Zone"
+          label={t('Zone')}
           value={zone}
           onChange={setZone}
           options={zones.map((z) => ({ value: String(z.id), label: z.name }))}
@@ -276,19 +286,19 @@ export function StandForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <div className={FIELD}>
           <label htmlFor="stand-model" className={LABEL}>
-            Model installed
+            {t('Model installed')}
           </label>
           <Input
             id="stand-model"
             value={model}
             onChange={(e) => setModel(e.target.value)}
-            placeholder="Empty"
+            placeholder={t('Empty')}
           />
           <FieldError message={errors.currentModel} />
         </div>
         <div className={FIELD}>
           <label htmlFor="stand-in-charge" className={LABEL}>
-            In charge
+            {t('In charge')}
           </label>
           <Input
             id="stand-in-charge"
@@ -299,7 +309,7 @@ export function StandForm({
       </div>
       <div className={FIELD}>
         <label htmlFor="stand-note" className={LABEL}>
-          Note
+          {t('Note')}
         </label>
         <Textarea id="stand-note" rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
       </div>
@@ -337,6 +347,8 @@ export function BookingForm({
 }) {
   const create = useCreateBooking();
   const update = useUpdateBooking();
+  const t = useStandsT();
+  const fmt = useStandsDates();
   const projects = useBookableProjects();
   const today = todayIso();
   const [stand, setStand] = useState(String(booking?.standId ?? standId ?? ''));
@@ -348,6 +360,18 @@ export function BookingForm({
   const [end, setEnd] = useState<string | null>(booking?.endDate ?? addDaysIso(today, 6));
   const [note, setNote] = useState(booking?.note ?? '');
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  /** The booking in the way, in the page's language (the API's message is English). */
+  const clashText = (err: ApiError) => {
+    const b = (err.details as { booking?: StandBookingDTO } | undefined)?.booking;
+    if (!b) return err.message;
+    return t('{code} is booked for {project} from {from} to {to}', {
+      code: b.standCode,
+      project: b.project.key,
+      from: fmt.date(b.startDate),
+      to: fmt.date(b.endDate),
+    });
+  };
 
   const submit = async () => {
     const body = {
@@ -371,21 +395,24 @@ export function BookingForm({
           note,
         });
       else await create.mutateAsync(body);
-      notifySuccess(booking ? 'Booking saved.' : 'Stand booked.');
+      notifySuccess(t(booking ? 'Booking saved.' : 'Stand booked.'));
       onClose();
     } catch (err) {
-      if (err instanceof ApiError && err.code === 'STAND_BOOKED') setErrors({ root: err.message });
-      else notifyError(err, 'Could not save the booking');
+      if (err instanceof ApiError && err.code === 'STAND_BOOKED')
+        setErrors({ root: clashText(err) });
+      else notifyError(err, t('Could not save the booking'));
     }
   };
 
   return (
     <FormDialog
-      title={booking ? `Booking of ${booking.standCode}` : 'Book a stand'}
-      description="Reserve a stand for your project's tests. Days that overlap another booking are refused."
+      title={booking ? t('Booking of {code}', { code: booking.standCode }) : t('Book a stand')}
+      description={t(
+        "Reserve a stand for your project's tests. Days that overlap another booking are refused.",
+      )}
       onClose={onClose}
       onSubmit={() => void submit()}
-      submitLabel={booking ? 'Save' : 'Book'}
+      submitLabel={t(booking ? 'Save' : 'Book')}
       pending={create.isPending || update.isPending}
     >
       {errors.root && (
@@ -397,12 +424,14 @@ export function BookingForm({
         {!booking && (
           <Pick
             id="booking-stand"
-            label="Stand"
+            label={t('Stand')}
             value={stand}
             onChange={setStand}
             options={stands.map((s) => ({
               value: String(s.id),
-              label: s.currentModel ? `${s.code} (${s.currentModel})` : `${s.code} (empty)`,
+              label: s.currentModel
+                ? `${s.code} (${s.currentModel})`
+                : t('{code} (empty)', { code: s.code }),
             }))}
             invalid={!!errors.standId}
           />
@@ -410,7 +439,7 @@ export function BookingForm({
         {!booking && (
           <Pick
             id="booking-project"
-            label="Project"
+            label={t('Project')}
             value={project}
             onChange={setProject}
             options={projects.map((p) => ({ value: String(p.id), label: p.label }))}
@@ -423,7 +452,7 @@ export function BookingForm({
       )}
       <div className={FIELD}>
         <label htmlFor="booking-model" className={LABEL}>
-          Model to test
+          {t('Model to test')}
         </label>
         <Input
           id="booking-model"
@@ -436,22 +465,36 @@ export function BookingForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <div className={FIELD}>
           <label htmlFor="booking-start" className={LABEL}>
-            From
+            {t('From')}
           </label>
-          <DateInput id="booking-start" value={start} onChange={setStart} clearable={false} />
+          <DateInput
+            id="booking-start"
+            value={start}
+            onChange={setStart}
+            clearable={false}
+            formatValue={fmt.date}
+            locale={fmt.locale}
+          />
           <FieldError message={errors.startDate} />
         </div>
         <div className={FIELD}>
           <label htmlFor="booking-end" className={LABEL}>
-            To (included)
+            {t('To (included)')}
           </label>
-          <DateInput id="booking-end" value={end} onChange={setEnd} clearable={false} />
+          <DateInput
+            id="booking-end"
+            value={end}
+            onChange={setEnd}
+            clearable={false}
+            formatValue={fmt.date}
+            locale={fmt.locale}
+          />
           <FieldError message={errors.endDate} />
         </div>
       </div>
       <div className={FIELD}>
         <label htmlFor="booking-note" className={LABEL}>
-          Note
+          {t('Note')}
         </label>
         <Textarea
           id="booking-note"
@@ -478,6 +521,8 @@ export function RequestForm({
 }) {
   const create = useCreateStandRequest();
   const technicians = useStandTechnicians();
+  const t = useStandsT();
+  const fmt = useStandsDates();
   const projects = useBookableProjects();
   const [stand, setStand] = useState(String(standId ?? ''));
   const [kind, setKind] = useState<StandRequestKind>('install');
@@ -504,52 +549,56 @@ export function RequestForm({
     setErrors({});
     try {
       const sent = await create.mutateAsync(body);
-      notifySuccess(`Request sent to ${sent.technician.displayName}.`);
+      notifySuccess(t('Request sent to {name}.', { name: sent.technician.displayName }));
       onClose();
     } catch (err) {
-      notifyError(err, 'Could not send the request');
+      notifyError(err, t('Could not send the request'));
     }
   };
 
   return (
     <FormDialog
-      title="Request a technician"
-      description="The technician gets a notification, then accepts (maybe on another day) or rejects. You are notified at each step."
+      title={t('Request a technician')}
+      description={t(
+        'The technician gets a notification, then accepts (maybe on another day) or rejects. You are notified at each step.',
+      )}
       onClose={onClose}
       onSubmit={() => void submit()}
-      submitLabel="Send request"
+      submitLabel={t('Send request')}
       pending={create.isPending}
     >
       <div className={FIELD}>
-        <span className={LABEL}>Work</span>
+        <span className={LABEL}>{t('Work')}</span>
         <SegmentedControl
-          aria-label="Work"
+          aria-label={t('Work')}
           value={kind}
           onChange={setKind}
           options={STAND_REQUEST_KINDS.map((k) => ({
             value: k,
-            label: STAND_REQUEST_KIND_LABELS[k],
+            label: t(STAND_REQUEST_KIND_LABELS[k]),
           }))}
         />
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <Pick
           id="request-stand"
-          label="Stand"
+          label={t('Stand')}
           value={stand}
           onChange={setStand}
           options={stands.map((s) => ({
             value: String(s.id),
-            label: s.currentModel ? `${s.code} (${s.currentModel})` : `${s.code} (empty)`,
+            label: s.currentModel
+              ? `${s.code} (${s.currentModel})`
+              : t('{code} (empty)', { code: s.code }),
           }))}
           invalid={!!errors.standId}
         />
         <Pick
           id="request-technician"
-          label="Technician"
+          label={t('Technician')}
           value={technician}
           onChange={setTechnician}
-          placeholder={techs.length === 0 ? 'No technicians yet' : 'Choose …'}
+          placeholder={t(techs.length === 0 ? 'No technicians yet' : 'Choose …')}
           options={techs.map((u) => ({ value: String(u.id), label: u.displayName }))}
           invalid={!!errors.technicianId}
         />
@@ -560,7 +609,7 @@ export function RequestForm({
       {kind !== 'uninstall' && (
         <div className={FIELD}>
           <label htmlFor="request-model" className={LABEL}>
-            Model to install
+            {t('Model to install')}
           </label>
           <Input
             id="request-model"
@@ -574,25 +623,32 @@ export function RequestForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <div className={FIELD}>
           <label htmlFor="request-day" className={LABEL}>
-            Day
+            {t('Day')}
           </label>
-          <DateInput id="request-day" value={day} onChange={setDay} clearable={false} />
+          <DateInput
+            id="request-day"
+            value={day}
+            onChange={setDay}
+            clearable={false}
+            formatValue={fmt.date}
+            locale={fmt.locale}
+          />
           <FieldError message={errors.requestedDate} />
         </div>
         <Pick
           id="request-project"
-          label="Project (optional)"
+          label={t('Project (optional)')}
           value={project}
           onChange={setProject}
           options={[
-            { value: '', label: 'No project' },
+            { value: '', label: t('No project') },
             ...projects.map((p) => ({ value: String(p.id), label: p.label })),
           ]}
         />
       </div>
       <div className={FIELD}>
         <label htmlFor="request-note" className={LABEL}>
-          Note for the technician
+          {t('Note for the technician')}
         </label>
         <Textarea
           id="request-note"

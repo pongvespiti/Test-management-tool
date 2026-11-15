@@ -17,6 +17,8 @@ interface ConfirmRequest {
   title: string;
   message: ReactNode;
   confirmLabel?: string;
+  /** Text of the cancel button (default "Cancel"). */
+  cancelLabel?: string;
   /** Red confirm button (delete-like actions). */
   danger?: boolean;
   onConfirm: () => void | Promise<unknown>;
@@ -78,7 +80,7 @@ export function ConfirmHost() {
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={busy}>{request?.cancelLabel ?? 'Cancel'}</AlertDialogCancel>
           <Button
             variant={request?.danger ? 'destructive' : 'default'}
             disabled={busy}

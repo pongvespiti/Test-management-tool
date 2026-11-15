@@ -1,6 +1,6 @@
 'use client';
 
-import { format, isValid, parseISO } from 'date-fns';
+import { format, isValid, parseISO, type Locale } from 'date-fns';
 import { CalendarDays, X } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,10 @@ interface DateInputProps {
   className?: string;
   'aria-invalid'?: boolean;
   'aria-describedby'?: string;
+  /** Shows the chosen day (default `Oct 21, 2026`). */
+  formatValue?: (value: string) => string;
+  /** date-fns locale of the calendar (month and day names). */
+  locale?: Locale;
 }
 
 /** Date picker field (popover calendar) that reads and writes `YYYY-MM-DD` strings. */
@@ -42,6 +46,8 @@ export function DateInput({
   disabled,
   id,
   className,
+  formatValue = formatDate,
+  locale,
   ...aria
 }: DateInputProps) {
   const [open, setOpen] = useState(false);
@@ -64,7 +70,7 @@ export function DateInput({
             {...aria}
           >
             <CalendarDays className="text-muted-foreground" />
-            {selected ? formatDate(value) : placeholder}
+            {selected && value ? formatValue(value) : placeholder}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
@@ -73,6 +79,7 @@ export function DateInput({
             selected={selected}
             defaultMonth={selected}
             captionLayout="dropdown"
+            locale={locale}
             onSelect={(date) => {
               onChange(toDateOnly(date));
               setOpen(false);

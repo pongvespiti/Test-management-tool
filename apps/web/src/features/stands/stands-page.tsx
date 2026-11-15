@@ -10,11 +10,13 @@ import { Button } from '@/components/ui/button';
 import { useDebouncedValue } from '@/hooks/use-debounce';
 import { useUrlSearchParams } from '@/hooks/use-url-search-params';
 import { useStandBoard } from '@/lib/api/stands';
+import { LOCALE_LABELS, LOCALES, useLocale } from '@/lib/i18n';
 import { BookingTimeline } from './booking-timeline';
 import { StandBoard } from './stand-board';
 import { StandDetail } from './stand-detail';
 import { BookingForm, RequestForm, StandForm, ZoneForm } from './stand-forms';
 import { StandImport } from './stand-import';
+import { useStandsT } from './stand-i18n';
 import { StandRequests } from './stand-requests';
 
 type Tab = 'board' | 'bookings' | 'requests' | 'import';
@@ -32,6 +34,8 @@ type Editing =
  */
 export function StandsPage() {
   const [params, setParams] = useUrlSearchParams();
+  const t = useStandsT();
+  const { locale, setLocale } = useLocale();
   const all = useStandBoard();
   const board = all.data;
   const canManage = board?.canManage ?? false;
@@ -39,7 +43,7 @@ export function StandsPage() {
   const tabs: Tab[] = canManage
     ? ['board', 'bookings', 'requests', 'import']
     : ['board', 'bookings', 'requests'];
-  const tab = (tabs.find((t) => t === params.get('tab')) ?? 'board') as Tab;
+  const tab = (tabs.find((x) => x === params.get('tab')) ?? 'board') as Tab;
   const text = params.get('model') ?? '';
   const search = useDebouncedValue(text.trim(), 250);
   const filtered = useStandBoard({ model: search || undefined });
@@ -69,16 +73,16 @@ export function StandsPage() {
       {canRequest && (
         <>
           <Button onClick={() => edit({ kind: 'booking', booking: null })}>
-            <CalendarPlus /> Book a stand
+            <CalendarPlus /> {t('Book a stand')}
           </Button>
           <Button variant="outline" onClick={() => edit({ kind: 'request' })}>
-            <Wrench /> Request technician
+            <Wrench /> {t('Request technician')}
           </Button>
         </>
       )}
       {canManage && (
         <Button variant="outline" onClick={() => edit({ kind: 'zone', zone: null })}>
-          <Plus /> New zone
+          <Plus /> {t('New zone')}
         </Button>
       )}
     </div>
@@ -87,35 +91,41 @@ export function StandsPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Lab"
-        title="Test stands"
-        subtitle="Which AC model is on which stand, who has a stand booked, and install / uninstall requests to technicians"
+        eyebrow={t('Lab')}
+        title={t('Test stands')}
+        subtitle={t(
+          'Which AC model is on which stand, who has a stand booked, and install / uninstall requests to technicians',
+        )}
         actions={actions}
       />
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <SegmentedControl
-          aria-label="View"
+          aria-label={t('View')}
           value={tab}
           onChange={(v) => set({ tab: v === 'board' ? null : v, request: null })}
-          options={tabs.map((t) => ({
-            value: t,
-            label: {
-              board: 'Stands',
-              bookings: 'Bookings',
-              requests: 'Requests',
-              import: 'Import',
-            }[t],
+          options={tabs.map((tb) => ({
+            value: tb,
+            label: t(
+              { board: 'Stands', bookings: 'Bookings', requests: 'Requests', import: 'Import' }[tb],
+            ),
           }))}
         />
         {tab === 'board' && (
           <SearchInput
-            aria-label="Find a model"
-            placeholder="Find a model, e.g. ACU-35"
+            aria-label={t('Find a model')}
+            placeholder={t('Find a model, e.g. ACU-35')}
             className="w-[300px] max-w-full"
             value={text}
             onValueChange={(v) => set({ model: v || null })}
           />
         )}
+        <SegmentedControl
+          className="ml-auto"
+          aria-label={t('Language')}
+          value={locale}
+          onChange={setLocale}
+          options={LOCALES.map((l) => ({ value: l, label: l === 'th' ? 'ไทย' : LOCALE_LABELS[l] }))}
+        />
       </div>
 
       {tab === 'board' && (

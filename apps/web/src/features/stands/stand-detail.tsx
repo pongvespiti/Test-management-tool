@@ -2,7 +2,6 @@
 
 import type { StandBookingDTO, StandDTO } from '@tmt/shared';
 import { CalendarPlus, Pencil, Trash2, Wrench } from 'lucide-react';
-import { confirmDelete } from '@/components/common/confirm-host';
 import { QueryState } from '@/components/common/error-alert';
 import { StatusPill } from '@/components/common/status-pill';
 import { Button } from '@/components/ui/button';
@@ -14,10 +13,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useDeleteBooking, useDeleteStand, useStandBookings } from '@/lib/api/stands';
-import { formatDate, formatRelative } from '@/lib/format';
 import { notifyError, notifySuccess } from '@/lib/notify';
 import { BLUE } from '@/lib/status';
 import { useAuth } from '@/providers/auth-provider';
+import { confirmStandDelete, useStandsDates, useStandsT } from './stand-i18n';
 import { StandRequests } from './stand-requests';
 import { addDaysIso, todayIso } from './stand-dates';
 
@@ -53,18 +52,23 @@ export function StandDetail({
   const removeStand = useDeleteStand();
   const removeBooking = useDeleteBooking();
   const canEditBooking = useCanEditBooking();
+  const t = useStandsT();
+  const fmt = useStandsDates();
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>
-            <span className="font-mono">{s.code}</span> · {s.currentModel ?? 'Empty'}
+            <span className="font-mono">{s.code}</span> · {s.currentModel ?? t('Empty')}
           </DialogTitle>
           <DialogDescription>
-            {s.inCharge ? `In charge: ${s.inCharge}. ` : ''}
+            {s.inCharge ? t('In charge: {name}. ', { name: s.inCharge }) : ''}
             {s.updatedBy
-              ? `Updated by ${s.updatedBy.displayName} ${formatRelative(s.updatedAt)}.`
+              ? t('Updated by {name} {when}.', {
+                  name: s.updatedBy.displayName,
+                  when: fmt.relative(s.updatedAt),
+                })
               : ''}
           </DialogDescription>
         </DialogHeader>
@@ -73,33 +77,37 @@ export function StandDetail({
           {canRequest && (
             <>
               <Button onClick={onBook}>
-                <CalendarPlus /> Book
+                <CalendarPlus /> {t('Book')}
               </Button>
               <Button variant="outline" onClick={onRequest}>
-                <Wrench /> Request technician
+                <Wrench /> {t('Request technician')}
               </Button>
             </>
           )}
           {canManage && (
             <>
               <Button variant="outline" onClick={onEdit}>
-                <Pencil /> Update stand
+                <Pencil /> {t('Update stand')}
               </Button>
               <Button
                 variant="ghost"
                 onClick={() =>
-                  confirmDelete(`stand ${s.code} with its bookings and requests`, async () => {
-                    try {
-                      await removeStand.mutateAsync(s.id);
-                      notifySuccess(`${s.code} deleted.`);
-                      onClose();
-                    } catch (err) {
-                      notifyError(err, 'Could not delete the stand');
-                    }
-                  })
+                  confirmStandDelete(
+                    t,
+                    t('stand {code} with its bookings and requests', { code: s.code }),
+                    async () => {
+                      try {
+                        await removeStand.mutateAsync(s.id);
+                        notifySuccess(t('{code} deleted.', { code: s.code }));
+                        onClose();
+                      } catch (err) {
+                        notifyError(err, t('Could not delete the stand'));
+                      }
+                    },
+                  )
                 }
               >
-                <Trash2 /> Delete
+                <Trash2 /> {t('Delete')}
               </Button>
             </>
           )}
@@ -107,11 +115,11 @@ export function StandDetail({
 
         <section aria-labelledby="stand-bookings" className="flex flex-col gap-2">
           <h3 id="stand-bookings" className="text-sm font-semibold">
-            Bookings from today
+            {t('Bookings from today')}
           </h3>
           <QueryState query={bookings}>
             {(bookings.data ?? []).length === 0 ? (
-              <p className="text-sm text-muted-foreground">Free — no bookings.</p>
+              <p className="text-sm text-muted-foreground">{t('Free — no bookings.')}</p>
             ) : (
               <ul className="flex flex-col divide-y rounded-lg border">
                 {(bookings.data ?? []).map((b) => (
@@ -119,29 +127,32 @@ export function StandDetail({
                     <StatusPill tone={BLUE}>{b.project.key}</StatusPill>
                     <span className="font-medium">{b.model}</span>
                     <span className="text-muted-foreground">
-                      {formatDate(b.startDate)} – {formatDate(b.endDate)} ·{' '}
-                      {b.createdBy.displayName}
+                      {fmt.date(b.startDate)} – {fmt.date(b.endDate)} · {b.createdBy.displayName}
                     </span>
                     {canEditBooking(b) && (
                       <span className="ml-auto flex gap-1">
                         <Button size="sm" variant="ghost" onClick={() => onEditBooking(b)}>
-                          Change
+                          {t('Change')}
                         </Button>
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={() =>
-                            confirmDelete(`booking of ${b.project.key}`, async () => {
-                              try {
-                                await removeBooking.mutateAsync(b.id);
-                                notifySuccess('Booking cancelled.');
-                              } catch (err) {
-                                notifyError(err, 'Could not cancel the booking');
-                              }
-                            })
+                            confirmStandDelete(
+                              t,
+                              t('booking of {project}', { project: b.project.key }),
+                              async () => {
+                                try {
+                                  await removeBooking.mutateAsync(b.id);
+                                  notifySuccess(t('Booking cancelled.'));
+                                } catch (err) {
+                                  notifyError(err, t('Could not cancel the booking'));
+                                }
+                              },
+                            )
                           }
                         >
-                          Cancel booking
+                          {t('Cancel booking')}
                         </Button>
                       </span>
                     )}
@@ -155,7 +166,7 @@ export function StandDetail({
 
         <section aria-labelledby="stand-requests" className="flex flex-col gap-2">
           <h3 id="stand-requests" className="text-sm font-semibold">
-            Technician requests
+            {t('Technician requests')}
           </h3>
           <StandRequests standId={s.id} compact />
         </section>

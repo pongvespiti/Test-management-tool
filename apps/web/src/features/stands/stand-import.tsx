@@ -17,6 +17,7 @@ import {
 import { useImportStandSheet } from '@/lib/api/stands';
 import { notifyError, notifySuccess } from '@/lib/notify';
 import { BLUE, GRAY, GREEN } from '@/lib/status';
+import { useStandsT } from './stand-i18n';
 
 const ACTION = {
   create: { label: 'New', tone: GREEN },
@@ -30,6 +31,7 @@ const ACTION = {
  */
 export function StandImport({ onDone }: { onDone: () => void }) {
   const run = useImportStandSheet();
+  const t = useStandsT();
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<StandImportResultDTO | null>(null);
 
@@ -39,7 +41,7 @@ export function StandImport({ onDone }: { onDone: () => void }) {
     try {
       setPreview(await run.mutateAsync({ file: f, apply: false }));
     } catch (err) {
-      notifyError(err, 'Could not read the file');
+      notifyError(err, t('Could not read the file'));
     }
   };
 
@@ -48,13 +50,17 @@ export function StandImport({ onDone }: { onDone: () => void }) {
     try {
       const r = await run.mutateAsync({ file, apply: true });
       notifySuccess(
-        `Stand sheet imported: ${r.created} new, ${r.updated} changed${r.zonesCreated ? `, ${r.zonesCreated} new zones` : ''}.`,
+        t('Stand sheet imported: {created} new, {updated} changed{zones}.', {
+          created: r.created,
+          updated: r.updated,
+          zones: r.zonesCreated ? t(', {n} new zones', { n: r.zonesCreated }) : '',
+        }),
       );
       setFile(null);
       setPreview(null);
       onDone();
     } catch (err) {
-      notifyError(err, 'Could not import the stand sheet');
+      notifyError(err, t('Could not import the stand sheet'));
     }
   };
 
@@ -67,12 +73,12 @@ export function StandImport({ onDone }: { onDone: () => void }) {
           <FileSpreadsheet className="mt-0.5 size-5 text-muted-foreground" />
           <div className="flex flex-1 flex-col gap-2">
             <label htmlFor="stand-sheet" className="font-medium">
-              Stand sheet (.xlsx)
+              {t('Stand sheet (.xlsx)')}
             </label>
             <p className="text-sm text-muted-foreground">
-              The sheet named “Stand” (or the first sheet): each block has Stand No., Model Name and
-              In charge in its first column and the stands to the right, under a “Zone …” heading.
-              Request, Replace and Target are kept as the stand’s note. Stands are matched by code.
+              {t(
+                'The sheet named “Stand” (or the first sheet): each block has Stand No., Model Name and In charge in its first column and the stands to the right, under a “Zone …” heading. Request, Replace and Target are kept as the stand’s note. Stands are matched by code.',
+              )}
             </p>
             <Input
               id="stand-sheet"
@@ -90,9 +96,11 @@ export function StandImport({ onDone }: { onDone: () => void }) {
       {preview && (
         <div className="flex flex-col gap-3">
           <p className="text-sm" aria-live="polite">
-            {preview.rows.length} stands read: <strong>{preview.created} new</strong>,{' '}
-            <strong>{preview.updated} changed</strong>, {preview.unchanged} the same
-            {preview.zonesCreated > 0 && `, ${preview.zonesCreated} new zones`}.
+            {t('{n} stands read: ', { n: preview.rows.length })}
+            <strong>{t('{n} new', { n: preview.created })}</strong>,{' '}
+            <strong>{t('{n} changed', { n: preview.updated })}</strong>,{' '}
+            {t('{n} the same', { n: preview.unchanged })}
+            {preview.zonesCreated > 0 && t(', {n} new zones', { n: preview.zonesCreated })}.
           </p>
           {preview.warnings.length > 0 && (
             <ul className="list-disc rounded-md bg-amber-50 py-2 pr-3 pl-7 text-sm text-amber-900">
@@ -106,18 +114,20 @@ export function StandImport({ onDone }: { onDone: () => void }) {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[90px]" />
-                  <TableHead>Zone</TableHead>
-                  <TableHead>Stand</TableHead>
-                  <TableHead>Model</TableHead>
-                  <TableHead>In charge</TableHead>
-                  <TableHead>Note</TableHead>
+                  <TableHead>{t('Zone')}</TableHead>
+                  <TableHead>{t('Stand')}</TableHead>
+                  <TableHead>{t('Model')}</TableHead>
+                  <TableHead>{t('In charge')}</TableHead>
+                  <TableHead>{t('Note')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {preview.rows.map((r) => (
                   <TableRow key={r.code}>
                     <TableCell>
-                      <StatusPill tone={ACTION[r.action].tone}>{ACTION[r.action].label}</StatusPill>
+                      <StatusPill tone={ACTION[r.action].tone}>
+                        {t(ACTION[r.action].label)}
+                      </StatusPill>
                     </TableCell>
                     <TableCell className="whitespace-nowrap">{r.zone}</TableCell>
                     <TableCell className="font-mono text-xs whitespace-nowrap">{r.code}</TableCell>
@@ -131,7 +141,7 @@ export function StandImport({ onDone }: { onDone: () => void }) {
           </div>
           <div className="flex gap-2">
             <Button onClick={() => void apply()} disabled={changes === 0} loading={run.isPending}>
-              {changes === 0 ? 'Nothing to change' : `Apply ${changes} changes`}
+              {changes === 0 ? t('Nothing to change') : t('Apply {n} changes', { n: changes })}
             </Button>
             <Button
               variant="outline"
@@ -140,7 +150,7 @@ export function StandImport({ onDone }: { onDone: () => void }) {
                 setPreview(null);
               }}
             >
-              Discard
+              {t('Discard')}
             </Button>
           </div>
         </div>

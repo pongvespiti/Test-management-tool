@@ -6,9 +6,9 @@ import { useMemo, useState } from 'react';
 import { QueryState } from '@/components/common/error-alert';
 import { Button } from '@/components/ui/button';
 import { useStandBookings } from '@/lib/api/stands';
-import { formatDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import { addDaysIso, daysBetween, shortDay, todayIso, weekStart } from './stand-dates';
+import { addDaysIso, daysBetween, todayIso, weekStart } from './stand-dates';
+import { useStandsDates, useStandsT } from './stand-i18n';
 
 /** Days shown at once. */
 const WINDOW = 28;
@@ -30,6 +30,8 @@ export function BookingTimeline({
   board: StandBoardDTO;
   onOpen: (booking: StandBookingDTO) => void;
 }) {
+  const t = useStandsT();
+  const fmt = useStandsDates();
   const today = todayIso();
   const [from, setFrom] = useState(() => weekStart(today));
   const to = addDaysIso(from, WINDOW - 1);
@@ -48,31 +50,31 @@ export function BookingTimeline({
         <Button
           size="icon"
           variant="outline"
-          aria-label="Earlier weeks"
+          aria-label={t('Earlier weeks')}
           onClick={() => setFrom(addDaysIso(from, -WINDOW))}
         >
           <ChevronLeft />
         </Button>
         <Button variant="outline" onClick={() => setFrom(weekStart(today))}>
-          This week
+          {t('This week')}
         </Button>
         <Button
           size="icon"
           variant="outline"
-          aria-label="Later weeks"
+          aria-label={t('Later weeks')}
           onClick={() => setFrom(addDaysIso(from, WINDOW))}
         >
           <ChevronRight />
         </Button>
         <span className="text-sm font-medium" aria-live="polite">
-          {formatDate(from)} – {formatDate(to)}
+          {fmt.date(from)} – {fmt.date(to)}
         </span>
       </div>
       <QueryState query={query}>
         <div className="overflow-x-auto rounded-xl border bg-card">
           <div className="min-w-[980px]">
             <div className="flex border-b text-xs text-muted-foreground">
-              <div className="w-40 shrink-0 px-3 py-2 font-medium">Stand</div>
+              <div className="w-40 shrink-0 px-3 py-2 font-medium">{t('Stand')}</div>
               <div className="relative flex flex-1">
                 {days.map((d, i) => (
                   <div
@@ -86,7 +88,7 @@ export function BookingTimeline({
                     )}
                   >
                     {i % 7 === 0 || i === todayCol
-                      ? shortDay(d)
+                      ? fmt.short(d)
                       : new Date(`${d}T00:00:00`).getDate()}
                   </div>
                 ))}
@@ -102,7 +104,7 @@ export function BookingTimeline({
                     <div className="w-40 shrink-0 px-3 py-2">
                       <p className="font-mono text-xs font-semibold">{s.code}</p>
                       <p className="truncate text-xs text-muted-foreground">
-                        {s.currentModel ?? 'Empty'}
+                        {s.currentModel ?? t('Empty')}
                       </p>
                     </div>
                     <div className="relative flex-1">
@@ -124,8 +126,17 @@ export function BookingTimeline({
                             key={b.id}
                             type="button"
                             onClick={() => onOpen(b)}
-                            title={`${b.project.key} · ${b.model} · ${formatDate(b.startDate)} – ${formatDate(b.endDate)}`}
-                            aria-label={`${s.code} booked by ${b.project.key} for ${b.model}, ${formatDate(b.startDate)} to ${formatDate(b.endDate)}`}
+                            title={`${b.project.key} · ${b.model} · ${fmt.date(b.startDate)} – ${fmt.date(b.endDate)}`}
+                            aria-label={t(
+                              '{code} booked by {project} for {model}, {from} to {to}',
+                              {
+                                code: s.code,
+                                project: b.project.key,
+                                model: b.model,
+                                from: fmt.date(b.startDate),
+                                to: fmt.date(b.endDate),
+                              },
+                            )}
                             className="absolute top-1.5 bottom-1.5 overflow-hidden rounded-md px-2 text-left text-xs font-semibold whitespace-nowrap text-white hover:opacity-90 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
                             style={{
                               left: `calc(${(start / WINDOW) * 100}% + 2px)`,

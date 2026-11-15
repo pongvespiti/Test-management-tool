@@ -351,4 +351,21 @@ describe('Test stands page', () => {
     await user.click(screen.getByRole('button', { name: 'Apply 2 changes' }));
     await waitFor(() => expect(api.find('POST', '/stands/import')).toHaveLength(2));
   });
+
+  it('switches the whole page to Thai', async () => {
+    mockApi({ 'GET /stands': board() });
+    const { user } = renderWithProviders(<StandsPage />, tester);
+    await screen.findByRole('heading', { name: 'Zone A' });
+    await user.click(screen.getByRole('radio', { name: 'ไทย' }));
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('สแตนด์ทดสอบ');
+    expect(screen.getByRole('button', { name: /จอง stand/ })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'การจอง' })).toBeInTheDocument();
+    const a1 = screen.getByRole('button', { name: 'Stand L1/A-1: ACU-25' });
+    expect(a1).toHaveTextContent('ผู้รับผิดชอบ: Ann');
+    expect(screen.getByRole('button', { name: 'Stand L1/A-2: ว่าง' })).toHaveTextContent(
+      /ACU-60 ถึง \d+ /,
+    );
+    await user.click(screen.getByRole('radio', { name: 'English' }));
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Test stands');
+  });
 });

@@ -23,19 +23,22 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useStandRequestAction, useStandRequests } from '@/lib/api/stands';
-import { formatDate, formatRelative } from '@/lib/format';
 import { notifyError, notifySuccess } from '@/lib/notify';
 import { STAND_REQUEST_STATUS_TONES } from '@/lib/status';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers/auth-provider';
+import { standsText, useStandsDates, useStandsT, type StandsT } from './stand-i18n';
 
 type Action = 'accept' | 'reject' | 'done';
 /** The request a notification opened comes into view once it is listed. */
 const scrollTo = (el: HTMLLIElement | null) => el?.scrollIntoView({ block: 'center' });
 const isOpen = (r: StandRequestDTO) => r.status === 'requested' || r.status === 'accepted';
 
-export function describeRequest(r: StandRequestDTO): string {
-  const what = STAND_REQUEST_KIND_LABELS[r.kind];
+export function describeRequest(
+  r: StandRequestDTO,
+  t: StandsT = (text) => standsText('en', text),
+): string {
+  const what = t(STAND_REQUEST_KIND_LABELS[r.kind]);
   return r.model ? `${what} ${r.model}` : what;
 }
 
@@ -55,6 +58,8 @@ export function StandRequests({
   compact?: boolean;
 }) {
   const { user, isTechnician } = useAuth();
+  const t = useStandsT();
+  const fmt = useStandsDates();
   const [scope, setScope] = useState<'mine' | 'all'>(standId ? 'all' : 'mine');
   const [status, setStatus] = useState<'open' | 'any'>(standId ? 'any' : 'open');
   const query = useStandRequests({
@@ -69,32 +74,32 @@ export function StandRequests({
   const cancel = async (r: StandRequestDTO) => {
     try {
       await act.mutateAsync({ requestId: r.id, action: 'cancel' });
-      notifySuccess('Request cancelled.');
+      notifySuccess(t('Request cancelled.'));
     } catch (err) {
-      notifyError(err, 'Could not cancel the request');
+      notifyError(err, t('Could not cancel the request'));
     }
   };
 
   return (
     <div className="flex flex-col gap-3">
       {!standId && (
-        <div role="group" aria-label="Request filters" className="flex flex-wrap gap-3">
+        <div role="group" aria-label={t('Request filters')} className="flex flex-wrap gap-3">
           <SegmentedControl
-            aria-label="Whose requests"
+            aria-label={t('Whose requests')}
             value={scope}
             onChange={setScope}
             options={[
-              { value: 'mine', label: isTechnician ? 'Sent to me' : 'Mine' },
-              { value: 'all', label: 'Everyone' },
+              { value: 'mine', label: t(isTechnician ? 'Sent to me' : 'Mine') },
+              { value: 'all', label: t('Everyone') },
             ]}
           />
           <SegmentedControl
-            aria-label="Request status"
+            aria-label={t('Request status')}
             value={status}
             onChange={setStatus}
             options={[
-              { value: 'open', label: 'Open' },
-              { value: 'any', label: 'All' },
+              { value: 'open', label: t('Open') },
+              { value: 'any', label: t('All') },
             ]}
           />
         </div>
@@ -104,15 +109,19 @@ export function StandRequests({
           <EmptyState
             compact={compact}
             icon={<Wrench className="size-6" strokeWidth={1.6} />}
-            title={status === 'open' ? 'No open requests' : 'No requests'}
+            title={t(status === 'open' ? 'No open requests' : 'No requests')}
             description={
               isTechnician
-                ? 'Requests to install or uninstall units on stands show up here, with a notification.'
-                : 'Ask a technician to install, uninstall or replace a unit from a stand card or the button above.'
+                ? t(
+                    'Requests to install or uninstall units on stands show up here, with a notification.',
+                  )
+                : t(
+                    'Ask a technician to install, uninstall or replace a unit from a stand card or the button above.',
+                  )
             }
           />
         ) : (
-          <ul aria-label="Stand requests" className="flex flex-col gap-2">
+          <ul aria-label={t('Stand requests')} className="flex flex-col gap-2">
             {items.map((r) => {
               const mineToDo = isOpen(r) && (r.technician.id === user?.id || !!user?.isAdmin);
               const mineToCancel = isOpen(r) && (r.requestedBy.id === user?.id || !!user?.isAdmin);
@@ -130,27 +139,29 @@ export function StandRequests({
                   <div className="flex min-w-[240px] flex-1 flex-col gap-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <StatusPill tone={STAND_REQUEST_STATUS_TONES[r.status]}>
-                        {STAND_REQUEST_STATUS_LABELS[r.status]}
+                        {t(STAND_REQUEST_STATUS_LABELS[r.status])}
                       </StatusPill>
-                      <span className="font-semibold">{describeRequest(r)}</span>
+                      <span className="font-semibold">{describeRequest(r, t)}</span>
                       <span className="text-sm text-muted-foreground">
-                        at <span className="font-mono">{r.standCode}</span> · {r.zoneName}
+                        {t('at {code} · {zone}', { code: r.standCode, zone: r.zoneName })}
                       </span>
                     </div>
                     <p className="text-sm">
                       {r.status === 'accepted' || r.status === 'done' ? (
                         <>
-                          On <strong>{formatDate(r.scheduledDate)}</strong>
+                          <strong>{t('On {date}', { date: fmt.date(r.scheduledDate) })}</strong>
                           {r.scheduledDate !== r.requestedDate && (
                             <span className="text-muted-foreground">
                               {' '}
-                              (asked for {formatDate(r.requestedDate)})
+                              {t('(asked for {date})', { date: fmt.date(r.requestedDate) })}
                             </span>
                           )}
                         </>
                       ) : (
                         <>
-                          Asked for <strong>{formatDate(r.requestedDate)}</strong>
+                          <strong>
+                            {t('Asked for {date}', { date: fmt.date(r.requestedDate) })}
+                          </strong>
                         </>
                       )}
                       <span className="text-muted-foreground">
@@ -162,18 +173,18 @@ export function StandRequests({
                     {r.note && <p className="text-sm text-muted-foreground">“{r.note}”</p>}
                     {r.technicianNote && (
                       <p className="text-sm">
-                        <span className="text-muted-foreground">Technician: </span>
+                        <span className="text-muted-foreground">{t('Technician:')} </span>
                         {r.technicianNote}
                       </p>
                     )}
                     <p className="text-xs text-muted-foreground">
-                      Updated {formatRelative(r.updatedAt)}
+                      {t('Updated {when}', { when: fmt.relative(r.updatedAt) })}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {mineToDo && r.status === 'requested' && (
                       <Button size="sm" onClick={() => setDialog({ request: r, action: 'accept' })}>
-                        Accept
+                        {t('Accept')}
                       </Button>
                     )}
                     {mineToDo && (
@@ -182,7 +193,7 @@ export function StandRequests({
                         variant={r.status === 'accepted' ? 'default' : 'outline'}
                         onClick={() => setDialog({ request: r, action: 'done' })}
                       >
-                        Done
+                        {t('Done')}
                       </Button>
                     )}
                     {mineToDo && (
@@ -191,12 +202,12 @@ export function StandRequests({
                         variant="ghost"
                         onClick={() => setDialog({ request: r, action: 'reject' })}
                       >
-                        Reject
+                        {t('Reject')}
                       </Button>
                     )}
                     {mineToCancel && !mineToDo && (
                       <Button size="sm" variant="ghost" onClick={() => void cancel(r)}>
-                        Cancel request
+                        {t('Cancel request')}
                       </Button>
                     )}
                   </div>
@@ -237,11 +248,13 @@ function ActionDialog({
   const [day, setDay] = useState<string | null>(r.requestedDate);
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const t = useStandsT();
+  const fmt = useStandsDates();
   const text = ACTION_TEXT[action];
 
   const submit = async () => {
     if (action === 'reject' && note.trim() === '') {
-      setError('Say why, so the requester can plan again');
+      setError(t('Say why, so the requester can plan again'));
       return;
     }
     try {
@@ -254,10 +267,10 @@ function ActionDialog({
       else if (action === 'reject')
         await act.mutateAsync({ requestId: r.id, action, body: { technicianNote: note } });
       else await act.mutateAsync({ requestId: r.id, action, body: { technicianNote: note } });
-      notifySuccess(text.done);
+      notifySuccess(t(text.done));
       onClose();
     } catch (err) {
-      notifyError(err, 'Could not update the request');
+      notifyError(err, t('Could not update the request'));
     }
   };
 
@@ -265,14 +278,18 @@ function ActionDialog({
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{text.title}</DialogTitle>
+          <DialogTitle>{t(text.title)}</DialogTitle>
           <DialogDescription>
-            {describeRequest(r)} at {r.standCode}, asked by {r.requestedBy.displayName} for{' '}
-            {formatDate(r.requestedDate)}.
+            {t('{what} at {code}, asked by {name} for {date}.', {
+              what: describeRequest(r, t),
+              code: r.standCode,
+              name: r.requestedBy.displayName,
+              date: fmt.date(r.requestedDate),
+            })}
             {action === 'done' &&
               (r.kind === 'uninstall'
-                ? ' The stand will show as empty.'
-                : ` The stand will show ${r.model}.`)}
+                ? t(' The stand will show as empty.')
+                : t(' The stand will show {model}.', { model: r.model ?? '' }))}
           </DialogDescription>
         </DialogHeader>
         <form
@@ -286,14 +303,21 @@ function ActionDialog({
           {action === 'accept' && (
             <div className="flex flex-col gap-1.5">
               <label htmlFor="accept-day" className="text-sm font-medium">
-                Day you will do it
+                {t('Day you will do it')}
               </label>
-              <DateInput id="accept-day" value={day} onChange={setDay} clearable={false} />
+              <DateInput
+                id="accept-day"
+                value={day}
+                onChange={setDay}
+                clearable={false}
+                formatValue={fmt.date}
+                locale={fmt.locale}
+              />
             </div>
           )}
           <div className="flex flex-col gap-1.5">
             <label htmlFor="action-note" className="text-sm font-medium">
-              {action === 'reject' ? 'Reason' : 'Note (optional)'}
+              {t(action === 'reject' ? 'Reason' : 'Note (optional)')}
             </label>
             <Textarea
               id="action-note"
@@ -306,14 +330,14 @@ function ActionDialog({
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
+              {t('Cancel')}
             </Button>
             <Button
               type="submit"
               variant={action === 'reject' ? 'destructive' : 'default'}
               loading={act.isPending}
             >
-              {text.button}
+              {t(text.button)}
             </Button>
           </DialogFooter>
         </form>
