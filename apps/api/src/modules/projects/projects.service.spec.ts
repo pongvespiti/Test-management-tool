@@ -102,9 +102,7 @@ describe('ProjectsService', () => {
     });
 
     it('rejects unknown users', async () => {
-      mock.db.user.findMany.mockResolvedValue([
-        { isTechnician: false, displayName: 'A' },
-      ] as never);
+      mock.db.user.findMany.mockResolvedValue([{ isTechnician: false, displayName: 'A' }] as never);
       await expect(
         service.setMembers(projectCtx(), me, {
           members: [
