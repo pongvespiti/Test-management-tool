@@ -83,7 +83,8 @@ export const qk = {
   standBookings: (params: object) => ['stands', 'bookings', params] as const,
   standRequests: (params: object) => ['stands', 'requests', params] as const,
   standEvents: (params: object) => ['stands', 'events', params] as const,
-  standWork: (technicianId: number, year: number) => ['stands', 'work', technicianId, year] as const,
+  standWork: (technicianId: number, year: number) =>
+    ['stands', 'work', technicianId, year] as const,
   standTechnicians: ['stands', 'technicians'] as const,
 
   comments: (projectId: number, entityType: string, entityId: number) =>
