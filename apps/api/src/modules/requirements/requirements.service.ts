@@ -521,8 +521,16 @@ export class RequirementsService {
             userId,
             projectId: ctx.id,
             kind: 'requirement_changed' as const,
-            title: `${r.key} changed — check its cases`,
-            body: `${caseIds.length} ${caseIds.length === 1 ? 'case' : 'cases'} test it`,
+            message: {
+              title: { key: 'requirement_changed' as const, vars: { key: r.key } },
+              body: {
+                key:
+                  caseIds.length === 1
+                    ? ('requirement_cases_one' as const)
+                    : ('requirement_cases_many' as const),
+                vars: { n: caseIds.length },
+              },
+            },
             link: `/projects/${ctx.id}/requirements`,
             dedupeKey: `reqchg:${r.id}:${stamp}`,
           })),

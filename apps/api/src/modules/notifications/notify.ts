@@ -1,4 +1,5 @@
-import type { NotificationKind } from '@tmt/shared';
+import { renderMessage, type NotificationKind, type NotificationMessage } from '@tmt/shared';
+import type { Prisma } from '@tmt/database';
 import type { Db } from '../../prisma/prisma.service.js';
 
 export interface NotificationInput {
@@ -6,8 +7,11 @@ export interface NotificationInput {
   /** Null for lab-wide notifications (test stands). */
   projectId: number | null;
   kind: NotificationKind;
-  title: string;
-  body?: string | null;
+  /**
+   * Title and body as message keys: stored, so the web shows them in each reader's language;
+   * the English text becomes `title` and `body`.
+   */
+  message: NotificationMessage;
   /** Path inside the web app. */
   link: string;
   /** Same key = same event: the user gets it once. */
@@ -31,8 +35,9 @@ export async function notifyUsers(
       userId: i.userId,
       projectId: i.projectId,
       kind: i.kind,
-      title: i.title.slice(0, 300),
-      body: i.body ?? null,
+      title: renderMessage(i.message.title).slice(0, 300),
+      body: i.message.body ? renderMessage(i.message.body) : null,
+      message: i.message as unknown as Prisma.InputJsonValue,
       link: i.link,
       dedupeKey: i.dedupeKey ?? null,
     }));

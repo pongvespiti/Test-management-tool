@@ -1,5 +1,6 @@
 /** Every table, in an order safe for `TRUNCATE … CASCADE` (used by integration tests). */
 export const ALL_TABLES = [
+  'stand_events',
   'stand_requests',
   'stand_bookings',
   'stands',

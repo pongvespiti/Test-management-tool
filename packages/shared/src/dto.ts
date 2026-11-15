@@ -3,6 +3,7 @@
  * the web app consumes them. Dates are ISO-8601 strings; date-only values are `YYYY-MM-DD`.
  */
 import type { EnvDimension } from './logic/env-dimensions';
+import type { NotificationMessage } from './logic/messages';
 import type {
   AttachmentEntityType,
   CasePriority,
@@ -1535,6 +1536,8 @@ export interface NotificationDTO {
   body: string | null;
   /** Path inside the web app. */
   link: string;
+  /** Title and body as message keys, to show them in the reader's language (null: older ones). */
+  message: NotificationMessage | null;
   read: boolean;
   createdAt: string;
 }
@@ -1574,7 +1577,13 @@ export interface StandBookingDTO {
   model: string;
   startDate: string;
   endDate: string;
+  /** `HH:mm` on the start day, or null = from the start of the day. */
+  startTime: string | null;
+  /** `HH:mm` on the end day, or null = to the end of the day. */
+  endTime: string | null;
   note: string | null;
+  /** Who tests on the stand (who booked, unless someone else was named). */
+  tester: UserRef | null;
   createdBy: UserRef;
   createdAt: string;
 }
@@ -1652,4 +1661,43 @@ export interface StandImportResultDTO {
   /** False for a preview: nothing was written. */
   applied: boolean;
   warnings: string[];
+}
+
+export type StandEventSource = 'request' | 'manual' | 'import';
+
+/** One change of the unit on a stand: install, uninstall or replace, and who did it. */
+export interface StandEventDTO {
+  id: number;
+  standId: number | null;
+  standCode: string;
+  zoneName: string;
+  kind: StandRequestKind;
+  source: StandEventSource;
+  modelBefore: string | null;
+  modelAfter: string | null;
+  project: { id: number | null; key: string } | null;
+  requestId: number | null;
+  actor: UserRef;
+  note: string | null;
+  at: string;
+}
+
+/** What a technician did in a year: for the year-end report. */
+export interface TechnicianWorkDTO {
+  technician: UserRef;
+  year: number;
+  totals: {
+    install: number;
+    uninstall: number;
+    replace: number;
+    rejected: number;
+    /** Stand data changed by hand (model, in charge …) outside requests. */
+    manual: number;
+  };
+  /** Done requests per month (1–12). */
+  months: { month: number; install: number; uninstall: number; replace: number }[];
+  /** Requests handled (done or rejected) in the year, newest first. */
+  requests: StandRequestDTO[];
+  /** Stand changes the technician made by hand or by import, newest first. */
+  events: StandEventDTO[];
 }

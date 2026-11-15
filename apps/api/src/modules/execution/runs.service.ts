@@ -1,3 +1,4 @@
+import { textMessage } from '@tmt/shared';
 import { Injectable } from '@nestjs/common';
 import type { TestPlan, TestRun } from '@tmt/database';
 import type { CreateRunInput, DuplicateRunInput, RunDTO, UpdateRunInput } from '@tmt/shared';
@@ -123,8 +124,10 @@ export class RunsService {
               userId: r.testerId,
               projectId: ctx.id,
               kind: 'assigned',
-              title: `Run ${r.code} · ${suite.name} was given to you`,
-              body: plan.docNo,
+              message: {
+                title: { key: 'run_assigned', vars: { code: r.code, suite: suite.name } },
+                body: textMessage(plan.docNo),
+              },
               link: `/projects/${ctx.id}/runs/${r.id}`,
             },
           ],
@@ -192,8 +195,10 @@ export class RunsService {
                 userId: r.testerId,
                 projectId: ctx.id,
                 kind: 'assigned',
-                title: `Run ${r.code} was given to you`,
-                body: plan.docNo,
+                message: {
+                  title: { key: 'run_assigned_plain', vars: { code: r.code } },
+                  body: textMessage(plan.docNo),
+                },
                 link: `/projects/${ctx.id}/runs/${r.id}`,
               },
             ],

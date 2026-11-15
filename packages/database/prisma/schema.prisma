@@ -272,6 +272,8 @@ model User {
   standBookings        StandBooking[]       @relation("StandBookingCreatedBy")
   standRequestsHandled StandRequest[]       @relation("StandRequestTechnician")
   standRequestsMade    StandRequest[]       @relation("StandRequestRequestedBy")
+  standBookingsTested  StandBooking[]       @relation("StandBookingTester")
+  standEvents          StandEvent[]
   defectsReported      Defect[]             @relation("DefectReporter")
   comments             Comment[]
   imports              Import[]
@@ -367,6 +369,7 @@ model Project {
   devices         Device[]
   standBookings   StandBooking[]
   standRequests   StandRequest[]
+  standEvents     StandEvent[]
 
   @@map("projects")
 }
@@ -1083,6 +1086,8 @@ model Notification {
   body      String?
   /// Path inside the web app that opens what the notification is about.
   link      String
+  /// The title and body as a message key + values, so each user reads it in their language.
+  message   Json?
   /// Same key for the same event: the notification is created once per user.
   dedupeKey String?          @map("dedupe_key")
   readAt    DateTime?        @map("read_at") @db.Timestamptz(6)
@@ -1189,6 +1194,7 @@ model Stand {
   updatedBy User?          @relation("StandUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
   bookings  StandBooking[]
   requests  StandRequest[]
+  events    StandEvent[]
 
   @@index([zoneId, sortOrder])
   @@map("stands")
@@ -1202,6 +1208,12 @@ model StandBooking {
   model       String
   startDate   DateTime @map("start_date") @db.Date
   endDate     DateTime @map("end_date") @db.Date
+  /// Minutes after midnight (lab time) on the start day; null = from the start of the day.
+  startMinute Int?     @map("start_minute")
+  /// Minutes after midnight on the end day; null = to the end of the day.
+  endMinute   Int?     @map("end_minute")
+  /// Who tests on the stand (defaults to who booked).
+  testerId    Int?     @map("tester_id")
   note        String?
   createdById Int      @map("created_by_id")
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -1209,6 +1221,7 @@ model StandBooking {
   stand     Stand   @relation(fields: [standId], references: [id], onDelete: Cascade)
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   createdBy User    @relation("StandBookingCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  tester    User?   @relation("StandBookingTester", fields: [testerId], references: [id], onDelete: SetNull)
 
   @@index([standId, startDate])
   @@index([projectId])
@@ -1235,13 +1248,52 @@ model StandRequest {
   createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  stand       Stand    @relation(fields: [standId], references: [id], onDelete: Cascade)
-  project     Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  technician  User     @relation("StandRequestTechnician", fields: [technicianId], references: [id], onDelete: Restrict)
-  requestedBy User     @relation("StandRequestRequestedBy", fields: [requestedById], references: [id], onDelete: Restrict)
+  stand       Stand        @relation(fields: [standId], references: [id], onDelete: Cascade)
+  project     Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  events      StandEvent[]
+  technician  User         @relation("StandRequestTechnician", fields: [technicianId], references: [id], onDelete: Restrict)
+  requestedBy User         @relation("StandRequestRequestedBy", fields: [requestedById], references: [id], onDelete: Restrict)
 
   @@index([technicianId, status])
   @@index([standId, status])
   @@index([requestedById])
   @@map("stand_requests")
+}
+
+/// How a stand's unit changed: done request, a hand edit, or the sheet import.
+enum StandEventSource {
+  request
+  manual
+  import
+
+  @@map("stand_event_source")
+}
+
+/// History of the units on the stands: what was installed or removed, when, for which project and
+/// by whom. Kept when the stand, project or request is deleted (names are copied).
+model StandEvent {
+  id          Int              @id @default(autoincrement())
+  standId     Int?             @map("stand_id")
+  standCode   String           @map("stand_code")
+  zoneName    String           @map("zone_name")
+  kind        StandRequestKind
+  source      StandEventSource
+  modelBefore String?          @map("model_before")
+  modelAfter  String?          @map("model_after")
+  projectId   Int?             @map("project_id")
+  projectKey  String?          @map("project_key")
+  requestId   Int?             @map("request_id")
+  actorId     Int              @map("actor_id")
+  note        String?
+  at          DateTime         @default(now()) @db.Timestamptz(6)
+
+  stand   Stand?        @relation(fields: [standId], references: [id], onDelete: SetNull)
+  project Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  request StandRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  actor   User          @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([at])
+  @@index([actorId, at])
+  @@index([standId, at])
+  @@map("stand_events")
 }

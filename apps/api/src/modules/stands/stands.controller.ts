@@ -20,6 +20,12 @@ import {
   createStandSchema,
   createStandZoneSchema,
   listStandBookingsQuerySchema,
+  listStandEventsQuerySchema,
+  technicianWorkQuerySchema,
+  type ListStandEventsQuery,
+  type StandEventDTO,
+  type TechnicianWorkDTO,
+  type TechnicianWorkQuery,
   listStandRequestsQuerySchema,
   rejectStandRequestSchema,
   standBoardQuerySchema,
@@ -88,6 +94,25 @@ export class StandsController {
     return this.stands.technicians();
   }
 
+  // ------------------------------------------------------------ history
+
+  /** Installs, uninstalls and replacements on the stands, newest first. */
+  @Get('events')
+  listEvents(
+    @Query({ schema: listStandEventsQuerySchema }) q: ListStandEventsQuery,
+  ): Promise<StandEventDTO[]> {
+    return this.stands.listEvents(q);
+  }
+
+  /** What a technician did in a year, for the year-end report. */
+  @Get('work')
+  @ApiErrorCodes('USER_NOT_FOUND')
+  technicianWork(
+    @Query({ schema: technicianWorkQuerySchema }) q: TechnicianWorkQuery,
+  ): Promise<TechnicianWorkDTO> {
+    return this.stands.technicianWork(q);
+  }
+
   // ------------------------------------------------------------ zones
 
   @Post('zones')
@@ -126,7 +151,13 @@ export class StandsController {
   }
 
   @Post('bookings')
-  @ApiErrorCodes('STAND_NOT_FOUND', 'PROJECT_NOT_FOUND', 'STAND_BOOKED', 'TECHNICIAN_NOT_ALLOWED')
+  @ApiErrorCodes(
+    'STAND_NOT_FOUND',
+    'PROJECT_NOT_FOUND',
+    'STAND_BOOKED',
+    'BAD_TESTER',
+    'TECHNICIAN_NOT_ALLOWED',
+  )
   createBooking(
     @CurrentUser() me: AuthUser,
     @Body({ schema: createStandBookingSchema }) body: CreateStandBookingInput,
@@ -135,7 +166,7 @@ export class StandsController {
   }
 
   @Patch('bookings/:bookingId')
-  @ApiErrorCodes('STAND_BOOKING_NOT_FOUND', 'STAND_BOOKED')
+  @ApiErrorCodes('STAND_BOOKING_NOT_FOUND', 'STAND_BOOKED', 'BAD_TESTER')
   updateBooking(
     @CurrentUser() me: AuthUser,
     @Param('bookingId', ID) bookingId: number,

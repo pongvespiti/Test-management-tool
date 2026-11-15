@@ -43,25 +43,50 @@ export type StandBoardQuery = z.infer<typeof standBoardQuerySchema>;
 const dateRange = <T extends { startDate?: string; endDate?: string }>(v: T) =>
   !v.startDate || !v.endDate || v.endDate >= v.startDate;
 
+/** `HH:mm`, 00:00–24:00. */
+export const timeOfDaySchema = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$|^24:00$/, 'Use HH:mm, e.g. 09:30');
+
+/** Minutes after midnight of `HH:mm`. */
+export const minutesOf = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+
+const bookingFields = {
+  model: requiredLine(80),
+  startDate: isoDate,
+  endDate: isoDate,
+  /** With `endTime`: book hours instead of whole days. */
+  startTime: timeOfDaySchema.nullable().optional(),
+  endTime: timeOfDaySchema.nullable().optional(),
+  /** Who tests on the stand; default = who books. */
+  testerId: idSchema.nullable().optional(),
+  note: optionalLine(1000),
+};
+
+type BookingTimes = {
+  startDate?: string;
+  endDate?: string;
+  startTime?: string | null;
+  endTime?: string | null;
+};
+
+const bothTimesOrNone = (v: BookingTimes) => !v.startTime === !v.endTime;
+const endAfterStart = (v: BookingTimes) =>
+  !v.startDate ||
+  !v.endDate ||
+  v.endDate > v.startDate ||
+  (v.endDate === v.startDate &&
+    (!v.startTime || !v.endTime || minutesOf(v.endTime) > minutesOf(v.startTime)));
+
 export const createStandBookingSchema = z
-  .object({
-    standId: idSchema,
-    projectId: idSchema,
-    model: requiredLine(80),
-    startDate: isoDate,
-    endDate: isoDate,
-    note: optionalLine(1000),
-  })
-  .refine(dateRange, { message: 'The end date is before the start date', path: ['endDate'] });
+  .object({ standId: idSchema, projectId: idSchema, ...bookingFields })
+  .refine(dateRange, { message: 'The end date is before the start date', path: ['endDate'] })
+  .refine(bothTimesOrNone, { message: 'Enter both times, or none', path: ['endTime'] })
+  .refine(endAfterStart, { message: 'The end time is before the start time', path: ['endTime'] });
 export type CreateStandBookingInput = z.infer<typeof createStandBookingSchema>;
 
 export const updateStandBookingSchema = z
-  .object({
-    model: requiredLine(80),
-    startDate: isoDate,
-    endDate: isoDate,
-    note: optionalLine(1000),
-  })
+  .object(bookingFields)
   .partial()
   .refine((v) => Object.keys(v).length > 0, { message: 'Nothing to change' });
 export type UpdateStandBookingInput = z.infer<typeof updateStandBookingSchema>;
@@ -72,6 +97,8 @@ export const listStandBookingsQuerySchema = z.object({
   to: isoDate.optional(),
   standId: z.coerce.number().int().positive().optional(),
   projectId: z.coerce.number().int().positive().optional(),
+  /** Matches the model, the stand code or the project key. */
+  q: z.string().trim().max(80).optional(),
 });
 export type ListStandBookingsQuery = z.infer<typeof listStandBookingsQuerySchema>;
 
@@ -121,3 +148,21 @@ export const standImportFieldsSchema = z.object({
     .default(true),
 });
 export type StandImportFields = z.infer<typeof standImportFieldsSchema>;
+
+/** History of the units on the stands. */
+export const listStandEventsQuerySchema = z.object({
+  /** Matches the model before or after, the stand code or the project key. */
+  q: z.string().trim().max(80).optional(),
+  standId: z.coerce.number().int().positive().optional(),
+  actorId: z.coerce.number().int().positive().optional(),
+  from: isoDate.optional(),
+  to: isoDate.optional(),
+  limit: z.coerce.number().int().min(1).max(1000).default(300),
+});
+export type ListStandEventsQuery = z.infer<typeof listStandEventsQuerySchema>;
+
+export const technicianWorkQuerySchema = z.object({
+  technicianId: z.coerce.number().int().positive(),
+  year: z.coerce.number().int().min(2000).max(2100),
+});
+export type TechnicianWorkQuery = z.infer<typeof technicianWorkQuerySchema>;

@@ -6,6 +6,8 @@ import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
 import { ExcelJS } from '@tmt/excel';
 import type {
   NotificationListDTO,
+  StandEventDTO,
+  TechnicianWorkDTO,
   StandBoardDTO,
   StandBookingDTO,
   StandDTO,
@@ -448,5 +450,139 @@ describe('import of the lab sheet', () => {
       file: { name: 'stands.csv', content: 'a,b' },
     });
     expect(errorCode(csv)).toBe('UNSUPPORTED_FILE_TYPE');
+  });
+});
+
+describe('hourly bookings and who tests', () => {
+  let standId: number;
+  let annId: number;
+
+  beforeAll(async () => {
+    const board = expectBody<StandBoardDTO>(await ann.get('/stands'), 200);
+    standId = board.zones.flatMap((z) => z.stands).find((s) => s.code === 'E-3')!.id;
+    annId = (await t.prisma.db.user.findUniqueOrThrow({ where: { username: 'ann' } })).id;
+  });
+
+  it('books hours; touching hours are free, overlapping minutes are not', async () => {
+    const day = '2030-03-04';
+    const morning = expectBody<StandBookingDTO>(
+      await tom.post('/stands/bookings', {
+        standId,
+        projectId,
+        model: 'ACU-25',
+        startDate: day,
+        endDate: day,
+        startTime: '09:00',
+        endTime: '12:00',
+        testerId: annId,
+      }),
+      201,
+    );
+    expect(morning).toMatchObject({ startTime: '09:00', endTime: '12:00' });
+    expect(morning.tester?.username).toBe('ann');
+    expect(morning.createdBy.username).toBe('tom');
+    const afternoon = await ann.post('/stands/bookings', {
+      standId,
+      projectId,
+      model: 'ACU-35',
+      startDate: day,
+      endDate: day,
+      startTime: '12:00',
+      endTime: '17:00',
+    });
+    expect(afternoon.status).toBe(201);
+    expect(afternoon.body.tester.username).toBe('ann');
+    const clash = await ann.post('/stands/bookings', {
+      standId,
+      projectId,
+      model: 'ACU-50',
+      startDate: day,
+      endDate: day,
+      startTime: '11:59',
+      endTime: '12:30',
+    });
+    expect(errorCode(clash)).toBe('STAND_BOOKED');
+    expect(clash.body.error.message).toContain('09:00');
+    // A whole-day booking of that day clashes too.
+    expect(
+      errorCode(
+        await ann.post('/stands/bookings', {
+          standId,
+          projectId,
+          model: 'ACU-50',
+          startDate: day,
+          endDate: day,
+        }),
+      ),
+    ).toBe('STAND_BOOKED');
+  });
+
+  it('checks the times and the tester', async () => {
+    const base = { standId, projectId, model: 'M', startDate: '2030-03-05', endDate: '2030-03-05' };
+    expect((await ann.post('/stands/bookings', { ...base, startTime: '10:00' })).status).toBe(400);
+    expect(
+      (await ann.post('/stands/bookings', { ...base, startTime: '10:00', endTime: '09:00' }))
+        .status,
+    ).toBe(400);
+    expect(
+      (await ann.post('/stands/bookings', { ...base, startTime: '9:00', endTime: '10:00' })).status,
+    ).toBe(400);
+    expect(errorCode(await ann.post('/stands/bookings', { ...base, testerId: techId }))).toBe(
+      'BAD_TESTER',
+    );
+  });
+});
+
+describe('history', () => {
+  it('records installs and removals with project and who, from requests, hand edits and imports', async () => {
+    const events = expectBody<StandEventDTO[]>(await viewer.get('/stands/events'), 200);
+    const byRequest = events.filter((e) => e.source === 'request');
+    expect(byRequest.map((e) => [e.kind, e.modelBefore, e.modelAfter])).toEqual([
+      ['uninstall', 'ACU-71', null],
+      ['replace', 'ACU-35', 'ACU-71'],
+    ]);
+    expect(byRequest[1]).toMatchObject({
+      standCode: 'E-1',
+      zoneName: 'Zone East',
+      project: { key: 'STD' },
+      actor: { username: 'tech' },
+      note: 'Installed',
+    });
+    expect(events.some((e) => e.source === 'manual' && e.modelAfter === 'ACU-35')).toBe(true);
+    expect(events.some((e) => e.source === 'import' && e.standCode === 'E-3')).toBe(true);
+    const found = expectBody<StandEventDTO[]>(await ann.get('/stands/events?q=acu-71'), 200);
+    expect(found.length).toBeGreaterThanOrEqual(2);
+    expect(found.every((e) => [e.modelBefore, e.modelAfter].includes('ACU-71'))).toBe(true);
+    const bookings = expectBody<StandBookingDTO[]>(
+      await ann.get('/stands/bookings?from=2000-01-01&to=2100-01-01&q=acu-25'),
+      200,
+    );
+    expect(bookings.every((b) => b.model === 'ACU-25')).toBe(true);
+  });
+
+  it("sums up a technician's year", async () => {
+    const year = new Date().getFullYear();
+    const work = expectBody<TechnicianWorkDTO>(
+      await tech.get(`/stands/work?technicianId=${techId}&year=${year}`),
+      200,
+    );
+    expect(work.totals).toMatchObject({ install: 0, uninstall: 1, replace: 1, rejected: 0 });
+    expect(work.totals.manual).toBeGreaterThanOrEqual(2);
+    expect(work.months.reduce((n, m) => n + m.uninstall + m.replace, 0)).toBe(2);
+    expect(work.requests.map((r) => r.status)).toEqual(['done', 'done']);
+    const last = expectBody<TechnicianWorkDTO>(
+      await tech.get(`/stands/work?technicianId=${techId}&year=${year - 1}`),
+      200,
+    );
+    expect(last.requests).toEqual([]);
+  });
+
+  it('stores notifications as messages to show in Thai', async () => {
+    const n = expectBody<NotificationListDTO>(await ann.get('/notifications'), 200);
+    const done = n.items.find((i) => i.title.startsWith('Replace ACU-71 at E-1 done by'))!;
+    expect(done.message?.title).toMatchObject({
+      key: 'stand_done',
+      vars: { actor: 'Tech', what: { key: 'stand_what_replace', vars: { model: 'ACU-71' } } },
+    });
   });
 });

@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@tmt/database';
-import type { NotificationDTO, NotificationListDTO, ListNotificationsQuery } from '@tmt/shared';
+import type {
+  ListNotificationsQuery,
+  NotificationDTO,
+  NotificationListDTO,
+  NotificationMessage,
+} from '@tmt/shared';
 import { notFound } from '../../common/errors/app.exception.js';
 import type { AuthUser, ProjectContext } from '../../common/types/auth.js';
 import { AppConfig } from '../../config/app-config.js';
@@ -59,6 +64,7 @@ export class NotificationsService {
       title: n.title,
       body: n.body,
       link: n.link,
+      message: (n.message as unknown as NotificationMessage | null) ?? null,
       read: n.readAt !== null,
       createdAt: n.createdAt.toISOString(),
     }));
@@ -118,8 +124,13 @@ export class NotificationsService {
           userId: me.id,
           projectId: ctx.id,
           kind: overdue ? ('overdue' as const) : ('due_soon' as const),
-          title: `${r.code} · ${r.suite.name} ${overdue ? 'is overdue' : 'is due soon'}`,
-          body: `${r.plan.docNo}, due ${due}`,
+          message: {
+            title: {
+              key: overdue ? ('run_overdue' as const) : ('run_due_soon' as const),
+              vars: { code: r.code, suite: r.suite.name },
+            },
+            body: { key: 'run_due_body' as const, vars: { docNo: r.plan.docNo, due } },
+          },
           link: `/projects/${ctx.id}/runs/${r.id}`,
           dedupeKey: `${overdue ? 'overdue' : 'due'}:run:${r.id}:${due}`,
         };

@@ -1220,6 +1220,21 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
     success: 200,
     response: 'StandBoardDTO',
   },
+  'GET /api/v1/stands/events': {
+    tag: 'Test stands',
+    summary:
+      'History of the units on the stands: installs, uninstalls, replacements (newest first)',
+    notes:
+      'Written when a request is done, a stand model is changed by hand, or the stand sheet is imported. `q` matches model, stand or project.',
+    success: 200,
+    response: 'StandEventDTO[]',
+  },
+  'GET /api/v1/stands/work': {
+    tag: 'Test stands',
+    summary: "A technician's work in a year: requests done or rejected, changes by hand, per month",
+    success: 200,
+    response: 'TechnicianWorkDTO',
+  },
   'GET /api/v1/stands/technicians': {
     tag: 'Test stands',
     summary: 'Active technicians (for requests)',
@@ -1252,7 +1267,8 @@ export const ROUTE_DOCS: Record<string, RouteDoc> = {
   },
   'POST /api/v1/stands/bookings': {
     tag: 'Test stands',
-    summary: "Book a stand for a project's testing (tester or lead of the project)",
+    summary:
+      "Book a stand for a project's testing, whole days or hours (tester or lead of the project)",
     notes:
       'Overlapping days on the same stand are refused with 409 STAND_BOOKED and the booking in the way.',
     success: 201,

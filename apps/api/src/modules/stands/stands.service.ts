@@ -3,7 +3,17 @@ import type { Prisma } from '@tmt/database';
 import {
   roleAtLeast,
   STAND_REQUEST_KIND_LABELS,
+  minutesOf,
+  textMessage,
   type AcceptStandRequestInput,
+  type ListStandEventsQuery,
+  type Message,
+  type MessageKey,
+  type StandEventDTO,
+  type StandEventSource,
+  type StandRequestKind,
+  type TechnicianWorkDTO,
+  type TechnicianWorkQuery,
   type CompleteStandRequestInput,
   type CreateStandBookingInput,
   type CreateStandInput,
@@ -50,6 +60,7 @@ const bookingInclude = {
   stand: { select: { code: true } },
   project: projectSelect,
   createdBy: userSelect,
+  tester: userSelect,
 } satisfies Prisma.StandBookingInclude;
 type BookingRow = Prisma.StandBookingGetPayload<{ include: typeof bookingInclude }>;
 
@@ -82,7 +93,10 @@ function toBookingDTO(b: BookingRow): StandBookingDTO {
     model: b.model,
     startDate: dateOnly(b.startDate)!,
     endDate: dateOnly(b.endDate)!,
+    startTime: b.startMinute === null ? null : timeOf(b.startMinute),
+    endTime: b.endMinute === null ? null : timeOf(b.endMinute),
     note: b.note,
+    tester: b.tester,
     createdBy: b.createdBy,
     createdAt: b.createdAt.toISOString(),
   };
@@ -110,6 +124,66 @@ function toRequestDTO(r: RequestRow): StandRequestDTO {
   };
 }
 
+const eventInclude = { actor: userSelect } satisfies Prisma.StandEventInclude;
+type EventRow = Prisma.StandEventGetPayload<{ include: typeof eventInclude }>;
+
+function toEventDTO(e: EventRow): StandEventDTO {
+  return {
+    id: e.id,
+    standId: e.standId,
+    standCode: e.standCode,
+    zoneName: e.zoneName,
+    kind: e.kind,
+    source: e.source,
+    modelBefore: e.modelBefore,
+    modelAfter: e.modelAfter,
+    project: e.projectKey ? { id: e.projectId, key: e.projectKey } : null,
+    requestId: e.requestId,
+    actor: e.actor,
+    note: e.note,
+    at: e.at.toISOString(),
+  };
+}
+
+const MINUTES_PER_DAY = 1440;
+const DAY_MS = 86_400_000;
+const timeOf = (m: number) =>
+  `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+
+/** A booking as [start, end) in minutes of lab time since 1970-01-01 (for overlap checks). */
+function spanOf(b: {
+  startDate: string;
+  endDate: string;
+  startMinute: number | null;
+  endMinute: number | null;
+}): [number, number] {
+  const day = (d: string) => (Date.parse(`${d}T00:00:00Z`) / DAY_MS) * MINUTES_PER_DAY;
+  return [
+    day(b.startDate) + (b.startMinute ?? 0),
+    day(b.endDate) + (b.endMinute ?? MINUTES_PER_DAY),
+  ];
+}
+
+const rowSpan = (b: {
+  startDate: Date;
+  endDate: Date;
+  startMinute: number | null;
+  endMinute: number | null;
+}) =>
+  spanOf({
+    startDate: dateOnly(b.startDate)!,
+    endDate: dateOnly(b.endDate)!,
+    startMinute: b.startMinute,
+    endMinute: b.endMinute,
+  });
+
+/** What changed on a stand, as one event kind. */
+function eventKind(before: string | null, after: string | null): StandRequestKind {
+  if (!before) return 'install';
+  if (!after) return 'uninstall';
+  return 'replace';
+}
+
 const standNotFound = () => notFound('Stand', 'STAND_NOT_FOUND');
 const requestNotFound = () => notFound('Stand request', 'STAND_REQUEST_NOT_FOUND');
 const bookingNotFound = () => notFound('Booking', 'STAND_BOOKING_NOT_FOUND');
@@ -135,6 +209,24 @@ export class StandsService {
 
   private today(): string {
     return localDate(new Date(), this.config.reportTimezone);
+  }
+
+  /** Now in lab time, as minutes since 1970-01-01 (the scale of `spanOf`). */
+  private nowSpan(): number {
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: this.config.reportTimezone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    }).formatToParts(new Date());
+    const n = (t: string) => Number(parts.find((p) => p.type === t)?.value ?? 0);
+    const [start] = spanOf({
+      startDate: this.today(),
+      endDate: this.today(),
+      startMinute: 0,
+      endMinute: 0,
+    });
+    return start + n('hour') * 60 + n('minute');
   }
 
   // ---------------------------------------------------------------- who may do what
@@ -197,7 +289,7 @@ export class StandsService {
           startDate: { lte: parseDateOnly(addDays(today, LOOKAHEAD_DAYS))! },
         },
         include: bookingInclude,
-        orderBy: [{ startDate: 'asc' }, { id: 'asc' }],
+        orderBy: [{ startDate: 'asc' }, { startMinute: 'asc' }, { id: 'asc' }],
       }),
       db.standRequest.groupBy({
         by: ['standId'],
@@ -213,13 +305,18 @@ export class StandsService {
       bookingsBy.set(b.standId, list);
     }
     const needle = q.model?.toLowerCase();
+    const now = this.nowSpan();
     const result: StandZoneDTO[] = [];
     for (const z of zones) {
       const stands: StandDTO[] = [];
       for (const s of z.stands) {
         const list = bookingsBy.get(s.id) ?? [];
-        const current = list.find((b) => dateOnly(b.startDate)! <= today) ?? null;
-        const next = list.find((b) => dateOnly(b.startDate)! > today) ?? null;
+        const current =
+          list.find((b) => {
+            const [start, end] = rowSpan(b);
+            return start <= now && now < end;
+          }) ?? null;
+        const next = list.find((b) => rowSpan(b)[0] > now) ?? null;
         const dto: StandDTO = {
           id: s.id,
           zoneId: s.zoneId,
@@ -342,6 +439,9 @@ export class StandsService {
           },
         });
         await this.log(tx, me, 'stand', row.id, 'created', `Added stand ${row.code}`);
+        if (row.currentModel) {
+          await this.recordEvent(tx, me, row.id, null, row.currentModel, 'manual');
+        }
         return row.id;
       });
     } catch (e) {
@@ -376,6 +476,9 @@ export class StandsService {
             : `Changed stand ${row.code}`,
           { ...input },
         );
+        if (modelChanged) {
+          await this.recordEvent(tx, me, standId, before.currentModel, row.currentModel, 'manual');
+        }
       });
     } catch (e) {
       if (isUniqueViolation(e)) throw standTaken(input.code ?? '');
@@ -410,9 +513,16 @@ export class StandsService {
         endDate: { gte: parseDateOnly(from)! },
         ...(q.standId && { standId: q.standId }),
         ...(q.projectId && { projectId: q.projectId }),
+        ...(q.q && {
+          OR: [
+            { model: { contains: q.q, mode: 'insensitive' } },
+            { stand: { code: { contains: q.q, mode: 'insensitive' } } },
+            { project: { key: { contains: q.q, mode: 'insensitive' } } },
+          ],
+        }),
       },
       include: bookingInclude,
-      orderBy: [{ startDate: 'asc' }, { id: 'asc' }],
+      orderBy: [{ startDate: 'asc' }, { startMinute: 'asc' }, { id: 'asc' }],
       take: 2000,
     });
     return rows.map(toBookingDTO);
@@ -423,9 +533,17 @@ export class StandsService {
     await this.assertProjectRole(me, input.projectId);
     const stand = await this.prisma.db.stand.findUnique({ where: { id: input.standId } });
     if (!stand) throw unprocessable('STAND_NOT_FOUND', 'The stand does not exist');
+    const testerId = input.testerId ?? me.id;
+    if (input.testerId) await this.assertTester(input.projectId, input.testerId);
+    const when = {
+      startDate: input.startDate,
+      endDate: input.endDate,
+      startMinute: input.startTime ? minutesOf(input.startTime) : null,
+      endMinute: input.endTime ? minutesOf(input.endTime) : null,
+    };
     const row = await this.prisma.db.$transaction(async (tx) => {
       await lockStand(tx, input.standId);
-      await this.assertFree(tx, input.standId, input.startDate, input.endDate);
+      await this.assertFree(tx, input.standId, when);
       const b = await tx.standBooking.create({
         data: {
           standId: input.standId,
@@ -433,6 +551,9 @@ export class StandsService {
           model: input.model,
           startDate: parseDateOnly(input.startDate)!,
           endDate: parseDateOnly(input.endDate)!,
+          startMinute: when.startMinute,
+          endMinute: when.endMinute,
+          testerId,
           note: input.note ?? null,
           createdById: me.id,
         },
@@ -460,19 +581,36 @@ export class StandsService {
     const before = await this.loadOwnBooking(me, bookingId);
     const start = input.startDate ?? dateOnly(before.startDate)!;
     const end = input.endDate ?? dateOnly(before.endDate)!;
-    if (end < start) {
-      throw new AppException(400, 'VALIDATION_FAILED', 'The end date is before the start date');
+    // Times: sent together (or both cleared); left out = keep.
+    const timesSent = input.startTime !== undefined || input.endTime !== undefined;
+    const when = {
+      startDate: start,
+      endDate: end,
+      startMinute: timesSent
+        ? input.startTime
+          ? minutesOf(input.startTime)
+          : null
+        : before.startMinute,
+      endMinute: timesSent ? (input.endTime ? minutesOf(input.endTime) : null) : before.endMinute,
+    };
+    const [a, z] = spanOf(when);
+    if ((when.startMinute === null) !== (when.endMinute === null) || z <= a) {
+      throw new AppException(400, 'VALIDATION_FAILED', 'The end is before the start');
     }
+    if (input.testerId) await this.assertTester(before.projectId, input.testerId);
     const row = await this.prisma.db.$transaction(async (tx) => {
       await lockStand(tx, before.standId);
-      await this.assertFree(tx, before.standId, start, end, bookingId);
+      await this.assertFree(tx, before.standId, when, bookingId);
       const b = await tx.standBooking.update({
         where: { id: bookingId },
         data: {
           ...(input.model !== undefined && { model: input.model }),
           ...(input.note !== undefined && { note: input.note }),
+          ...(input.testerId !== undefined && { testerId: input.testerId ?? before.createdById }),
           startDate: parseDateOnly(start)!,
           endDate: parseDateOnly(end)!,
+          startMinute: when.startMinute,
+          endMinute: when.endMinute,
         },
       });
       await this.log(
@@ -538,30 +676,49 @@ export class StandsService {
     });
   }
 
+  /** The person who tests must be an active member of the booking's project. */
+  private async assertTester(projectId: number, testerId: number): Promise<void> {
+    const n = await this.prisma.db.projectMember.count({
+      where: { projectId, userId: testerId, user: { isActive: true } },
+    });
+    if (!n) throw unprocessable('BAD_TESTER', 'Choose a member of the project as the tester');
+  }
+
+  /** 409 STAND_BOOKED when the time overlaps another booking of the stand (to the minute). */
   private async assertFree(
     tx: Db,
     standId: number,
-    start: string,
-    end: string,
+    when: {
+      startDate: string;
+      endDate: string;
+      startMinute: number | null;
+      endMinute: number | null;
+    },
     exceptId?: number,
   ): Promise<void> {
-    const clash = await tx.standBooking.findFirst({
+    const [start, end] = spanOf(when);
+    const sameDays = await tx.standBooking.findMany({
       where: {
         standId,
-        startDate: { lte: parseDateOnly(end)! },
-        endDate: { gte: parseDateOnly(start)! },
+        startDate: { lte: parseDateOnly(when.endDate)! },
+        endDate: { gte: parseDateOnly(when.startDate)! },
         ...(exceptId && { id: { not: exceptId } }),
       },
-      select: { id: true },
-      orderBy: { startDate: 'asc' },
+      select: { id: true, startDate: true, endDate: true, startMinute: true, endMinute: true },
+      orderBy: [{ startDate: 'asc' }, { startMinute: 'asc' }],
+    });
+    const clash = sameDays.find((b) => {
+      const [s, e] = rowSpan(b);
+      return s < end && start < e;
     });
     if (clash) {
       // Read outside the transaction: one query at a time on its connection.
       const c = await this.loadBooking(clash.id);
+      const at = (d: string, t: string | null) => (t ? `${d} ${t}` : d);
       throw new AppException(
         409,
         'STAND_BOOKED',
-        `${c.standCode} is booked for ${c.project.key} from ${c.startDate} to ${c.endDate}`,
+        `${c.standCode} is booked for ${c.project.key} from ${at(c.startDate, c.startTime)} to ${at(c.endDate, c.endTime)}`,
         { booking: c },
       );
     }
@@ -648,8 +805,17 @@ export class StandsService {
           userId: row.technicianId,
           projectId: null,
           kind: 'stand_request',
-          title: `${me.displayName}: ${describe(row)} on ${dateOnly(row.requestedDate)}`,
-          body: row.note,
+          message: {
+            title: {
+              key: 'stand_request',
+              vars: {
+                actor: me.displayName,
+                what: whatMessage(row),
+                date: dateOnly(row.requestedDate)!,
+              },
+            },
+            body: row.note ? textMessage(row.note) : null,
+          },
           link: requestLink(row.id),
         },
       ],
@@ -700,9 +866,19 @@ export class StandsService {
       }),
       async (tx, r) => {
         const model = r.kind === 'uninstall' ? null : r.model;
+        const before = await tx.stand.findUniqueOrThrow({
+          where: { id: r.standId },
+          select: { currentModel: true },
+        });
         await tx.stand.update({
           where: { id: r.standId },
           data: { currentModel: model, updatedById: me.id },
+        });
+        await this.recordEvent(tx, me, r.standId, before.currentModel, model, 'request', {
+          kind: r.kind,
+          requestId: r.id,
+          projectId: r.projectId,
+          note: r.technicianNote,
         });
       },
     );
@@ -761,14 +937,14 @@ export class StandsService {
       return next;
     });
     const to = by === 'technician' ? updated.requestedById : updated.technicianId;
-    const when = dateOnly(updated.scheduledDate ?? updated.requestedDate);
-    const verb: Record<StandRequestStatus, string> = {
-      requested: 'sent',
-      accepted: `accepted for ${when}`,
-      rejected: 'rejected',
-      done: 'done',
-      cancelled: 'cancelled',
-    };
+    const when = dateOnly(updated.scheduledDate ?? updated.requestedDate)!;
+    const titleKey = {
+      requested: 'stand_request',
+      accepted: 'stand_accepted',
+      rejected: 'stand_rejected',
+      done: 'stand_done',
+      cancelled: 'stand_cancelled',
+    } as const satisfies Record<StandRequestStatus, MessageKey>;
     await notifyUsers(
       db,
       [
@@ -776,8 +952,13 @@ export class StandsService {
           userId: to,
           projectId: null,
           kind: 'stand_request_update',
-          title: `${describe(updated)} ${verb[updated.status]} by ${me.displayName}`,
-          body: updated.technicianNote,
+          message: {
+            title: {
+              key: titleKey[updated.status],
+              vars: { what: whatMessage(updated), actor: me.displayName, date: when },
+            },
+            body: updated.technicianNote ? textMessage(updated.technicianNote) : null,
+          },
           link: requestLink(updated.id),
         },
       ],
@@ -850,10 +1031,16 @@ export class StandsService {
         const existing = standByCode.get(r.code.toLowerCase());
         if (existing) {
           await tx.stand.update({ where: { id: existing.id }, data });
+          if (existing.currentModel !== r.model) {
+            await this.recordEvent(tx, me, existing.id, existing.currentModel, r.model, 'import');
+          }
         } else {
           const order = orderIn.get(zone.id) ?? (await nextStandOrder(tx, zone.id));
           orderIn.set(zone.id, order + 10);
-          await tx.stand.create({ data: { ...data, code: r.code, sortOrder: order } });
+          const created = await tx.stand.create({
+            data: { ...data, code: r.code, sortOrder: order },
+          });
+          if (r.model) await this.recordEvent(tx, me, created.id, null, r.model, 'import');
         }
       }
       await this.log(
@@ -866,6 +1053,141 @@ export class StandsService {
       );
     });
     return { ...result, applied: true };
+  }
+
+  // ---------------------------------------------------------------- history
+
+  /** One change of the unit on a stand. Names are copied so the history outlives the stand. */
+  private async recordEvent(
+    tx: Db,
+    me: AuthUser,
+    standId: number,
+    before: string | null,
+    after: string | null,
+    source: StandEventSource,
+    extra: {
+      requestId?: number;
+      projectId?: number | null;
+      note?: string | null;
+      kind?: StandRequestKind;
+    } = {},
+  ): Promise<void> {
+    const stand = await tx.stand.findUniqueOrThrow({
+      where: { id: standId },
+      include: { zone: { select: { name: true } } },
+    });
+    const project = extra.projectId
+      ? await tx.project.findUnique({ where: { id: extra.projectId }, select: { key: true } })
+      : null;
+    await tx.standEvent.create({
+      data: {
+        standId,
+        standCode: stand.code,
+        zoneName: stand.zone.name,
+        kind: extra.kind ?? eventKind(before, after),
+        source,
+        modelBefore: before,
+        modelAfter: after,
+        projectId: project ? extra.projectId : null,
+        projectKey: project?.key ?? null,
+        requestId: extra.requestId ?? null,
+        actorId: me.id,
+        note: extra.note ?? null,
+      },
+    });
+  }
+
+  /** Installs, uninstalls and replacements, newest first: which unit was where, for which project. */
+  async listEvents(q: ListStandEventsQuery): Promise<StandEventDTO[]> {
+    const rows = await this.prisma.db.standEvent.findMany({
+      where: {
+        ...(q.standId && { standId: q.standId }),
+        ...(q.actorId && { actorId: q.actorId }),
+        ...((q.from || q.to) && {
+          at: {
+            ...(q.from && { gte: this.startOfDay(q.from) }),
+            ...(q.to && { lt: this.startOfDay(addDays(q.to, 1)) }),
+          },
+        }),
+        ...(q.q && {
+          OR: [
+            { modelBefore: { contains: q.q, mode: 'insensitive' } },
+            { modelAfter: { contains: q.q, mode: 'insensitive' } },
+            { standCode: { contains: q.q, mode: 'insensitive' } },
+            { projectKey: { contains: q.q, mode: 'insensitive' } },
+          ],
+        }),
+      },
+      include: eventInclude,
+      orderBy: [{ at: 'desc' }, { id: 'desc' }],
+      take: q.limit,
+    });
+    return rows.map(toEventDTO);
+  }
+
+  /** What a technician did in a year (done and rejected requests, changes by hand), for reports. */
+  async technicianWork(q: TechnicianWorkQuery): Promise<TechnicianWorkDTO> {
+    const db = this.prisma.db;
+    const technician = await db.user.findUnique({
+      where: { id: q.technicianId },
+      select: { id: true, username: true, displayName: true },
+    });
+    if (!technician) throw notFound('User', 'USER_NOT_FOUND');
+    const from = this.startOfDay(`${q.year}-01-01`);
+    const to = this.startOfDay(`${q.year + 1}-01-01`);
+    const [requests, events] = await Promise.all([
+      db.standRequest.findMany({
+        where: {
+          technicianId: q.technicianId,
+          OR: [
+            { status: 'done', doneAt: { gte: from, lt: to } },
+            { status: 'rejected', updatedAt: { gte: from, lt: to } },
+          ],
+        },
+        include: requestInclude,
+        orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
+        take: 5000,
+      }),
+      db.standEvent.findMany({
+        where: { actorId: q.technicianId, source: { not: 'request' }, at: { gte: from, lt: to } },
+        include: eventInclude,
+        orderBy: [{ at: 'desc' }, { id: 'desc' }],
+        take: 5000,
+      }),
+    ]);
+    const months = Array.from({ length: 12 }, (_, i) => ({
+      month: i + 1,
+      install: 0,
+      uninstall: 0,
+      replace: 0,
+    }));
+    const totals = { install: 0, uninstall: 0, replace: 0, rejected: 0, manual: events.length };
+    for (const r of requests) {
+      if (r.status === 'rejected') {
+        totals.rejected += 1;
+        continue;
+      }
+      totals[r.kind] += 1;
+      const month = Number(localDate(r.doneAt!, this.config.reportTimezone).slice(5, 7));
+      months[month - 1]![r.kind] += 1;
+    }
+    return {
+      technician,
+      year: q.year,
+      totals,
+      months,
+      requests: requests.map(toRequestDTO),
+      events: events.map(toEventDTO),
+    };
+  }
+
+  /** Midnight of a lab-time day as an instant. */
+  private startOfDay(day: string): Date {
+    const utc = Date.parse(`${day}T00:00:00Z`);
+    // Offset of the lab's time zone at that day (no DST in most labs, but stay correct).
+    const local = new Date(utc).toLocaleString('sv-SE', { timeZone: this.config.reportTimezone });
+    const offset = Date.parse(`${local.replace(' ', 'T')}Z`) - utc;
+    return new Date(utc - offset);
   }
 
   // ---------------------------------------------------------------- helpers
@@ -893,6 +1215,14 @@ export class StandsService {
 }
 
 const open = (s: StandRequestStatus) => s === 'requested' || s === 'accepted';
+
+/** "Install ACU-25 at L1/A-1" as a message (shown in each reader's language). */
+function whatMessage(r: Pick<RequestCore, 'kind' | 'model' | 'stand'>): Message {
+  return {
+    key: `stand_what_${r.kind}`,
+    vars: { model: r.model ?? '', code: r.stand.code },
+  };
+}
 
 function describe(r: Pick<RequestCore, 'kind' | 'model' | 'stand'>): string {
   const what = STAND_REQUEST_KIND_LABELS[r.kind];

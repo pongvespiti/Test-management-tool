@@ -1,3 +1,4 @@
+import { textMessage } from '@tmt/shared';
 import { Injectable } from '@nestjs/common';
 import {
   DEFECT_STATUS_LABELS,
@@ -192,8 +193,10 @@ export class DefectsService {
             userId,
             projectId: ctx.id,
             kind: 'retest' as const,
-            title: `${defectKey(d.seq)} is resolved — ready for retest`,
-            body: d.title,
+            message: {
+              title: { key: 'defect_retest' as const, vars: { key: defectKey(d.seq) } },
+              body: textMessage(d.title),
+            },
             link: `/projects/${ctx.id}/defects/${d.id}`,
             dedupeKey: `retest:${d.id}:${now.getTime()}`,
           })),

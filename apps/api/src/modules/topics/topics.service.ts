@@ -1,3 +1,4 @@
+import { textMessage } from '@tmt/shared';
 import { Injectable } from '@nestjs/common';
 import {
   can,
@@ -276,8 +277,13 @@ export class TopicsService {
             userId: input.testerId,
             projectId: ctx.id,
             kind: 'assigned',
-            title: `${open.length} ${open.length === 1 ? 'run' : 'runs'} handed to you in ${release.name}`,
-            body: [...new Set(open.map((r) => r.code))].slice(0, 8).join(', '),
+            message: {
+              title: {
+                key: open.length === 1 ? 'runs_handed_one' : 'runs_handed_many',
+                vars: { n: open.length, release: release.name },
+              },
+              body: textMessage([...new Set(open.map((r) => r.code))].slice(0, 8).join(', ')),
+            },
             link: `/projects/${ctx.id}/my-work`,
           },
         ],
